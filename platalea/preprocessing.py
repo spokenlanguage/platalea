@@ -9,24 +9,29 @@ from scipy.io.wavfile import read
 import os
 import numpy
 
-def flickr8k_audio_features():
-    config = dict(type='mfcc', delta=True, alpha=0.97, n_filters=40, window_size=0.025, frame_shift=0.010)
-    directory = '/roaming/gchrupal/datasets/flickr8k/flickr_audio/wavs/'
-    files = [ line.split()[0] for line in open('/roaming/gchrupal/datasets/flickr8k/wav2capt.txt') ]
+
+def flickr8k_features():
+    config = dict(audio=dict(dir='/roaming/gchrupal/datasets/flickr8k/', type='mfcc', delta=True, alpha=0.97, n_filters=40, window_size=0.025, frame_shift=0.010),
+                  image=dict(dir='/roaming/gchrupal/datasets/flickr8k/', model='resnet'))
+    flickr8k_audio_features(config['audio'])
+    flickr8k_image_features(config['image'])
+                  
+def flickr8k_audio_features(config):
+    directory = config['dir'] + 'flickr_audio/wavs/'
+    files = [ line.split()[0] for line in open(config['dir'] + 'wav2capt.txt') ]
     paths = [ directory + file for file in files ]
     features = audio_features(paths, config)
-    torch.save(dict(features=features, filenames=files), '/roaming/gchrupal/datasets/flickr8k/mfcc_features.pt')
+    torch.save(dict(features=features, filenames=files), config['dir'] + 'mfcc_features.pt')
     
     
-def flickr8k_image_features():
-    config = dict(model='resnet')
-    directory = '/roaming/gchrupal/datasets/flickr8k/Flickr8k_Dataset/Flicker8k_Dataset/'
-    data = json.load(open('/roaming/gchrupal/datasets/flickr8k/dataset.json'))
+def flickr8k_image_features(config):
+    directory = config['dir'] + 'Flickr8k_Dataset/Flicker8k_Dataset/'
+    data = json.load(open(config['dir'] + 'dataset.json'))
     files =  [ image['filename'] for image in data['images'] ]
     paths = [ directory + file for file in files ]
 
     features = image_features(paths, config).cpu()
-    torch.save(dict(features=features, filenames=files), '/roaming/gchrupal/datasets/flickr8k/resnet_features.pt')
+    torch.save(dict(features=features, filenames=files), config['dir'] + 'resnet_features.pt')
     
 
 def image_features(paths, config):
@@ -124,5 +129,5 @@ def audio_features(paths, config):
             single_delta= delta (features, 2)
             double_delta= delta(single_delta, 2)
             features= numpy.concatenate([features, single_delta, double_delta], 1)
-        output.append(features)
+        output.append(torch.tensor(features))
     return output
