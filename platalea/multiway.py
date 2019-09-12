@@ -35,6 +35,16 @@ def cyclic_scheduler(optimizer, n_batches, max_lr, min_lr=1e-6):
     return scheduler
 
 def experiment(net, data, config):
+
+    def val_loss():
+        net.eval()
+        result = []
+        for item in data['val']:
+            item = {key: value.cuda() for key, value in item.items()}
+            result.append(net.cost(item).item())
+        net.train()
+        return torch.tensor(result).mean()
+    
     net.cuda()
     net.train()
     optimizer = optim.Adam(net.parameters(), lr=1)
@@ -53,7 +63,10 @@ def experiment(net, data, config):
                 scheduler.step()
                 cost += Counter({'cost': loss.item(), 'N':1})
                 if j % 100 == 0:
-                    logging.info("{} {} {}".format(epoch, j, cost['cost']/cost['N']))
+                    logging.info("train {} {} {}".format(epoch, j+1, cost['cost']/cost['N']))
+                if j % 400 == 0:
+                    logging.info("valid {} {} {}".format(epoch, j+1, val_loss()))
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
+            
     
