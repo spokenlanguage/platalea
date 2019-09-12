@@ -18,8 +18,9 @@ class Flickr8KData(torch.utils.data.Dataset):
         # image, caption pairs
         self.split_data = []
         for image in json.load(open(root + 'dataset.json'))['images']:
-            for text_id, audio_id in self.image_captions[image['filename']]:
-                self.split_data.append((image['filename'], audio_id, image['sentences'][text_id]['raw']))
+            if image['split'] == self.split:
+                for text_id, audio_id in self.image_captions[image['filename']]:
+                    self.split_data.append((image['filename'], audio_id, image['sentences'][text_id]['raw']))
 
         # image and audio feature data
         image = torch.load(root + 'resnet_features.pt')
@@ -31,15 +32,20 @@ class Flickr8KData(torch.utils.data.Dataset):
         image = self.image[self.split_data[index][0]]
         audio = self.audio[self.split_data[index][1]]
         text  = torch.Tensor([ord('^')] + [ ord(c) for c in self.split_data[index][2] ] + [ord('$')] ) # FIXME need to do this properly
-        return image, text, audio
+        return dict(image_id=self.split_data[index][0],
+                    audio_id=self.split_data[index][1],
+                    image=image,
+                    text=text,
+                    audio=audio,
+                    gloss= self.split_data[index][2])
                            
     def __len__(self):
         return len(self.split_data)
 
 
 def collate_fn(data, max_frames=2048):
-    data.sort(key=lambda x: len(x[1]), reverse=True)
-    images, texts, audios = zip(*data)
+    #data.sort(key=lambda x: len(x[1]), reverse=True)
+    images, texts, audios = zip(* [ (datum['image'], datum['text'], datum['audio']) for datum in data ])
 
     # Merge images (from tuple of 3D tensor to 4D tensor).
     images = torch.stack(images, 0)
@@ -52,7 +58,7 @@ def collate_fn(data, max_frames=2048):
     for i, cap in enumerate(audios):
         end = mfcc_lengths[i]
         mfcc[i, :end] = cap[:end]
-
+    mfcc = mfcc.permute(0, 2, 1)
     # Merge captions (from tuple of 1D tensor to 2D tensor).
     # pad with zeros
     # FIXME this needs to be done properly, eventually
@@ -61,7 +67,7 @@ def collate_fn(data, max_frames=2048):
     for i, cap in enumerate(texts):
         end = char_lengths[i]
         chars[i, :end] = cap[:end]        
-    return dict(image=images, audio=mfcc, text=chars, audio_len=mfcc_lengths, text_len=char_lengths)
+    return dict(image=images, audio=mfcc, text=chars, audio_len=torch.tensor(mfcc_lengths), text_len=torch.tensor(char_lengths))
 
 def flickr8k_loader(split='train', batch_size=32, shuffle=False, max_frames=2048):
     return torch.utils.data.DataLoader(dataset=Flickr8KData(root='/roaming/gchrupal/datasets/flickr8k/', split=split), 

@@ -10,4 +10,8 @@ setup(name='platalea',
       license='Apache',
       zip_safe=False,
       install_requires=[
+          'torch==1.2.0',
+          'torchvision==0.4.0',
+          'numpy==1.17.2',
+          'scipy==1.3.1'
       ])
