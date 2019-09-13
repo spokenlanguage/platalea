@@ -24,6 +24,20 @@ class SpeechImage(nn.Module):
         loss =  platalea.loss.contrastive(scores, margin=self.config['margin_size'])
         return loss
 
+def embed_image(net, image):
+    image_e = []
+    for i in image:
+        image_e.append(net.ImageEncoder(i.cuda()).detach().cpu().numpy())
+    image_e = np.concatenate(image_e)
+    return image_e
+
+def embed_audio(net, audio):
+    audio_e = []
+    for a, l in audio:
+        audio_e.append(net.SpeechEncoder(a.cuda(), l.cuda()).detach().cpu().numpy())
+    audio_e = np.concatenate(audio_e)
+    return audio_e
+
 def cyclic_scheduler(optimizer, n_batches, max_lr, min_lr=1e-6):
     stepsize = n_batches * 4
     logging.info("Setting stepsize of {}".format(stepsize))
