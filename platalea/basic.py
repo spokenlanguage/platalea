@@ -54,7 +54,7 @@ def experiment(net, data, config):
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
-            for j, item in enumerate(data['train']): # check reshuffling
+            for j, item in enumerate(data['train'], start=1): # check reshuffling
                 item = {key: value.cuda() for key, value in item.items()}
                 loss = net.cost(item)
                 optimizer.zero_grad()
@@ -63,9 +63,9 @@ def experiment(net, data, config):
                 scheduler.step()
                 cost += Counter({'cost': loss.item(), 'N':1})
                 if j % 100 == 0:
-                    logging.info("train {} {} {}".format(epoch, j+1, cost['cost']/cost['N']))
+                    logging.info("train {} {} {}".format(epoch, j, cost['cost']/cost['N']))
                 if j % 400 == 0:
-                    logging.info("valid {} {} {}".format(epoch, j+1, val_loss()))
+                    logging.info("valid {} {} {}".format(epoch, j, val_loss()))
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
             
