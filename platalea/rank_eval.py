@@ -11,7 +11,7 @@ def ranking(candidates, references, correct, metric=cosine, ns=(1, 5, 10)):
 
     `correct[i][j]` indicates whether for reference item i the candidate j is correct.
     """
-    distances = cdist(references, candidates, metric=metric)
+    distances = cdist(references, candidates)
     result = {'ranks' : [] , 'recall' : {} }
     for n in ns:
         result['recall'][n]    = []
