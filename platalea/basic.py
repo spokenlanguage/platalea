@@ -7,6 +7,8 @@ import platalea.loss
 from collections import Counter
 import logging
 from torch.optim import lr_scheduler
+import platalea.dataset as D
+import platalea.score
 
 class SpeechImage(nn.Module):
 
@@ -24,19 +26,21 @@ class SpeechImage(nn.Module):
         loss =  platalea.loss.contrastive(scores, margin=self.config['margin_size'])
         return loss
 
-def embed_image(net, image):
-    image_e = []
-    for i in image:
-        image_e.append(net.ImageEncoder(i.cuda()).detach().cpu().numpy())
-    image_e = np.concatenate(image_e)
-    return image_e
+    def embed_image(self, images):
+        image = torch.utils.data.DataLoader(dataset=images, batch_size=32, shuffle=False, collate_fn=D.batch_image)
+        image_e = []
+        for i in image:
+            image_e.append(self.ImageEncoder(i.cuda()).detach().cpu().numpy())
+        image_e = np.concatenate(image_e)
+        return image_e
 
-def embed_audio(net, audio):
-    audio_e = []
-    for a, l in audio:
-        audio_e.append(net.SpeechEncoder(a.cuda(), l.cuda()).detach().cpu().numpy())
-    audio_e = np.concatenate(audio_e)
-    return audio_e
+    def embed_audio(self, audios):
+        audio = torch.utils.data.DataLoader(dataset=audios, batch_size=32, shuffle=False, collate_fn=D.batch_audio)
+        audio_e = []
+        for a, l in audio:
+            audio_e.append(self.SpeechEncoder(a.cuda(), l.cuda()).detach().cpu().numpy())
+        audio_e = np.concatenate(audio_e)
+        return audio_e
 
 def cyclic_scheduler(optimizer, n_batches, max_lr, min_lr=1e-6):
     stepsize = n_batches * 4
@@ -80,6 +84,9 @@ def experiment(net, data, config):
                     logging.info("train {} {} {}".format(epoch, j, cost['cost']/cost['N']))
                 if j % 400 == 0:
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
+            result = platalea.score.score(net, data['val'].dataset)
+            result['epoch'] = epoch
+            print(result, file=out)
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
             

@@ -87,7 +87,7 @@ def collate_fn(data, max_frames=2048):
     images, texts, audios = zip(* [ (datum['image'], datum['text'], datum['audio']) for datum in data ])
 
     # Merge images (from tuple of 3D tensor to 4D tensor).
-    images = batch_images(images, 0)
+    images = batch_image(images)
 
     mfcc, mfcc_lengths = batch_audio(audios, max_frames=max_frames)
     chars, char_lengths = batch_text(texts)
