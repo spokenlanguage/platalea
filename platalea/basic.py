@@ -86,7 +86,7 @@ def experiment(net, data, config):
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
             result = platalea.score.score(net, data['val'].dataset)
             result['epoch'] = epoch
-            print(result, file=out)
+            print(result, file=out, flush=True)
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
             
