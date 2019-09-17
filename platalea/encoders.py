@@ -26,11 +26,7 @@ class SpeechEncoder(nn.Module):
         rnn  = config['rnn']
         att  = config ['att'] 
         self.Conv = nn.Conv1d(**conv)
-        stack = config['rnn'].pop('stack', False)
-        if stack:
-            self.RNN = GRUStack(batch_first=True, **rnn)
-        else:
-            self.RNN = nn.GRU(batch_first=True, **rnn)
+        self.RNN = nn.GRU(batch_first=True, **rnn)
         self.att = Attention(**att)
         
     def forward(self, input, l):
