@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import logging
 
 class IntrospectGRU(nn.Module):
     """Wrapper around torch.nn.GRU which enables retrieving activations of intermediate layers."""
@@ -24,13 +25,14 @@ class IntrospectGRU(nn.Module):
     def introspect(self, x):
         out = []
         for model in self.submodels:
+            model.flatten_parameters()
             hidden, _hn = model(x)
             out.append(hidden)
-        return torch.stack(out, dim=0)
+        try:
+            result = torch.stack(out, dim=0)
+        except TypeError: # We got a PackedSequence
+            out = [ nn.utils.rnn.pad_packed_sequence(out_i, batch_first = True)[0] for out_i in out ]
+            result = torch.stack(out, dim=0)
+        return result.permute(1, 0, 2, 3)
 
     
-def inout(L, pad=0, ksize=6, stride=2):
-    """Mapping from size of input to the size of the output of a 1D convolutional layer.
-    https://pytorch.org/docs/stable/nn.html#torch.nn.Conv1d
-    """
-    return np.floor( (L+2*pad-1*(ksize-1)-1)/stride + 1).astype(int)
