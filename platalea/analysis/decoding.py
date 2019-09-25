@@ -7,6 +7,8 @@ import os.path
 import logging
 import json
 import numpy as np
+from plotnine import *
+import pandas as pd 
 
 def phoneme_decoding():
     logging.getLogger().setLevel('INFO')
@@ -18,26 +20,26 @@ def phoneme_decoding():
     #nets = [('random', net_rand), ('trained', net_train)]
     nets = [('trained', net_train), ('random', net_rand)]
  
-    result = {}
+    result = []
     # Recurrent
     for rep, net in nets:
         with torch.no_grad():
             net.eval()
             data = phoneme_data([(rep, net)], batch_size=32) # FIXME this hack is to prevent RAM error
-            if 'mfcc' not in result:
-                logging.info("Fitting Logistic Regression for mfcc")
-                acc = logreg_acc(data['mfcc']['features'], data['mfcc']['labels'])
-                logging.info("Result for {}, {} = {}".format(rep, 'mfcc', acc))
-                result['mfcc'] = acc
-            result[rep] = {}
-            for kind in data[rep]:
+            logging.info("Fitting Logistic Regression for mfcc")
+            acc = logreg_acc(data['mfcc']['features'], data['mfcc']['labels'])
+            logging.info("Result for {}, {} = {}".format(rep, 'mfcc', acc))
+            result.append(dict(model=rep, layer='mfcc', layer_id=0, acc=acc))
+            for j, kind in enumerate(data[rep], start=1):
                 logging.info("Fitting Logistic Regression for {}, {}".format(rep, kind))
                 acc = logreg_acc(data[rep][kind]['features'], data[rep][kind]['labels'])
                 logging.info("Result for {}, {} = {}".format(rep, kind, acc))
-                result[rep][kind] =  acc
-    json.dump(result, open("phoneme_decoding.json", "w"), indent=True)
- 
-
+                result.append(dict(model=rep, layer=kind, layer_id=j, acc=acc))
+    json.dump(result, open("experiments/basic-stack/phoneme_decoding.json", "w"), indent=True)
+    data = pd.read_json("experiments/basic-stack/phoneme_decoding.json", orient='records') 
+    g = ggplot(data, aes(x='layer_id', y='acc', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0,max(data['acc'])) 
+    ggsave(g, 'experiments/basic-stack/phoneme_decoding.png')
+     
 def phoneme_data(nets,  batch_size):
     """Generate data for training a phoneme decoding model."""
     alignment_path="/roaming/gchrupal/datasets/flickr8k/dataset.val.fa.json"
