@@ -26,14 +26,17 @@ def phoneme_decoding():
         with torch.no_grad():
             net.eval()
             data = phoneme_data([(rep, net)], batch_size=32) # FIXME this hack is to prevent RAM error
+            np.save('phoneme_data_{}.npy'.format(rep), data)
             logging.info("Fitting Logistic Regression for mfcc")
-            acc = logreg_acc(data['mfcc']['features'], data['mfcc']['labels'])
+            acc, w = logreg_acc(data['mfcc']['features'], data['mfcc']['labels'])
             logging.info("Result for {}, {} = {}".format(rep, 'mfcc', acc))
+            np.save('logreg_w_{}_{}.npy'.format(rep, 'mfcc'), w)
             result.append(dict(model=rep, layer='mfcc', layer_id=0, acc=acc))
             for j, kind in enumerate(data[rep], start=1):
                 logging.info("Fitting Logistic Regression for {}, {}".format(rep, kind))
-                acc = logreg_acc(data[rep][kind]['features'], data[rep][kind]['labels'])
+                acc, w = logreg_acc(data[rep][kind]['features'], data[rep][kind]['labels'])
                 logging.info("Result for {}, {} = {}".format(rep, kind, acc))
+                np.save('logreg_w_{}_{}.npy'.format(rep, kind), w)
                 result.append(dict(model=rep, layer=kind, layer_id=j, acc=acc))
     json.dump(result, open("experiments/basic-stack/phoneme_decoding.json", "w"), indent=True)
     data = pd.read_json("experiments/basic-stack/phoneme_decoding.json", orient='records') 
@@ -65,13 +68,13 @@ def phoneme_data(nets,  batch_size):
         result[name] = {}
         index = lambda ms: encoders.inout(net.SpeechEncoder.Conv, torch.tensor(ms)//10).numpy()
         try:
-            logging.info("Loading activations from activations.val.{}.pt".format(name))
-            activations = torch.load("activations.val.{}.pt".format(name))
+            logging.info("Loading activations from activations.val.{}.npy".format(name))
+            activations = np.load("activations.val.{}.npy".format(name), allow_pickle=True).item()
         except FileNotFoundError:    
             logging.info("Computing data for {}".format(name))
             activations = collect_activations(net, audio, batch_size=batch_size)
-            logging.info("Saving activations to activations.val.{}.pt".format(name))
-            torch.save(activations, "activations.val.{}.pt".format(name))
+            logging.info("Saving activations to activations.val.{}.npy".format(name))
+            np.save("activations.val.{}.pt".format(name), activations)
         for key in activations:
             if key != 'att':
                 logging.info("Computing data for {}, {}".format(name, key))
@@ -93,7 +96,7 @@ def collect_activations(net, audio, batch_size=32):
             if k not in out:
                 out[k] = []
             out[k]  += [ item.detach().cpu().numpy() for item in act[k] ]
-    return out
+    return { k: np.array(v) for k,v in out.items() }
     
 
 def phoneme_activations(activations, alignments, index=lambda ms: ms//10):
@@ -120,9 +123,9 @@ def logreg_acc(features, labels, test_size=1/3):
     X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=test_size, random_state=123)        
     X_train = scaler.fit_transform(X_train) 
     X_test  = scaler.transform(X_test) 
-    m = LogisticRegression(solver="lbfgs", multi_class='auto', max_iter=300, random_state=123, C=1.0) 
+    m = LogisticRegression(penalty='l2', solver="lbfgs", multi_class='auto', max_iter=300, random_state=123, C=1.0) 
     m.fit(X_train, y_train) 
-    return float(m.score(X_test, y_test))
+    return float(m.score(X_test, y_test)), m.coef_
 
 
 def slices(utt, rep, index, aggregate=lambda x: x.mean(axis=0)):
@@ -158,3 +161,28 @@ def check_nan(labels, features):
     X = features[~ix]
     y = labels[~ix]
     return dict(features=X, labels=y)
+
+def weight_variance():
+    kinds = ['rnn0', 'rnn1', 'rnn2', 'rnn3']
+    w = []
+    layer = []
+    trained = []
+    for kind in kinds:
+        rand = np.load("logreg_w_random_{}.npy".format(kind)).flatten()
+        train = np.load("logreg_w_trained_{}.npy".format(kind)).flatten()
+        w.append(rand)
+        w.append(train)
+        for _ in rand:
+            layer.append(kind)
+            trained.append('random')
+        for _ in train:
+            layer.append(kind)
+            trained.append('trained')
+        print(kind, "random", np.var(rand))
+        print(kind, "trained", np.var(train))
+    data = pd.DataFrame(dict(w = np.concatenate(w), layer=np.array(layer), trained=np.array(trained)))
+    #g = ggplot(data, aes(y='w', x='layer')) + geom_violin() + facet_wrap('~trained', nrow=2, scales="free_y")
+    g = ggplot(data, aes(y='w', x='layer')) + geom_point(position='jitter', alpha=0.1) + facet_wrap('~trained', nrow=2, scales="free_y")
+    
+    ggsave(g, 'weight_variance.png')
+    
