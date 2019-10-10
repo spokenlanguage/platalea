@@ -51,7 +51,7 @@ def pad (data,window_size, frame_shift):
     pad_size = context_size - numpy.mod(data.size, frame_shift) 
     # if needed add padding to the end of the data
     if pad_size > 0:
-        data = numpy.append(data, numpy.zeros(int(pad_size)))
+        data = numpy.append(data, numpy.zeros(int(numpy.ceil(pad_size))))
     #always add padding to the front of the data
     data = numpy.append(numpy.zeros(int(context_size)), data)
     return(data)
