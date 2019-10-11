@@ -204,15 +204,27 @@ def weight_variance():
     #g = ggplot(data, aes(y='w', x='layer')) + geom_violin() + facet_wrap('~trained', nrow=2, scales="free_y")
     g = ggplot(data, aes(y='w', x='layer')) + geom_point(position='jitter', alpha=0.1) + facet_wrap('~trained', nrow=2, scales="free_y") 
     ggsave(g, 'weight_variance.png')
-    
 
-def weighted_average_RSA(test_size=1/2, epochs=1, device='cpu'):
+
+    
+def phoneme_rsa():
+    logging.getLogger().setLevel('INFO')
+    result = weighted_average_RSA(scalar=True, test_size=1/2, hidden_size=1024, epochs=60, device="cuda:0")
+    json.dump(result, open('phoneme_rsa.json', 'w'), indent=2)
+
+def phoneme_rsa_plot():
+    data = pd.read_json("phoneme_rsa.json")
+    order = ['mfcc', 'conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']
+    data['layerid'] = [ order.index(x) for x in data['layer'] ] 
+    g = ggplot(data, aes(x='layerid', y='cor', color='model')) + geom_point(size=2) + geom_line(size=2)
+    ggsave(g, "phoneme_rsa.png")
+
+def weighted_average_RSA(scalar=True, test_size=1/2, hidden_size=1024, epochs=1, device='cpu'):
     from sklearn.model_selection import train_test_split
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     splitseed = 123
-    result = {}
-    result["NA"] = {}
+    result = []
     logging.info("Loading transcription data")
     data = np.load("transcription.val.npy", allow_pickle=True)
     trans = [ datum['ipa'] for datum in data ]
@@ -223,44 +235,45 @@ def weighted_average_RSA(test_size=1/2, epochs=1, device='cpu'):
     logging.info("Computing edit distances")
     edit_sim = torch.tensor(U.pairwise(S.stringsim, trans)).float().to(device)
     edit_sim_val = torch.tensor(U.pairwise(S.stringsim, trans_val)).float().to(device)
-
-    print("mode layer epoch train_loss val_loss")    
-    result["NA"]["NA"] = train_wa(edit_sim, edit_sim_val, act, act_val, mode="NA", layer="NA", epochs=epochs, device=device)
+    logging.info("Training for input features")
+    this = train_wa(edit_sim, edit_sim_val, act, act_val, scalar=scalar, hidden_size=hidden_size, epochs=epochs, device=device)
+    result.append({**this, 'model': 'random', 'layer': 'mfcc'})
+    result.append({**this, 'model': 'trained', 'layer': 'mfcc'})
     del act, act_val
-    print("Maximum correlation on val: {} at epoch {}".format(result["NA"]["NA"]['cor'], result["NA"]["NA"]['epoch']))
+    logging.info("Maximum correlation on val: {} at epoch {}".format(result[-1]['cor'], result[-1]['epoch']))
     for mode in ["random", "trained"]:
-        result[mode] = {}
         logging.info("Loading activations for {} data".format(mode))
         data = np.load("activations.val.{}.npy".format(mode), allow_pickle=True).item()
         for layer in ['conv', 'rnn0', 'rnn1', 'rnn2', 'rnn2', 'rnn3']:
             logging.info("Training for {} {}".format(mode, layer))
             act = [ torch.tensor([item[:, :]]).float().to(device) for item in data[layer] ]
             act, act_val = train_test_split(act, test_size=test_size, random_state=splitseed)
-            result[mode][layer] = train_wa(edit_sim, edit_sim_val, act, act_val, mode=mode, layer=layer, epochs=epochs, device=device)
+            this = train_wa(edit_sim, edit_sim_val, act, act_val, scalar=scalar, hidden_size=hidden_size, epochs=epochs, device=device)
+            result.append({**this, 'model': mode, 'layer': layer}) 
             del act, act_val
-            print("Maximum correlation on val: {} at epoch {}".format(result[mode][layer]['cor'], result[mode][layer]['epoch']))
+            print("Maximum correlation on val: {} at epoch {}".format(result[-1]['cor'], result[-1]['epoch']))
     return result
 
-def phoneme_rsa():
-    logging.getLogger().setLevel('INFO')
-    result = weighted_average_RSA(test_size=1/2, epochs=40, device="cuda:0")
-    json.dump(result, open('phoneme_rsa.json', 'w'), indent=2)
     
-def train_wa(edit_sim, edit_sim_val, stack, stack_val, mode=None, layer=None, hidden_size=1024, epochs=1, device='cpu'):
+def train_wa(edit_sim, edit_sim_val, stack, stack_val, scalar=True, hidden_size=1024, epochs=1, device='cpu'):
     import platalea.encoders
-    wa = platalea.encoders.ScalarAttention(stack[0].size(2), hidden_size).to(device)
+    if scalar:
+        wa = platalea.encoders.ScalarAttention(stack[0].size(2), hidden_size).to(device)
+    else:
+        # This crashes CUDA memory
+        wa = platalea.encoders.Attention(stack[0].size(2), hidden_size).to(device)
     optim = torch.optim.Adam(wa.parameters())
     minloss = 0; minepoch = None
     logging.info("Optimizing for {} epochs".format(epochs))
     for epoch in range(1, 1+epochs):
         avg_pool = torch.cat([ wa(item) for item in stack])
         avg_pool_sim = S.cosine_matrix(avg_pool, avg_pool)
-        avg_pool_val = torch.cat([ wa(item) for item in stack_val])
-        avg_pool_sim_val = S.cosine_matrix(avg_pool_val, avg_pool_val)
-
         loss = -S.pearson_r(S.triu(avg_pool_sim), S.triu(edit_sim))
-        loss_val = -S.pearson_r(S.triu(avg_pool_sim_val), S.triu(edit_sim_val))
-        print(mode, layer, epoch, -loss.item(), -loss_val.item())
+        with torch.no_grad():
+            avg_pool_val = torch.cat([ wa(item) for item in stack_val])
+            avg_pool_sim_val = S.cosine_matrix(avg_pool_val, avg_pool_val)
+            loss_val = -S.pearson_r(S.triu(avg_pool_sim_val), S.triu(edit_sim_val))
+        logging.info("{} {} {}".format(epoch, -loss.item(), -loss_val.item()))
         if loss_val.item() <= minloss:
             minloss = loss_val.item()
             minepoch = epoch
