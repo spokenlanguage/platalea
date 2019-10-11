@@ -78,6 +78,24 @@ def inout(Conv, L):
         stride = Conv.stride[0]
         return ( (L.float() + 2*pad - 1*(ksize-1) -1) / stride + 1).floor().long()
     
+class ScalarAttention(nn.Module):
+    def __init__(self, in_size, hidden_size):
+        super(ScalarAttention, self).__init__()
+        self.hidden = nn.Linear(in_size, hidden_size)
+        nn.init.orthogonal_(self.hidden.weight.data)
+        self.out = nn.Linear(hidden_size, 1)
+        nn.init.orthogonal_(self.hidden.weight.data)
+        self.softmax = nn.Softmax(dim = 1)
+
+    def forward(self, input):
+        # calculate the scalar attention weights
+        self.alpha = self.softmax(self.out(torch.tanh(self.hidden(input))))
+        # apply the scalar weights to the input and sum over all timesteps
+        x = (self.alpha.expand_as(input) * input).sum(dim=1)
+        # return the resulting embedding
+        return x
+    
+    
 class Attention(nn.Module):
     def __init__(self, in_size, hidden_size):
         super(Attention, self).__init__()
@@ -86,6 +104,7 @@ class Attention(nn.Module):
         self.out = nn.Linear(hidden_size, in_size)
         nn.init.orthogonal_(self.hidden.weight.data)
         self.softmax = nn.Softmax(dim = 1)
+
     def forward(self, input):
         # calculate the attention weights
         self.alpha = self.softmax(self.out(torch.tanh(self.hidden(input))))
@@ -93,5 +112,4 @@ class Attention(nn.Module):
         x = torch.sum(self.alpha * input, 1)
         # return the resulting embedding
         return x
-    
     
