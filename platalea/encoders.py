@@ -35,7 +35,7 @@ class SpeechEncoder(nn.Module):
         x = self.Conv(input)
         # update the lengths to compensate for the convolution subsampling
         # l = [int((y-(self.Conv.kernel_size[0]-self.Conv.stride[0]))/self.Conv.stride[0]) for y in l]
-        l = self.inout(self.Conv, l)
+        l = inout(self.Conv, l)
         # create a packed_sequence object. The padding will be excluded from the update step
         # thereby training on the original sequence length only
         x = nn.utils.rnn.pack_padded_sequence(x.transpose(2,1), l, batch_first=True, enforce_sorted=False)
