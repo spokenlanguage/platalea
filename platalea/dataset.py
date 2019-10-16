@@ -60,7 +60,7 @@ class Flickr8KData(torch.utils.data.Dataset):
             correct[i,j] = True
         return dict(image=image, audio=audio, text=text, correct=correct)
     
-def batch_audio(audios, max_frames=20148):
+def batch_audio(audios, max_frames=2048):
     """Merge audio captions. Truncate to max_frames. Pad with zeros."""
     mfcc_lengths = [len(cap[:max_frames,:]) for cap in audios]
     mfcc = torch.zeros(len(audios), max(mfcc_lengths), audios[0].size(1)) 
