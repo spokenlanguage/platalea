@@ -66,8 +66,8 @@ def global_rsa():
 
 def global_diagnostic():
     logging.getLogger().setLevel('INFO')
-    result = weighted_average_diagnostic(scalar=True, test_size=1/2, hidden_size=1024, epochs=100, device="cuda:0")
-    json.dump(result, open('global_diagnostic_scalar.json', 'w'), indent=2)
+    result = weighted_average_diagnostic(attention='linear', test_size=1/2, hidden_size=1024, epochs=500, device="cuda:0")
+    json.dump(result, open('global_diagnostic_linear.json', 'w'), indent=2)
 
 
 ## Plotting
@@ -86,18 +86,18 @@ def local_rsa_plot():
     ggsave(g, 'local_rsa.png')
 
 def global_rsa_plot():
-    data = pd.read_json("global_rsa.json")
+    data = pd.read_json("global_rsa.json", orient='records')
     order = ['mfcc', 'conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']
     data['layer_id'] = [ order.index(x) for x in data['layer'] ] 
     g = ggplot(data, aes(x='layer_id', y='cor', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, max(data['cor']))
     ggsave(g, "global_rsa.png")
 
 def global_diagnostic_plot():
-    data = pd.read_json("global_diagnostic.json")
+    data = pd.read_json("global_diagnostic_linear.json", orient='records')
     order = ['mfcc', 'conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']
     data['layer_id'] = [ order.index(x) for x in data['layer'] ] 
-    g = ggplot(data, aes(x='layer_id', y='error', color='model')) + geom_point(size=2) + geom_line(size=2)
-    ggsave(g, "global_diagnostic.png")
+    g = ggplot(data, aes(x='layer_id', y='r2', color='model')) + geom_point(size=2) + geom_line(size=2) #+ ylim(0, max(data['r2']))
+    ggsave(g, "global_diagnostic_linear.png")
 
 def phoneme_data(nets,  batch_size, framewise=True):
     """Generate data for training a phoneme decoding model."""
@@ -292,6 +292,16 @@ def weight_variance():
 
 
 def framewise_RSA(test_size=1/2):
+
+    """ Use the following def instead:
+In [65]: def cor(labels, features, size): 
+    ...:     indices = np.array(random.sample(range(len(labels)), size*2)) 
+    ...:     y = labels[indices] 
+    ...:     x = features[indices] 
+    ...:     y_sim = y[: size] == y[size :] 
+    ...:     x_sim = 1 - paired_cosine_distances(x[: size], x[size :]) 
+    ...:     return pearsonr(x_sim, y_sim) 
+"""
     from sklearn.model_selection import train_test_split
     #from sklearn.metrics.pairwise import cosine_similarity
     splitseed = 123
@@ -396,7 +406,7 @@ def train_wa(edit_sim, edit_sim_val, stack, stack_val, scalar=True, hidden_size=
     del wa, optim
     return {'epoch': minepoch, 'cor': -minloss}
 
-def weighted_average_diagnostic(scalar=True, test_size=1/2, hidden_size=1024, epochs=1, device='cpu'):
+def weighted_average_diagnostic(attention='scalar', test_size=1/2, hidden_size=1024, epochs=1, device='cpu'):
     from sklearn.model_selection import train_test_split
     from sklearn.feature_extraction.text import CountVectorizer
     torch.backends.cudnn.deterministic = True
@@ -415,7 +425,7 @@ def weighted_average_diagnostic(scalar=True, test_size=1/2, hidden_size=1024, ep
     y = torch.tensor(vec.fit_transform(trans).toarray()).float()
     y_val = torch.tensor(vec.transform(trans_val).toarray()).float()
     logging.info("Training for input features")
-    this = train_wa_diagnostic(X, y, X_val, y_val, scalar=scalar, hidden_size=hidden_size, epochs=epochs, device=device)
+    this = train_wa_diagnostic(X, y, X_val, y_val, attention=attention, hidden_size=hidden_size, epochs=epochs, device=device)
     result.append({**this, 'model': 'random', 'layer': 'mfcc'})
     result.append({**this, 'model': 'trained', 'layer': 'mfcc'})
     del X, X_val
@@ -423,23 +433,24 @@ def weighted_average_diagnostic(scalar=True, test_size=1/2, hidden_size=1024, ep
     for mode in ["random", "trained"]:
         logging.info("Loading activations for {} data".format(mode))
         data = np.load("activations.val.{}.npy".format(mode), allow_pickle=True).item()
-        for layer in ['conv', 'rnn0', 'rnn1', 'rnn2', 'rnn2', 'rnn3']:
+        for layer in ['conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']:
             logging.info("Training for {} {}".format(mode, layer))
             act = [ torch.tensor(item[:, :]).float() for item in data[layer] ]
             X, X_val = train_test_split(act, test_size=test_size, random_state=splitseed)
-            this = train_wa_diagnostic(X, y, X_val, y_val, scalar=scalar, hidden_size=hidden_size, epochs=epochs, device=device)
+            this = train_wa_diagnostic(X, y, X_val, y_val, attention=attention, hidden_size=hidden_size, epochs=epochs, device=device)
             result.append({**this, 'model': mode, 'layer': layer}) 
             del X, X_val
             print("Maximum r2 on val: {} at epoch {}".format(result[-1]['r2'], result[-1]['epoch']))
     return result
 
-def train_wa_diagnostic(X, y, X_val, y_val, scalar=True, hidden_size=1024, epochs=1, device='cpu'):
+def train_wa_diagnostic(X, y, X_val, y_val, attention='scalar', hidden_size=1024, epochs=1, patience=50, device='cpu'):
     import platalea.encoders
-    model = PooledRegressor(X[0].size(1), hidden_size, y.size(1), scalar=scalar).to(device)
-    optim = torch.optim.Adam(model.parameters())
-    minloss = np.finfo(np.float32).max; minepoch = None
-    data = torch.utils.data.DataLoader(list(zip(X, y)), batch_size=128, shuffle=True, collate_fn=collate)
-    data_val = torch.utils.data.DataLoader(list(zip(X_val, y_val)), batch_size=128, shuffle=False, collate_fn=collate)
+    model = PooledRegressor(X[0].size(1), hidden_size, y.size(1), attention=attention).to(device)
+    optim = torch.optim.Adam(model.parameters(), lr=1e-3)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, 'min', factor=0.1, patience=10)
+    minloss = np.finfo(np.float32).max; minepoch = 0
+    data = torch.utils.data.DataLoader(list(zip(X, y)), batch_size=64, shuffle=True, collate_fn=collate)
+    data_val = torch.utils.data.DataLoader(list(zip(X_val, y_val)), batch_size=64, shuffle=False, collate_fn=collate)
     logging.info("Optimizing for {} epochs".format(epochs))
     N_val = y_val.shape[0] * y_val.shape[1]
     with torch.no_grad():
@@ -458,12 +469,16 @@ def train_wa_diagnostic(X, y, X_val, y_val, scalar=True, hidden_size=1024, epoch
             epoch_loss.append(loss.item())
         with torch.no_grad():
             loss_val = np.sum([nn.functional.mse_loss(model(x.to(device)), y.to(device), reduction='sum').item() for x, y in data_val]) / N_val
+            scheduler.step(loss_val)
             logging.info("{} {} {} {}".format(epoch, np.mean(epoch_loss), loss_val, 1 - loss_val / mse_base))
         if loss_val <= minloss:
             minloss = loss_val
             minepoch = epoch
+        if epoch - minepoch >= patience:
+            logging.info("No improvement for {} epochs, stopping.".format(patience))
+            break
         # Release CUDA-allocated tensors
-        del loss, loss_val,  y_pred
+        del x, y, loss, loss_val,  y_pred
     del model, optim
     return {'epoch': minepoch, 'error': minloss, 'r2': 1 - minloss / mse_base}
 
@@ -505,13 +520,14 @@ def train_diagnostic(X, y, X_val, y_val, epochs=1, device='cpu'):
 
 class PooledRegressor(nn.Module):
 
-    def __init__(self, input_size, hidden_size, output_size, scalar=True):
+    def __init__(self, input_size, hidden_size, output_size, attention='scalar'):
         super(PooledRegressor, self).__init__()
-        if scalar:
+        if attention == 'scalar':
             self.wa = encoders.ScalarAttention(input_size, hidden_size)
+        elif attention == 'linear':
+            self.wa = encoders.LinearAttention(input_size)
         else:
             self.wa = encoders.Attention(input_size, hidden_size)
-
         self.project = nn.Linear(in_features=input_size, out_features=output_size)
 
     def forward(self, x):

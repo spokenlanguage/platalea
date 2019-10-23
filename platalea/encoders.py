@@ -77,6 +77,21 @@ def inout(Conv, L):
         ksize  = Conv.kernel_size[0]
         stride = Conv.stride[0]
         return ( (L.float() + 2*pad - 1*(ksize-1) -1) / stride + 1).floor().long()
+
+class LinearAttention(nn.Module):
+    def __init__(self, in_size):
+        super(LinearAttention, self).__init__()
+        self.out = nn.Linear(in_size, 1)
+        nn.init.orthogonal_(self.out.weight.data)
+        self.softmax = nn.Softmax(dim = 1)
+
+    def forward(self, input):
+        # calculate the scalar attention weights
+        self.alpha = self.softmax(self.out(input))
+        # apply the scalar weights to the input and sum over all timesteps
+        x = (self.alpha.expand_as(input) * input).sum(dim=1)
+        # return the resulting embedding
+        return x
     
 class ScalarAttention(nn.Module):
     def __init__(self, in_size, hidden_size):
