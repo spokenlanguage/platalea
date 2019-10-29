@@ -35,17 +35,18 @@ def prepare():
 ### Local
 
 def local_diagnostic():
+    logging.getLogger().setLevel('INFO')
     result = []
     for rep in ['trained', 'random']:
         data = pickle.load(open('phoneme_data_{}.pkl'.format(rep), 'rb'))
         logging.info("Fitting Logistic Regression for mfcc")
-        acc  = logreg_acc_adam(data['mfcc']['features'], data['mfcc']['labels'], epochs=40, device='cuda:0')
+        acc  = logreg_acc_adam(data['mfcc']['features'], data['mfcc']['labels'], epochs=40, device='cuda:0')['acc']
         logging.info("Result for {}, {} = {}".format(rep, 'mfcc', acc))
         #np.save('logreg_w_{}_{}.npy'.format(rep, 'mfcc'), w)
         result.append(dict(model=rep, layer='mfcc', layer_id=0, acc=acc))
         for j, kind in enumerate(data[rep], start=1):
                 logging.info("Fitting Logistic Regression for {}, {}".format(rep, kind))
-                acc = logreg_acc_adam(data[rep][kind]['features'], data[rep][kind]['labels'], epochs=40, device='cuda:0')
+                acc = logreg_acc_adam(data[rep][kind]['features'], data[rep][kind]['labels'], epochs=40, device='cuda:0')['acc']
                 logging.info("Result for {}, {} = {}".format(rep, kind, acc))
                 #np.save('logreg_w_{}_{}.npy'.format(rep, kind), w)
                 result.append(dict(model=rep, layer=kind, layer_id=j, acc=acc))
@@ -96,7 +97,7 @@ def global_diagnostic_plot():
     data = pd.read_json("global_diagnostic_linear.json", orient='records')
     order = ['mfcc', 'conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']
     data['layer_id'] = [ order.index(x) for x in data['layer'] ] 
-    g = ggplot(data, aes(x='layer_id', y='r2', color='model')) + geom_point(size=2) + geom_line(size=2) #+ ylim(0, max(data['r2']))
+    g = ggplot(data, aes(x='layer_id', y='acc', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(min(data['acc']), 1.0)
     ggsave(g, "global_diagnostic_linear.png")
 
 def phoneme_data(nets,  batch_size, framewise=True):
@@ -203,24 +204,32 @@ def logreg_acc(features, labels, test_size=1/3):
     m.fit(X_train, y_train) 
     return float(m.score(X_test, y_test))
 
-def logreg_acc_adam(features, labels, test_size=1/3, epochs=1, device='cpu'):
+def majority_binary(y):
+    return (y.mean(dim=0) >= 0.5).float()
+
+def majority_multiclass(y):
+    labels, counts = np.unique(y, return_counts=True)
+    return labels[counts.argmax()]
+
+def logreg_acc_adam(features, labels, test_size=1/2, epochs=1, device='cpu'):
     """Fit logistic regression on part of features and labels and return accuracy on the other part."""
     #TODO tune penalty parameter C
     from sklearn.preprocessing import StandardScaler, LabelEncoder
     from sklearn.model_selection import train_test_split
 
-    X_train, X_val, y_train, y_val = train_test_split(features, labels, test_size=test_size, random_state=123)
+    X, X_val, y, y_val = train_test_split(features, labels, test_size=test_size, random_state=123)
 
     le = LabelEncoder()
-    y_train = torch.tensor(le.fit_transform(y_train)).long()
+    y = torch.tensor(le.fit_transform(y)).long()
     y_val = torch.tensor(le.transform(y_val)).long()
     
     scaler = StandardScaler() 
-    X_train = torch.tensor(scaler.fit_transform(X_train)).float()
+    X = torch.tensor(scaler.fit_transform(X)).float()
     X_val  = torch.tensor(scaler.transform(X_val)).float()
 
-    result = train_diagnostic(X_train, y_train, X_val, y_val, epochs=epochs, device=device)
-    return result['accuracy']
+    model = SoftmaxClassifier(X.size(1), y.max().item()+1).to(device)
+    result = train_classifier(model, X, y, X_val, y_val, epochs=epochs, majority=majority_multiclass)
+    return result
 
 def slices(utt, rep, index, aggregate=lambda x: x.mean(axis=0)):
     """Return sequence of slices associated with phoneme labels, given an
@@ -422,14 +431,17 @@ def weighted_average_diagnostic(attention='scalar', test_size=1/2, hidden_size=1
 
     logging.info("Computing targets")
     vec = CountVectorizer(lowercase=False, analyzer='char')
-    y = torch.tensor(vec.fit_transform(trans).toarray()).float()
-    y_val = torch.tensor(vec.transform(trans_val).toarray()).float()
+    # Binary instead of counts
+    y = torch.tensor(vec.fit_transform(trans).toarray()).float().clamp(min=0, max=1)
+    y_val = torch.tensor(vec.transform(trans_val).toarray()).float().clamp(min=0, max=1)
     logging.info("Training for input features")
-    this = train_wa_diagnostic(X, y, X_val, y_val, attention=attention, hidden_size=hidden_size, epochs=epochs, device=device)
+    #this = train_wa_diagnostic(X, y, X_val, y_val, attention=attention, hidden_size=hidden_size, epochs=epochs, device=device)
+    model = PooledClassifier(input_size=X[0].shape[1], hidden_size=hidden_size, output_size=y[0].shape[0], attention=attention).to(device)
+    this = train_classifier(model, X, y, X_val, y_val, epochs=epochs)
     result.append({**this, 'model': 'random', 'layer': 'mfcc'})
     result.append({**this, 'model': 'trained', 'layer': 'mfcc'})
     del X, X_val
-    logging.info("Maximum r2 on val: {} at epoch {}".format(result[-1]['r2'], result[-1]['epoch']))
+    logging.info("Maximum accuracy on val: {} at epoch {}".format(result[-1]['acc'], result[-1]['epoch']))
     for mode in ["random", "trained"]:
         logging.info("Loading activations for {} data".format(mode))
         data = np.load("activations.val.{}.npy".format(mode), allow_pickle=True).item()
@@ -437,50 +449,57 @@ def weighted_average_diagnostic(attention='scalar', test_size=1/2, hidden_size=1
             logging.info("Training for {} {}".format(mode, layer))
             act = [ torch.tensor(item[:, :]).float() for item in data[layer] ]
             X, X_val = train_test_split(act, test_size=test_size, random_state=splitseed)
-            this = train_wa_diagnostic(X, y, X_val, y_val, attention=attention, hidden_size=hidden_size, epochs=epochs, device=device)
+            
+            #this = train_wa_diagnostic(X, y, X_val, y_val, attention=attention, hidden_size=hidden_size, epochs=epochs, device=device)
+            model = PooledClassifier(input_size=X[0].shape[1], hidden_size=hidden_size, output_size=y[0].shape[0], attention=attention).to(device)
+            this = train_classifier(model, X, y, X_val, y_val, epochs=epochs)
             result.append({**this, 'model': mode, 'layer': layer}) 
             del X, X_val
-            print("Maximum r2 on val: {} at epoch {}".format(result[-1]['r2'], result[-1]['epoch']))
+            print("Maximum accuracy on val: {} at epoch {}".format(result[-1]['acc'], result[-1]['epoch']))
     return result
 
-def train_wa_diagnostic(X, y, X_val, y_val, attention='scalar', hidden_size=1024, epochs=1, patience=50, device='cpu'):
-    import platalea.encoders
-    model = PooledRegressor(X[0].size(1), hidden_size, y.size(1), attention=attention).to(device)
-    optim = torch.optim.Adam(model.parameters(), lr=1e-3)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, 'min', factor=0.1, patience=10)
-    minloss = np.finfo(np.float32).max; minepoch = 0
-    data = torch.utils.data.DataLoader(list(zip(X, y)), batch_size=64, shuffle=True, collate_fn=collate)
-    data_val = torch.utils.data.DataLoader(list(zip(X_val, y_val)), batch_size=64, shuffle=False, collate_fn=collate)
-    logging.info("Optimizing for {} epochs".format(epochs))
-    N_val = y_val.shape[0] * y_val.shape[1]
-    with torch.no_grad():
-        mean = y_val.mean(dim=0)
-        mse_base = np.sum([nn.functional.mse_loss(mean.expand_as(y_i), y_i, reduction='sum').item() for y_i in y]) / N_val
-    for epoch in range(1, 1+epochs):
-        epoch_loss = []
-        for x, y in data:
-            x = x.to(device)
-            y = y.to(device)
-            y_pred = model(x) 
-            loss = nn.functional.mse_loss(y_pred, y)
-            optim.zero_grad()
-            loss.backward()
-            optim.step()
-            epoch_loss.append(loss.item())
-        with torch.no_grad():
-            loss_val = np.sum([nn.functional.mse_loss(model(x.to(device)), y.to(device), reduction='sum').item() for x, y in data_val]) / N_val
-            scheduler.step(loss_val)
-            logging.info("{} {} {} {}".format(epoch, np.mean(epoch_loss), loss_val, 1 - loss_val / mse_base))
-        if loss_val <= minloss:
-            minloss = loss_val
-            minepoch = epoch
-        if epoch - minepoch >= patience:
-            logging.info("No improvement for {} epochs, stopping.".format(patience))
-            break
-        # Release CUDA-allocated tensors
-        del x, y, loss, loss_val,  y_pred
-    del model, optim
-    return {'epoch': minepoch, 'error': minloss, 'r2': 1 - minloss / mse_base}
+# def train_wa_diagnostic(X, y, X_val, y_val, attention='scalar', hidden_size=1024, epochs=1, patience=50, device='cpu'):
+#     import platalea.encoders
+#     #model = PooledRegressor(X[0].size(1), hidden_size, y.size(1), attention=attention).to(device)
+#     model = PooledClassifier(X[0].size(1), hidden_size, y.size(1), attention=attention).to(device)
+#     optim = torch.optim.Adam(model.parameters(), lr=1e-3)
+#     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, 'min', factor=0.1, patience=10)
+#     minloss = np.finfo(np.float32).max; minepoch = 0; minacc = 0
+#     data = torch.utils.data.DataLoader(list(zip(X, y)), batch_size=64, shuffle=True, collate_fn=collate)
+#     data_val = torch.utils.data.DataLoader(list(zip(X_val, y_val)), batch_size=64, shuffle=False, collate_fn=collate)
+#     logging.info("Optimizing for {} epochs".format(epochs))
+#     N_val = y_val.shape[0] * y_val.shape[1]
+#     with torch.no_grad():
+#         mean = (y.mean(dim=0) >= 0.0).float()
+#         base = np.sum([(mean.expand_as(y_i) == y_i).sum().item() for y_i in y]) / N_val
+#         logging.info("Baseline accuracy: {}".format(base))
+#     for epoch in range(1, 1+epochs):
+#         epoch_loss = []
+#         for x, y in data:
+#             x = x.to(device)
+#             y = y.to(device)
+#             y_pred = model(x) 
+#             #loss = nn.functional.mse_loss(y_pred, y)
+#             loss = nn.functional.binary_cross_entropy_with_logits(y_pred, y)
+#             optim.zero_grad()
+#             loss.backward()
+#             optim.step()
+#             epoch_loss.append(loss.item())
+#         with torch.no_grad():
+#             #loss_val = np.sum([nn.functional.mse_loss(model(x.to(device)), y.to(device), reduction='sum').item() for x, y in data_val]) / N_val
+#             loss_val = np.sum([nn.functional.binary_cross_entropy_with_logits(model(x.to(device)), y.to(device), reduction='sum').item() for x, y in data_val]) / N_val
+#             accuracy_val = np.sum([(model.predict(x.to(device)) == y.to(device)).sum().item() for x, y in data_val]) / N_val
+#             scheduler.step(loss_val)
+#             logging.info("{} {} {} {}".format(epoch, np.mean(epoch_loss), loss_val, accuracy_val))
+#         if loss_val <= minloss:
+#             minloss = loss_val; minepoch = epoch; minacc = accuracy_val
+#         if epoch - minepoch >= patience:
+#             logging.info("No improvement for {} epochs, stopping.".format(patience))
+#             break
+#         # Release CUDA-allocated tensors
+#         del x, y, loss, loss_val,  y_pred
+#     del model, optim
+#     return {'epoch': minepoch, 'error': minloss, 'acc': minacc, 'base': base}
 
 def train_diagnostic(X, y, X_val, y_val, epochs=1, device='cpu'):
     from sklearn.metrics import accuracy_score
@@ -518,10 +537,10 @@ def train_diagnostic(X, y, X_val, y_val, epochs=1, device='cpu'):
     del model, optim
     return {'epoch': minepoch, 'error': minloss, 'accuracy': acc}
 
-class PooledRegressor(nn.Module):
+class PooledClassifier(nn.Module):
 
     def __init__(self, input_size, hidden_size, output_size, attention='scalar'):
-        super(PooledRegressor, self).__init__()
+        super(PooledClassifier, self).__init__()
         if attention == 'scalar':
             self.wa = encoders.ScalarAttention(input_size, hidden_size)
         elif attention == 'linear':
@@ -529,18 +548,30 @@ class PooledRegressor(nn.Module):
         else:
             self.wa = encoders.Attention(input_size, hidden_size)
         self.project = nn.Linear(in_features=input_size, out_features=output_size)
-
+        self.loss = nn.functional.binary_cross_entropy_with_logits
+        
     def forward(self, x):
-        return nn.functional.relu(self.project(self.wa(x)))
+        return self.project(self.wa(x))
+    
+    def predict(self, x):
+        logit = self.project(self.wa(x))
+        return (logit >= 0.0).float()
 
-class SoftmaxRegressor(nn.Module):
+
+class SoftmaxClassifier(nn.Module):
 
     def __init__(self, input_size, output_size):
-        super(SoftmaxRegressor, self).__init__()
+        super(SoftmaxClassifier, self).__init__()
         self.project = nn.Linear(in_features=input_size, out_features=output_size)
-
+        self.loss = nn.functional.cross_entropy
+        
     def forward(self, x):
-        return nn.functional.softmax(self.project(x))
+        return self.project(x)
+
+    def predict(self, x):
+        return self.project(x).argmax(dim=1)
+
+    
     
 def collate(items):
     x, y = zip(*items)
@@ -551,3 +582,47 @@ def collate(items):
 def tuple_stack(xy):
     x, y = zip(*xy)
     return torch.stack(x), torch.stack(y)
+
+def rer(hi, lo): 
+    return ((1-lo) - (1-hi))/(1-lo)
+
+
+
+def train_classifier(model, X, y, X_val, y_val, epochs=1, patience=50, majority=majority_binary):
+    device = list(model.parameters())[0].device
+    optim = torch.optim.Adam(model.parameters(), lr=1e-3)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, 'min', factor=0.1, patience=10)
+    data = torch.utils.data.DataLoader(list(zip(X, y)), batch_size=64, shuffle=True, collate_fn=collate)
+    data_val = torch.utils.data.DataLoader(list(zip(X_val, y_val)), batch_size=64, shuffle=False, collate_fn=collate)
+    logging.info("Optimizing for {} epochs".format(epochs))
+    scores = []
+    with torch.no_grad():
+        maj = majority(y)
+        baseline = np.mean([ (maj == y_i).cpu().numpy() for y_i in y_val ])
+        logging.info("Baseline accuracy: {}".format(baseline))
+    for epoch in range(1, 1+epochs):
+        epoch_loss = []
+        for x, y in data:
+            x = x.to(device)
+            y = y.to(device)
+            y_pred = model(x) 
+            loss = model.loss(y_pred, y)
+            optim.zero_grad()
+            loss.backward()
+            optim.step()
+            epoch_loss.append(loss.item())
+        with torch.no_grad():
+            loss_val = np.mean( [model.loss(model(x.to(device)), y.to(device)).item() for x,y in data_val])
+            accuracy_val = np.concatenate([ model.predict(x.to(device)).cpu().numpy() == y.cpu().numpy() for x, y in data_val]).mean()
+            scheduler.step(loss_val)
+            logging.info("{} {} {} {}".format(epoch, np.mean(epoch_loss), loss_val, accuracy_val))
+        scores.append(dict(epoch=epoch, train_loss=epoch_loss, acc=accuracy_val, loss=loss_val, baseline=baseline))
+        minepoch = min(scores, key=lambda a: a['loss'])['epoch']
+        if epoch - minepoch >= patience:
+            logging.info("No improvement for {} epochs, stopping.".format(patience))
+            break
+        # Release CUDA-allocated tensors
+        del x, y, loss, loss_val,  y_pred
+    del model, optim
+    return min(scores, key=lambda a: a['loss'])
+
