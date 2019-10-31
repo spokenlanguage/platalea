@@ -1,6 +1,11 @@
-import sys
+SEED=123
 import torch
-torch.manual_seed(123)
+torch.manual_seed(SEED)
+import random
+random.seed(SEED)
+import numpy as np
+np.random.seed(SEED)
+import sys
 import torch.nn as nn
 import platalea.basic as basic
 import platalea.encoders as encoders
@@ -8,7 +13,7 @@ import platalea.dataset as dataset
 import os.path
 import logging
 import json
-import numpy as np
+
 from plotnine import *
 import pandas as pd 
 import ursa.similarity as S
@@ -28,29 +33,32 @@ def prepare():
     for rep, net in nets:
         with torch.no_grad():
             net.eval()
-            data = phoneme_data([(rep, net)], batch_size=32, framewise=True) 
-            pickle.dump(data, open('phoneme_data_{}.pkl'.format(rep), 'wb'), protocol=4)    
+            save_phoneme_data([(rep, net)], batch_size=32, framewise=True) 
+            
 
 ## Models            
 ### Local
 
 def local_diagnostic():
     logging.getLogger().setLevel('INFO')
-    result = []
+    output = []
     for rep in ['trained', 'random']:
         data = pickle.load(open('phoneme_data_{}.pkl'.format(rep), 'rb'))
         logging.info("Fitting Logistic Regression for mfcc")
-        acc  = logreg_acc_adam(data['mfcc']['features'], data['mfcc']['labels'], epochs=40, device='cuda:0')['acc']
-        logging.info("Result for {}, {} = {}".format(rep, 'mfcc', acc))
+        result  = logreg_acc_adam(data['mfcc']['features'], data['mfcc']['labels'], epochs=40, device='cuda:0')
+        logging.info("Result for {}, {} = {}".format(rep, 'mfcc', result['acc']))
         #np.save('logreg_w_{}_{}.npy'.format(rep, 'mfcc'), w)
-        result.append(dict(model=rep, layer='mfcc', layer_id=0, acc=acc))
-        for j, kind in enumerate(data[rep], start=1):
-                logging.info("Fitting Logistic Regression for {}, {}".format(rep, kind))
-                acc = logreg_acc_adam(data[rep][kind]['features'], data[rep][kind]['labels'], epochs=40, device='cuda:0')['acc']
-                logging.info("Result for {}, {} = {}".format(rep, kind, acc))
-                #np.save('logreg_w_{}_{}.npy'.format(rep, kind), w)
-                result.append(dict(model=rep, layer=kind, layer_id=j, acc=acc))
-    json.dump(result, open("local_diagnostic_framewise.json", "w"), indent=True)
+        result['model'] = rep
+        result['layer'] = 'mfcc'
+        output.append(result)
+        for kind in data[rep]:
+            logging.info("Fitting Logistic Regression for {}, {}".format(rep, kind))
+            result = logreg_acc_adam(data[rep][kind]['features'], data[rep][kind]['labels'], epochs=40, device='cuda:0')
+            logging.info("Result for {}, {} = {}".format(rep, kind, result['acc']))
+            result['model'] = rep
+            result['layer'] = kind
+            output.append(result)
+    json.dump(output, open("local_diagnostic.json", "w"), indent=True)
 
 def local_rsa():
     logging.getLogger().setLevel('INFO')
@@ -68,39 +76,67 @@ def global_rsa():
 def global_diagnostic():
     logging.getLogger().setLevel('INFO')
     result = weighted_average_diagnostic(attention='linear', test_size=1/2, hidden_size=1024, epochs=500, device="cuda:0")
-    json.dump(result, open('global_diagnostic_linear.json', 'w'), indent=2)
+    json.dump(result, open('global_diagnostic.json', 'w'), indent=2)
 
+def plots():
+    local_diagnostic_plot()
+    global_diagnostic_plot()
+    local_rsa_plot()
+    global_rsa_plot()
 
 ## Plotting
 def local_diagnostic_plot():
-    data = pd.read_json("local_diagnostic_framewise.json", orient='records')
+    data = pd.read_json("local_diagnostic.json", orient='records')
     order = ['mfcc', 'conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']
-    data['layer_id'] = [ order.index(x) for x in data['layer'] ] 
-    g = ggplot(data, aes(x='layer_id', y='acc', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, max(data['acc']))
-    ggsave(g, 'local_diagnostic_framewise.png')
+    data['layer_id'] = [ order.index(x) for x in data['layer'] ]
+    data['rer'] = rer(data['acc'], data['baseline'])
+    g = ggplot(data, aes(x='layer_id', y='rer', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, 1) + ggtitle("Local diagnostic")
+    ggsave(g, 'local_diagnostic.png')
+
+def global_diagnostic_plot():
+    data = pd.read_json("global_diagnostic.json", orient='records')
+    order = ['mfcc', 'conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']
+    data['layer_id'] = [ order.index(x) for x in data['layer'] ]
+    data['rer'] = rer(data['acc'], data['baseline'])
+    g = ggplot(data, aes(x='layer_id', y='rer', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, 1) + ggtitle("Global diagnostic")
+    ggsave(g, "global_diagnostic.png")
 
 def local_rsa_plot():
     data = pd.read_json("local_rsa.json", orient='records')
     order = ['mfcc', 'conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']
     data['layer_id'] = [ order.index(x) for x in data['layer'] ] 
-    g = ggplot(data, aes(x='layer_id', y='cor', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, max(data['cor']))
+    g = ggplot(data, aes(x='layer_id', y='cor', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, 1) + ggtitle("Local RSA")
     ggsave(g, 'local_rsa.png')
 
 def global_rsa_plot():
     data = pd.read_json("global_rsa.json", orient='records')
     order = ['mfcc', 'conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']
     data['layer_id'] = [ order.index(x) for x in data['layer'] ] 
-    g = ggplot(data, aes(x='layer_id', y='cor', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, max(data['cor']))
+    g = ggplot(data, aes(x='layer_id', y='cor', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, 1) + ggtitle("Global RSA")
     ggsave(g, "global_rsa.png")
 
-def global_diagnostic_plot():
-    data = pd.read_json("global_diagnostic_linear.json", orient='records')
+## Tables
+def learning_sensitivity():
+    def sens(trained, random): 
+        return 1 - (random/trained) 
+    ld = pd.read_json("local_diagnostic.json", orient="records");    ld['scope'] = 'local';   ld['method'] = 'diagnostic'
+    lr = pd.read_json("local_rsa.json", orient="records");           lr['scope'] = 'local';   lr['method'] = 'rsa'     
+    gd = pd.read_json("global_diagnostic.json", orient="records");   gd['scope'] = 'global';  gd['method'] = 'diagnostic' 
+    gr = pd.read_json("global_rsa.json", orient="records");          gr['scope'] = 'global';  gr['method'] = 'rsa'
+    data = pd.concat([ld, lr, gd, gr], sort=False)
+    data['rer'] = rer(data['acc'], data['baseline'])
+    data['score'] = data['rer'].fillna(0.0) + data['cor'].fillna(0.0) 
+    trained = data.loc[data['model']=='trained']
+    random  = data.loc[data['model']=='random']
+    trained['sensitivity'] = sens(trained['score'].values, random['score'].values)
+    data = trained[['epoch', 'layer', 'method', 'scope', 'score', 'sensitivity']].reset_index()
     order = ['mfcc', 'conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']
     data['layer_id'] = [ order.index(x) for x in data['layer'] ] 
-    g = ggplot(data, aes(x='layer_id', y='acc', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(min(data['acc']), 1.0)
-    ggsave(g, "global_diagnostic_linear.png")
-
-def phoneme_data(nets,  batch_size, framewise=True):
+    json.dump(data.to_dict(orient='records'), open('learning_sensitivity.json', 'w'))
+    g = ggplot(data, aes(x='layer_id', y='sensitivity', color='method', linetype='scope')) + geom_point(size=2) + geom_line(size=1) 
+    ggsave(g, "learning_sensitivity.png")
+    
+def save_phoneme_data(nets,  batch_size, framewise=True):
     """Generate data for training a phoneme decoding model."""
 
     alignment_path="/roaming/gchrupal/datasets/flickr8k/dataset.val.fa.json"    
@@ -146,7 +182,7 @@ def phoneme_data(nets,  batch_size, framewise=True):
                 logging.info("Computing data for {}, {}".format(name, key))
                 y, X = phoneme_activations(activations[key], alignments, index=index)
                 result[name][key] = check_nan(features=X, labels=y)
-    return result
+    pickle.dump(result, open('phoneme_data_{}.pkl'.format(rep), 'wb'), protocol=4)    
 
 def align2ipa(datum):
     """Extract IPA transcription from alignment information for a sentence."""
@@ -190,20 +226,6 @@ def phoneme_activations(activations, alignments, index=lambda ms: ms//10, framew
     return np.concatenate(labels), np.concatenate(states)
 
 
-def logreg_acc(features, labels, test_size=1/3):
-    """Fit logistic regression on part of features and labels and return accuracy on the other part."""
-    #TODO tune penalty parameter C
-    from sklearn.preprocessing import StandardScaler
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.model_selection import train_test_split
-    scaler = StandardScaler() 
-    X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=test_size, random_state=123)        
-    X_train = scaler.fit_transform(X_train) 
-    X_test  = scaler.transform(X_test) 
-    m = LogisticRegression(penalty='l2', solver="lbfgs", multi_class='auto', max_iter=300, random_state=123, C=1.0) 
-    m.fit(X_train, y_train) 
-    return float(m.score(X_test, y_test))
-
 def majority_binary(y):
     return (y.mean(dim=0) >= 0.5).float()
 
@@ -213,7 +235,6 @@ def majority_multiclass(y):
 
 def logreg_acc_adam(features, labels, test_size=1/2, epochs=1, device='cpu'):
     """Fit logistic regression on part of features and labels and return accuracy on the other part."""
-    #TODO tune penalty parameter C
     from sklearn.preprocessing import StandardScaler, LabelEncoder
     from sklearn.model_selection import train_test_split
 
@@ -299,18 +320,9 @@ def weight_variance():
     g = ggplot(data, aes(y='w', x='layer')) + geom_point(position='jitter', alpha=0.1) + facet_wrap('~trained', nrow=2, scales="free_y") 
     ggsave(g, 'weight_variance.png')
 
-
+    
 def framewise_RSA(test_size=1/2):
-
-    """ Use the following def instead:
-In [65]: def cor(labels, features, size): 
-    ...:     indices = np.array(random.sample(range(len(labels)), size*2)) 
-    ...:     y = labels[indices] 
-    ...:     x = features[indices] 
-    ...:     y_sim = y[: size] == y[size :] 
-    ...:     x_sim = 1 - paired_cosine_distances(x[: size], x[size :]) 
-    ...:     return pearsonr(x_sim, y_sim) 
-"""
+    
     from sklearn.model_selection import train_test_split
     #from sklearn.metrics.pairwise import cosine_similarity
     splitseed = 123
@@ -349,6 +361,38 @@ In [65]: def cor(labels, features, size):
                 result.append(dict(model=mode, layer=layer, cor=cor))
     return result
 
+def framewise_RSA_no_matrix(test_size=1/2):
+    result = []
+    mfcc_done = False
+    for mode in ["trained", "random"]:
+        logging.info("Loading phoneme data for {}".format(mode))
+        data = pickle.load(open("phoneme_data_{}.pkl".format(mode), "rb"))
+        mfcc_cor = [ item['cor']  for item in result if item['layer'] == 'mfcc']
+        if len(mfcc_cor) > 0:
+            logging.info("Result for MFCC computed previously")
+            result.append(dict(model=mode, layer='mfcc', cor=mfcc_cor[0]))
+        else:
+            cor = correlation_score(data['mfcc']['features'], data['mfcc']['labels'], size=test_size) 
+            logging.info("Point biserial correlation for {}, mfcc: {}".format(mode, cor))
+            result.append(dict(model=mode, layer='mfcc', cor=cor))
+        for layer in ['conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']:
+            cor = correlation_score(data[mode][layer]['features'], data[mode][layer]['labels'], size=test_size) 
+            logging.info("Point biserial correlation for {}, {}: {}".format(mode, layer, cor))
+            result.append(dict(model=mode, layer=layer, cor=cor))
+    return result
+
+def correlation_score(features, labels, size):
+    from sklearn.metrics.pairwise import paired_cosine_distances
+    from scipy.stats import pearsonr
+    logging.info("Sampling 2x{} stimuli from a total of {}".format(size, len(labels)))
+    indices = np.array(random.sample(range(len(labels)), size*2)) 
+    y = labels[indices] 
+    x = features[indices] 
+    y_sim = y[: size] == y[size :] 
+    x_sim = 1 - paired_cosine_distances(x[: size], x[size :]) 
+    return pearsonr(x_sim, y_sim)[0]
+
+    
 def weighted_average_RSA(scalar=True, test_size=1/2, hidden_size=1024, epochs=1, device='cpu'):
     from sklearn.model_selection import train_test_split
     torch.backends.cudnn.deterministic = True
@@ -586,8 +630,6 @@ def tuple_stack(xy):
 def rer(hi, lo): 
     return ((1-lo) - (1-hi))/(1-lo)
 
-
-
 def train_classifier(model, X, y, X_val, y_val, epochs=1, patience=50, majority=majority_binary):
     device = list(model.parameters())[0].device
     optim = torch.optim.Adam(model.parameters(), lr=1e-3)
@@ -616,7 +658,7 @@ def train_classifier(model, X, y, X_val, y_val, epochs=1, patience=50, majority=
             accuracy_val = np.concatenate([ model.predict(x.to(device)).cpu().numpy() == y.cpu().numpy() for x, y in data_val]).mean()
             scheduler.step(loss_val)
             logging.info("{} {} {} {}".format(epoch, np.mean(epoch_loss), loss_val, accuracy_val))
-        scores.append(dict(epoch=epoch, train_loss=epoch_loss, acc=accuracy_val, loss=loss_val, baseline=baseline))
+        scores.append(dict(epoch=epoch, train_loss=np.mean(epoch_loss), acc=accuracy_val, loss=loss_val, baseline=baseline))
         minepoch = min(scores, key=lambda a: a['loss'])['epoch']
         if epoch - minepoch >= patience:
             logging.info("No improvement for {} epochs, stopping.".format(patience))
