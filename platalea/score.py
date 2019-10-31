@@ -1,7 +1,5 @@
 import torch
 import platalea.rank_eval as E
-import platalea.dataset as D
-import platalea.multiway as M
 import numpy as np
 import logging
 
@@ -15,5 +13,5 @@ def score(net, dataset):
                 recall={1: np.mean(result['recall'][1]),
                         5: np.mean(result['recall'][5]),
                        10: np.mean(result['recall'][10])})
-    
-    
+
+
