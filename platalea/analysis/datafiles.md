@@ -23,7 +23,7 @@ For analyzing the VGS model we are using the data files described below. For eac
   'rnn3': numpy.ndarray,
   'att': numpy.ndarray}}
   ```
-  All the data in the arrays are in the same order.
+In all the array the item at index j corresponds to the jth utterance.
   
  ## Local 
  `local_data.pkl` data for local methods. The data is the dictionary with the following structure:
@@ -40,5 +40,5 @@ For analyzing the VGS model we are using the data files described below. For eac
   'rnn2': {'features': numpy.ndarray, 'labels': numpy.ndarray},
   'rnn3': {'features': numpy.ndarray, 'labels': numpy.ndarray}}}
   ```
-In these dictionaries 'features' correspond to inputs or activations for a single frame or timestep. The 'labels' array contains the corresponding phoneme labels, based on forced alignment between input audio and its transcription.
+In these dictionaries 'features' correspond to inputs or activations for a single frame or timestep. The 'labels' array contains the corresponding phoneme labels, based on forced alignment between input audio and its transcription. Note that in this dataset some utterances have been filtered out due to the force alignment failing.
   
