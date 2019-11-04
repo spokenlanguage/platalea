@@ -53,18 +53,18 @@ class SpeechEncoder(nn.Module):
             self.IntrospectGRU = platalea.introspect.IntrospectGRU(self.RNN)
         result = {}
 
-        logging.info("Computing convolutional activations")
+        # Computing convolutional activations
         conv = self.Conv(input).permute(0, 2, 1)
         l = inout(self.Conv, l)
         result['conv'] = [conv[i, :l[i], :] for i in range(len(conv))]
 
-        logging.info("Computing full stack of RNN states")
+        # Computing full stack of RNN states
         conv_padded = nn.utils.rnn.pack_padded_sequence(conv, l, batch_first=True, enforce_sorted=False)
         rnn = self.IntrospectGRU.introspect(conv_padded)
         for layer in range(self.RNN.num_layers):
             result['rnn{}'.format(layer)] = [rnn[i, layer, :l[i], :] for i in range(len(rnn))]
 
-        logging.info("Computing aggregated and normalized encoding")
+        # Computing aggregated and normalized encoding
         x, hx = self.RNN(conv_padded)
         x, _lens = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
         x = nn.functional.normalize(self.att(x), p=2, dim=1)
