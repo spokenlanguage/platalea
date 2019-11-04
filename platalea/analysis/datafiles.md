@@ -5,7 +5,10 @@ For analyzing the VGS model we are using the data files described below. For eac
 ## Global 
 ```
 global_input.pkl
-{'audio_id': <class 'numpy.ndarray'>, 'ipa': <class 'numpy.ndarray'>, 'text': <class 'numpy.ndarray'>, 'audio': <class 'numpy.ndarray'>}
+{'audio_id': <class 'numpy.ndarray'>, 
+ 'ipa': <class 'numpy.ndarray'>, 
+ 'text': <class 'numpy.ndarray'>, 
+ 'audio': <class 'numpy.ndarray'>}
 
 global_trained.pkl
 {'conv': <class 'numpy.ndarray'>, 
