@@ -1,44 +1,51 @@
 # Data format
 
-For analyzing the VGS model we are using the data files described below. For each new model we'll need similar files, with the structure adapted to the architecture of the model if needed.
+For analyzing the VGS model we are using the data files described below. For each new model we'll need similar files, with the structure adapted to the architecture of the model if needed. The data is split into several files due to it's large size.
 
 ## Global 
-`global_data.pkl` data for global methods. The data is the dictionary with the following structure:
+```
+global_input.pkl
+{'audio_id': <class 'numpy.ndarray'>, 'ipa': <class 'numpy.ndarray'>, 'text': <class 'numpy.ndarray'>, 'audio': <class 'numpy.ndarray'>}
+
+global_trained.pkl
+{'conv': <class 'numpy.ndarray'>, 
+ 'rnn0': <class 'numpy.ndarray'>, 
+ 'rnn1': <class 'numpy.ndarray'>, 
+ 'rnn2': <class 'numpy.ndarray'>, 
+ 'rnn3': <class 'numpy.ndarray'>, 
+ 'att': <class 'numpy.ndarray'>}
+
+global_random.pkl
+{'conv': <class 'numpy.ndarray'>, 
+ 'rnn0': <class 'numpy.ndarray'>, 
+ 'rnn1': <class 'numpy.ndarray'>, 
+ 'rnn2': <class 'numpy.ndarray'>, 
+ 'rnn3': <class 'numpy.ndarray'>, 
+ 'att': <class 'numpy.ndarray'>}
+```
+
+## Local
 
 ```
-{'audio_id': numpy.ndarray,
- 'ipa': numpy.ndarray,
- 'text': numpy.ndarray,
- 'audio': numpy.ndarray,
- 'trained': {'conv': numpy.ndarray,
-  'rnn0': numpy.ndarray,
-  'rnn1': numpy.ndarray,
-  'rnn2': numpy.ndarray,
-  'rnn3': numpy.ndarray,
-  'att': numpy.ndarray},
- 'random': {'conv': numpy.ndarray,
-  'rnn0': numpy.ndarray,
-  'rnn1': numpy.ndarray,
-  'rnn2': numpy.ndarray,
-  'rnn3': numpy.ndarray,
-  'att': numpy.ndarray}}
-  ```
-In all the array the item at index j corresponds to the jth utterance.
-  
- ## Local 
- `local_data.pkl` data for local methods. The data is the dictionary with the following structure:
- ``` 
-{'mfcc': {'features': numpy.ndarray, 'labels': numpy.ndarray},
- 'random': {'conv': {'features': numpy.ndarray, 'labels': numpy.ndarray},
-  'rnn0': {'features': numpy.ndarray, 'labels': numpy.ndarray},
-  'rnn1': {'features': numpy.ndarray, 'labels': numpy.ndarray},
-  'rnn2': {'features': numpy.ndarray, 'labels': numpy.ndarray},
-  'rnn3': {'features': numpy.ndarray, 'labels': numpy.ndarray}},
- 'trained': {'conv': {'features': numpy.ndarray, 'labels': numpy.ndarray},
-  'rnn0': {'features': numpy.ndarray, 'labels': numpy.ndarray},
-  'rnn1': {'features': numpy.ndarray, 'labels': numpy.ndarray},
-  'rnn2': {'features': numpy.ndarray, 'labels': numpy.ndarray},
-  'rnn3': {'features': numpy.ndarray, 'labels': numpy.ndarray}}}
-  ```
+local_input.pkl
+{'features': <class 'numpy.ndarray'>, 'labels': <class 'numpy.ndarray'>}
+
+local_trained.pkl
+{'conv': {'features': <class 'numpy.ndarray'>, 'labels': <class 'numpy.ndarray'>}, 
+ 'rnn0': {'features': <class 'numpy.ndarray'>, 'labels': <class 'numpy.ndarray'>}, 
+ 'rnn1': {'features': <class 'numpy.ndarray'>, 'labels': <class 'numpy.ndarray'>}, 
+ 'rnn2': {'features': <class 'numpy.ndarray'>, 'labels': <class 'numpy.ndarray'>}, 
+ 'rnn3': {'features': <class 'numpy.ndarray'>, 'labels': <class 'numpy.ndarray'>}}
+
+local_random.pkl
+{'conv': {'features': <class 'numpy.ndarray'>, 'labels': <class 'numpy.ndarray'>}, 
+ 'rnn0': {'features': <class 'numpy.ndarray'>, 'labels': <class 'numpy.ndarray'>}, 
+ 'rnn1': {'features': <class 'numpy.ndarray'>, 'labels': <class 'numpy.ndarray'>}, 
+ 'rnn2': {'features': <class 'numpy.ndarray'>, 'labels': <class 'numpy.ndarray'>}, 
+ 'rnn3': {'features': <class 'numpy.ndarray'>, 'labels': <class 'numpy.ndarray'>}}
+
+```
+
+
 In these dictionaries 'features' correspond to inputs or activations for a single frame or timestep. The 'labels' array contains the corresponding phoneme labels, based on forced alignment between input audio and its transcription. Note that in this dataset some utterances have been filtered out due to the force alignment failing.
   
