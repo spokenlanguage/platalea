@@ -30,7 +30,8 @@ class SpeechEncoder(nn.Module):
         rnn  = config['rnn']
         att  = config['att']
         self.Conv = nn.Conv1d(**conv)
-        self.RNN = nn.GRU(batch_first=True, **rnn)
+        rnn_layer_type = config.get('rnn_layer_type', nn.GRU)
+        self.RNN = rnn_layer_type(batch_first=True, **rnn)
         self.att = Attention(**att)
 
     def forward(self, input, l):
@@ -41,16 +42,16 @@ class SpeechEncoder(nn.Module):
         # create a packed_sequence object. The padding will be excluded from the update step
         # thereby training on the original sequence length only
         x = nn.utils.rnn.pack_padded_sequence(x.transpose(2, 1), l, batch_first=True, enforce_sorted=False)
-        x, hx = self.RNN(x)
+        x, _ = self.RNN(x)
         # unpack again as at the moment only rnn layers except packed_sequence objects
         x, lens = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
         x = nn.functional.normalize(self.att(x), p=2, dim=1)
         return x
 
     def introspect(self, input, l):
-        if not hasattr(self, 'IntrospectGRU'):
-            logging.info("Creating IntrospectGRU wrapper")
-            self.IntrospectGRU = platalea.introspect.IntrospectGRU(self.RNN)
+        if not hasattr(self, 'IntrospectRNN'):
+            logging.info("Creating IntrospectRNN wrapper")
+            self.IntrospectRNN = platalea.introspect.IntrospectRNN(self.RNN)
         result = {}
 
         # Computing convolutional activations
@@ -60,12 +61,12 @@ class SpeechEncoder(nn.Module):
 
         # Computing full stack of RNN states
         conv_padded = nn.utils.rnn.pack_padded_sequence(conv, l, batch_first=True, enforce_sorted=False)
-        rnn = self.IntrospectGRU.introspect(conv_padded)
+        rnn = self.IntrospectRNN.introspect(conv_padded)
         for layer in range(self.RNN.num_layers):
             result['rnn{}'.format(layer)] = [rnn[i, layer, :l[i], :] for i in range(len(rnn))]
 
         # Computing aggregated and normalized encoding
-        x, hx = self.RNN(conv_padded)
+        x, _ = self.RNN(conv_padded)
         x, _lens = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
         x = nn.functional.normalize(self.att(x), p=2, dim=1)
         result['att'] = list(x)
