@@ -1,3 +1,4 @@
+import logging
 PHONEMES="""arpabet	ipa	class
 aa	ɑ	vowel
 ae	æ	vowel
@@ -50,5 +51,10 @@ def parseipa():
 _arpa2ipa = parseipa()
 
 def arpa2ipa(arpa, default=None):
-    return _arpa2ipa.get(arpa, default) 
+    try:
+        _arpa2ipa[arpa]
+    except KeyError:
+        logging.warning("Key not found: {}".format(arpa))
+        return default
+    
 

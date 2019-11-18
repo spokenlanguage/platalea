@@ -26,16 +26,15 @@ import pickle
 ## Models            
 ### Local
 
-def local_diagnostic():
+def local_diagnostic(directory='.'):
     logging.getLogger().setLevel('INFO')
     output = []
-    data_mfcc = pickle.load(open('local_input.pkl', 'rb'))
+    data_mfcc = pickle.load(open('{}/local_input.pkl'.format(directory), 'rb'))
     for rep in ['trained', 'random']:
-        data = pickle.load(open('local_{}.pkl'.format(rep), 'rb'))
+        data = pickle.load(open('{}/local_{}.pkl'.format(directory, rep), 'rb'))
         logging.info("Fitting Logistic Regression for mfcc")
         result  = logreg_acc_adam(data_mfcc['features'], data_mfcc['labels'], epochs=40, device='cuda:0')
         logging.info("Result for {}, {} = {}".format(rep, 'mfcc', result['acc']))
-        #np.save('logreg_w_{}_{}.npy'.format(rep, 'mfcc'), w)
         result['model'] = rep
         result['layer'] = 'mfcc'
         output.append(result)
@@ -46,25 +45,24 @@ def local_diagnostic():
             result['model'] = rep
             result['layer'] = kind
             output.append(result)
-    json.dump(output, open("local_diagnostic.json", "w"), indent=True)
+    json.dump(output, open("{}/local_diagnostic.json".format(directory), "w"), indent=True)
 
-def local_rsa():
+def local_rsa(directory='.'):
     logging.getLogger().setLevel('INFO')
-    result = framewise_RSA(test_size=70000)
-    json.dump(result, open('local_rsa.json', 'w'), indent=2)
+    result = framewise_RSA(directory, test_size=70000)
+    json.dump(result, open('{}/local_rsa.json'.format(directory), 'w'), indent=2)
     
 ### Global
     
-def global_rsa():
+def global_rsa(directory='.'):
     logging.getLogger().setLevel('INFO')
-    result = weighted_average_RSA(scalar=True, test_size=1/2, hidden_size=1024, epochs=60, device="cuda:0")
-    #result = weighted_average_RSA(scalar=False, test_size=1/2, hidden_size=1024, epochs=60, device="cpu")
-    json.dump(result, open('global_rsa.json', 'w'), indent=2)
+    result = weighted_average_RSA(directory, scalar=True, test_size=1/2, hidden_size=1024, epochs=60, device="cuda:0")
+    json.dump(result, open('{}/global_rsa.json'.format(directory), 'w'), indent=2)
 
-def global_diagnostic():
+def global_diagnostic(directory='.'):
     logging.getLogger().setLevel('INFO')
-    result = weighted_average_diagnostic(attention='linear', test_size=1/2, hidden_size=1024, epochs=500, device="cuda:0")
-    json.dump(result, open('global_diagnostic.json', 'w'), indent=2)
+    result = weighted_average_diagnostic(directory, attention='linear', test_size=1/2, hidden_size=1024, epochs=500, device="cuda:0")
+    json.dump(result, open('{}/global_diagnostic.json'.format(directory), 'w'), indent=2)
 
 def plots():
     local_diagnostic_plot()
@@ -73,21 +71,21 @@ def plots():
     global_rsa_plot()
 
 ## Plotting
-def local_diagnostic_plot():
-    data = pd.read_json("local_diagnostic.json", orient='records')
-    order = ['mfcc', 'conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']
+def local_diagnostic_plot(directory='.'):
+    data = pd.read_json("{}/local_diagnostic.json".format(directory), orient='records')
+    order = list(data['layer'].unique())
     data['layer_id'] = [ order.index(x) for x in data['layer'] ]
     data['rer'] = rer(data['acc'], data['baseline'])
-    g = ggplot(data, aes(x='layer_id', y='rer', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, 1) + ggtitle("Local diagnostic")
-    ggsave(g, 'local_diagnostic.png')
+    g = ggplot(data, aes(x='layer_id', y='acc', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, 1) + ggtitle("Local diagnostic")
+    ggsave(g, '{}/local_diagnostic.png'.format(directory))
 
-def global_diagnostic_plot():
-    data = pd.read_json("global_diagnostic.json", orient='records')
-    order = ['mfcc', 'conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']
+def global_diagnostic_plot(directory='.'):
+    data = pd.read_json("{}/global_diagnostic.json".format(directory), orient='records')
+    order = list(data['layer'].unique())
     data['layer_id'] = [ order.index(x) for x in data['layer'] ]
     data['rer'] = rer(data['acc'], data['baseline'])
     g = ggplot(data, aes(x='layer_id', y='rer', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, 1) + ggtitle("Global diagnostic")
-    ggsave(g, "global_diagnostic.png")
+    ggsave(g, "{}/global_diagnostic.png".format(directory))
 
 def local_rsa_plot():
     data = pd.read_json("local_rsa.json", orient='records')
@@ -145,7 +143,7 @@ def logreg_acc_adam(features, labels, test_size=1/2, epochs=1, device='cpu'):
     scaler = StandardScaler() 
     X = torch.tensor(scaler.fit_transform(X)).float()
     X_val  = torch.tensor(scaler.transform(X_val)).float()
-
+    logging.info("Setting up model on {}".format(device))
     model = SoftmaxClassifier(X.size(1), y.max().item()+1).to(device)
     result = train_classifier(model, X, y, X_val, y_val, epochs=epochs, majority=majority_multiclass)
     return result
@@ -175,14 +173,14 @@ def weight_variance():
     ggsave(g, 'weight_variance.png')
 
     
-def framewise_RSA(test_size=1/2):
+def framewise_RSA(directory, test_size=1/2):
     
     from sklearn.model_selection import train_test_split
     #from sklearn.metrics.pairwise import cosine_similarity
     splitseed = 123
     result = []
     mfcc_done = False
-    data = pickle.load(open("local_input.pkl", "rb"))
+    data = pickle.load(open("{}/local_input.pkl".format(directory), "rb"))
     for mode in ["trained", "random"]:
         mfcc_cor = [ item['cor']  for item in result if item['layer'] == 'mfcc']
         if len(mfcc_cor) > 0:
@@ -201,7 +199,7 @@ def framewise_RSA(test_size=1/2):
             logging.info("Point biserial correlation for {}, mfcc: {}".format(mode, cor))
             result.append(dict(model=mode, layer='mfcc', cor=cor))
         logging.info("Loading phoneme data for {}".format(mode))
-        data = pickle.load(open("local_{}.pkl".format(mode), "rb"))
+        data = pickle.load(open("{}/local_{}.pkl".format(directory/ mode), "rb"))
         for layer in ['conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']:
                 X, X_val, y, y_val = train_test_split(data[layer]['features'], data[layer]['labels'], test_size=test_size, random_state=splitseed)
                 logging.info("Computing label identity matrix for {} datapoints".format(len(y_val)))
@@ -248,14 +246,14 @@ def correlation_score(features, labels, size):
     return pearsonr(x_sim, y_sim)[0]
 
     
-def weighted_average_RSA(scalar=True, test_size=1/2, hidden_size=1024, epochs=1, device='cpu'):
+def weighted_average_RSA(directory, scalar=True, test_size=1/2, hidden_size=1024, epochs=1, device='cpu'):
     from sklearn.model_selection import train_test_split
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     splitseed = 123
     result = []
     logging.info("Loading transcription data")
-    data = pickle.load(open("global_input.pkl", "rb"))
+    data = pickle.load(open("{}/global_input.pkl".format(directory), "rb"))
     trans = data['ipa']
     act = [ torch.tensor([item[:, :]]).float().to(device) for item in data['audio'] ]
 
@@ -272,7 +270,7 @@ def weighted_average_RSA(scalar=True, test_size=1/2, hidden_size=1024, epochs=1,
     logging.info("Maximum correlation on val: {} at epoch {}".format(result[-1]['cor'], result[-1]['epoch']))
     for mode in ["random", "trained"]:
         logging.info("Loading activations for {} data".format(mode))
-        data = pickle.load(open("global_{}.pkl".format(mode), "rb"))
+        data = pickle.load(open("{}/global_{}.pkl".format(directory, mode), "rb"))
         for layer in ['conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']:
             logging.info("Training for {} {}".format(mode, layer))
             act = [ torch.tensor([item[:, :]]).float().to(device) for item in data[layer] ]
@@ -313,7 +311,7 @@ def train_wa(edit_sim, edit_sim_val, stack, stack_val, scalar=True, hidden_size=
     del wa, optim
     return {'epoch': minepoch, 'cor': -minloss}
 
-def weighted_average_diagnostic(attention='scalar', test_size=1/2, hidden_size=1024, epochs=1, device='cpu'):
+def weighted_average_diagnostic(directory, attention='scalar', test_size=1/2, hidden_size=1024, epochs=1, device='cpu'):
     from sklearn.model_selection import train_test_split
     from sklearn.feature_extraction.text import CountVectorizer
     torch.backends.cudnn.deterministic = True
@@ -321,7 +319,7 @@ def weighted_average_diagnostic(attention='scalar', test_size=1/2, hidden_size=1
     splitseed = 123
     result = []
     logging.info("Loading transcription data")
-    data = pickle.load(open("global_input.pkl", "rb"))
+    data = pickle.load(open("{}/global_input.pkl".format(directory), "rb"))
     trans = data['ipa']
     act = [ torch.tensor(item[:, :]).float().to(device) for item in data['audio'] ]
     
@@ -340,10 +338,10 @@ def weighted_average_diagnostic(attention='scalar', test_size=1/2, hidden_size=1
     result.append({**this, 'model': 'trained', 'layer': 'mfcc'})
     del X, X_val
     logging.info("Maximum accuracy on val: {} at epoch {}".format(result[-1]['acc'], result[-1]['epoch']))
-    for mode in ["random", "trained"]:
+    for mode in ["trained", "random"]:
         logging.info("Loading activations for {} data".format(mode))
-        data = pickle.load(open("global_{}.pkl".format(mode), "rb"))
-        for layer in ['conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']:
+        data = pickle.load(open("{}/global_{}.pkl".format(directory, mode), "rb"))
+        for layer in data:#['conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']:
             logging.info("Training for {} {}".format(mode, layer))
             act = [ torch.tensor(item[:, :]).float() for item in data[layer] ]
             X, X_val = train_test_split(act, test_size=test_size, random_state=splitseed)
@@ -511,7 +509,7 @@ def train_classifier(model, X, y, X_val, y_val, epochs=1, patience=50, majority=
             loss_val = np.mean( [model.loss(model(x.to(device)), y.to(device)).item() for x,y in data_val])
             accuracy_val = np.concatenate([ model.predict(x.to(device)).cpu().numpy() == y.cpu().numpy() for x, y in data_val]).mean()
             scheduler.step(loss_val)
-            logging.info("{} {} {} {}".format(epoch, np.mean(epoch_loss), loss_val, accuracy_val))
+            logging.info("{} {} {} {} {}".format(epoch, optim.state_dict()['param_groups'][0]['lr'], np.mean(epoch_loss), loss_val, accuracy_val))
         scores.append(dict(epoch=epoch, train_loss=np.mean(epoch_loss), acc=accuracy_val, loss=loss_val, baseline=baseline))
         minepoch = min(scores, key=lambda a: a['loss'])['epoch']
         if epoch - minepoch >= patience:
