@@ -62,7 +62,7 @@ def filter_global_data(directory):
     adata = load_alignment("{}/fa.json".format(directory))
 
     logging.info("Filtering out failed alignments and OOV")
-    alignments = [ adata[i] for i in global_input['audio_id'] ]
+    alignments = [ adata.get(i, adata.get(i+'.wav')) for i in global_input['audio_id'] ]
     # Only consider cases where alignement does not fail
     # Only consider cases with no OOV items
     alignments = [item for item in alignments if good_alignment(item) ]
@@ -70,6 +70,7 @@ def filter_global_data(directory):
     ## Global data
 
     include = np.array([ i in sentids for i in global_input['audio_id'] ])
+    
     filtered = { key: np.array(value)[include] for key, value in global_input.items() }
     logging.info("Saving filtered data")
     pickle.dump(filtered, open("{}/global_input.pkl".format(directory), "wb"), protocol=4)
@@ -91,11 +92,11 @@ def save_local_data(directory, index=lambda ms: ms//20, framewise=True):
     logging.info("Loading alignments")
     global_input =  pickle.load(open("{}/global_input.pkl".format(directory), "rb"))
     adata = load_alignment("{}/fa.json".format(directory))
-    alignments = [ adata[i] for i in global_input['audio_id'] ]
+    alignments = [ adata.get(i, adata.get(i+'.wav')) for i in global_input['audio_id'] ]
     ## Local data
     local_data = {}
     logging.info("Computing local data for MFCC")
-    y, X = phoneme_activations(global_input['audio'], alignments, index=lambda ms: ms//10, framewise=framewise)
+    y, X = phoneme_activations(global_input['audio'], alignments, index=lambda ms: ms//10, framewise=framewise) # FIXME OFF BY ONE
     local_input = check_nan(features=X, labels=y)
     pickle.dump(local_input, open("{}/local_input.pkl".format(directory), "wb"), protocol=4)
     for name in ['trained', 'random']:
@@ -164,8 +165,11 @@ def frames(utt, rep, index):
      for phoneme in phones(utt): 
          phone, start, end = phoneme
          assert index(start)<index(end)+1, "Something funny: {} {} {} {}".format(start, end, index(start), index(end)) 
-         for j in range(index(start), index(end)+1): 
-             yield (phone, rep[j])
+         for j in range(index(start), index(end)+1):
+             if j < rep.shape[0]:
+                 yield (phone, rep[j])
+             else:
+                 logging.warning("Index out of bounds: {} {}".format(j, rep.shape))
              
 def phones(utt):
     """Return sequence of phoneme labels associated with start and end

@@ -52,7 +52,7 @@ _arpa2ipa = parseipa()
 
 def arpa2ipa(arpa, default=None):
     try:
-        _arpa2ipa[arpa]
+        return _arpa2ipa[arpa]
     except KeyError:
         logging.warning("Key not found: {}".format(arpa))
         return default
