@@ -26,58 +26,36 @@ import pickle
 ## Models            
 ### Local
 
-def local_diagnostic(directory='.'):
+def local_diagnostic(config):
+    directory = config['datadir']
     logging.getLogger().setLevel('INFO')
-    hidden = None
-    #weight_decay = 0.01
     output = []
     data_mfcc = pickle.load(open('{}/local_input.pkl'.format(directory), 'rb'))
-    for rep in ['trained', 'random']:
-        data = pickle.load(open('{}/local_{}.pkl'.format(directory, rep), 'rb'))
-        logging.info("Fitting local classifier for mfcc")
-        result  = local_classifier(data_mfcc['features'], data_mfcc['labels'], epochs=40, device='cuda:0', hidden=hidden)
-        logging.info("Result for {}, {} = {}".format(rep, 'mfcc', result['acc']))
-        result['model'] = rep
-        result['layer'] = 'mfcc'
-        output.append(result)
-        for kind in data:
-            logging.info("Fitting local classifier for {}, {}".format(rep, kind))
-            result = local_classifier(data[kind]['features'], data[kind]['labels'], epochs=40, device='cuda:0', hidden=hidden)
-            logging.info("Result for {}, {} = {}".format(rep, kind, result['acc']))
-            result['model'] = rep
-            result['layer'] = kind
+    for mode in ['trained', 'random']:
+            logging.info("Fitting local classifier for mfcc")
+            result  = local_classifier(data_mfcc['features'], data_mfcc['labels'], epochs=config['epochs'], device='cuda:0', hidden=config['hidden'])
+            logging.info("Result for {}, {} = {}".format(mode, 'mfcc', result['acc']))
+            result['model'] = mode
+            result['layer'] = 'mfcc'
             output.append(result)
-    json.dump(output, open("{}/local_diagnostic.json".format(directory), "w"), indent=True)
+            for layer in config['layers']:
+                data = pickle.load(open('{}/local_{}_{}.pkl'.format(directory, mode, layer), 'rb'))
+                logging.info("Fitting local classifier for {}, {}".format(mode, layer))
+                result = local_classifier(data[layer]['features'], data[layer]['labels'], epochs=config['epochs'], device='cuda:0', hidden=config['hidden'])
+                logging.info("Result for {}, {} = {}".format(mode, layer, result['acc']))
+                result['model'] = mode
+                result['layer'] = layer
+                output.append(result)
+    json.dump(output, open("local_diagnostic.json", "w"), indent=True)
 
-def local_diagnostic_FIXME(directory='.'):
+def local_rsa(config):
+    directory = config['datadir']
     logging.getLogger().setLevel('INFO')
-    hidden = None
-    weight_decay = 0.001
-    output = []
-    data_mfcc = pickle.load(open('{}/local_input.pkl'.format(directory), 'rb'))
-    for rep in ['trained']:
-        data = pickle.load(open('{}/local_{}.pkl'.format(directory, rep), 'rb'))
-        #logging.info("Fitting local classifier for mfcc")
-        #result  = local_classifier(data_mfcc['features'], data_mfcc['labels'], epochs=40, device='cuda:0', hidden=hidden)
-        #result  = local_classifier(data_mfcc['features'][:len(data_mfcc['labels'])//4], data_mfcc['labels'][:len(data_mfcc['labels'])//4], epochs=40, device='cuda:0', hidden=hidden)
-        
-        #logging.info("Result for {}, {} = {}".format(rep, 'mfcc', result['acc']))
-        #result['model'] = rep
-        #result['layer'] = 'mfcc'
-        #output.append(result)
-        for kind in data:
-            logging.info("Fitting local classifier for {}, {}".format(rep, kind))
-            result = local_classifier(data[kind]['features'], data[kind]['labels'], epochs=40, device='cuda:0', hidden=hidden, weight_decay=weight_decay, test_size=1/2)
-            logging.info("Result for {}, {} = {}".format(rep, kind, result['acc']))
-            result['model'] = rep
-            result['layer'] = kind
-            output.append(result)
-    json.dump(output, open("{}/local_diagnostic.json".format(directory), "w"), indent=True)
-
-def local_rsa(directory='.'):
-    logging.getLogger().setLevel('INFO')
-    result = framewise_RSA(directory, test_size=70000)
-    json.dump(result, open('{}/local_rsa.json'.format(directory), 'w'), indent=2)
+    if config['matrix']:
+        result = framewise_RSA_matrix(directory, layers=config['layers'], size=config['size'])
+    else:
+        result = framewise_RSA(directory, layers=config['layers'], size=config['size'])
+    json.dump(result, open('local_rsa.json'.format(directory), 'w'), indent=2)
     
 ### Global
     
@@ -100,13 +78,13 @@ def plots():
     global_rsa_plot()
 
 ## Plotting
-def local_diagnostic_plot(directory='.'):
-    data = pd.read_json("{}/local_diagnostic.json".format(directory), orient='records')
+def local_diagnostic_plot():
+    data = pd.read_json("local_diagnostic.json", orient='records')
     order = list(data['layer'].unique())
     data['layer_id'] = [ order.index(x) for x in data['layer'] ]
     data['rer'] = rer(data['acc'], data['baseline'])
     g = ggplot(data, aes(x='layer_id', y='acc', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, 1) + ggtitle("Local diagnostic")
-    ggsave(g, '{}/local_diagnostic.png'.format(directory))
+    ggsave(g, 'local_diagnostic.png')
 
 def global_diagnostic_plot(directory='.'):
     data = pd.read_json("{}/global_diagnostic.json".format(directory), orient='records')
@@ -118,7 +96,7 @@ def global_diagnostic_plot(directory='.'):
 
 def local_rsa_plot():
     data = pd.read_json("local_rsa.json", orient='records')
-    order = ['mfcc', 'conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']
+    order = list(data['layer'].unique())
     data['layer_id'] = [ order.index(x) for x in data['layer'] ] 
     g = ggplot(data, aes(x='layer_id', y='cor', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, 1) + ggtitle("Local RSA")
     ggsave(g, 'local_rsa.png')
@@ -206,11 +184,10 @@ def weight_variance():
     ggsave(g, 'weight_variance.png')
 
     
-def framewise_RSA(directory, test_size=1/2):
+def framewise_RSA_matrix(directory, layers, size=70000):
     
     from sklearn.model_selection import train_test_split
     #from sklearn.metrics.pairwise import cosine_similarity
-    splitseed = 123
     result = []
     mfcc_done = False
     data = pickle.load(open("{}/local_input.pkl".format(directory), "rb"))
@@ -220,49 +197,47 @@ def framewise_RSA(directory, test_size=1/2):
             logging.info("Result for MFCC computed previously")
             result.append(dict(model=mode, layer='mfcc', cor=mfcc_cor[0]))
         else:
-            X, X_val, y, y_val = train_test_split(data['features'], data['labels'], test_size=test_size, random_state=splitseed)
+            
+            X, X_val, y, y_val = train_test_split(data['features'], data['labels'], test_size=size, random_state=123)
             logging.info("Computing label identity matrix for {} datapoints".format(len(y_val)))
-            # y_sim = y.reshape((-1, 1)) == y
             y_val_sim = torch.tensor(y_val.reshape((-1, 1)) == y_val).float()
             logging.info("Computing activation similarities for {} datapoints".format(len(X_val)))
-            # X_sim = S.cosine_matrix(X, X)
             X_val = torch.tensor(X_val).float()
             X_val_sim = S.cosine_matrix(X_val, X_val)
             cor = S.pearson_r(S.triu(y_val_sim), S.triu(X_val_sim)).item()
             logging.info("Point biserial correlation for {}, mfcc: {}".format(mode, cor))
             result.append(dict(model=mode, layer='mfcc', cor=cor))
-        logging.info("Loading phoneme data for {}".format(mode))
-        data = pickle.load(open("{}/local_{}.pkl".format(directory/ mode), "rb"))
-        for layer in ['conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']:
-                X, X_val, y, y_val = train_test_split(data[layer]['features'], data[layer]['labels'], test_size=test_size, random_state=splitseed)
-                logging.info("Computing label identity matrix for {} datapoints".format(len(y_val)))
-                # y_sim = y.reshape((-1, 1)) == y
-                y_val_sim = torch.tensor(y_val.reshape((-1, 1)) == y_val).float()
-                logging.info("Computing activation similarities for {} datapoints".format(len(X_val)))
-                # X_sim = S.cosine_matrix(X, X)
-                X_val = torch.tensor(X_val).float()
-                X_val_sim = S.cosine_matrix(X_val, X_val)
-                cor = S.pearson_r(S.triu(y_val_sim), S.triu(X_val_sim)).item()
-                logging.info("Point biserial correlation for {}, {}: {}".format(mode, layer, cor))
-                result.append(dict(model=mode, layer=layer, cor=cor))
+        for layer in layers:
+            logging.info("Loading phoneme data for {} {}".format(mode, layer))
+            data = pickle.load(open("{}/local_{}_{}.pkl".format(directory, mode, layer), "rb"))
+            X, X_val, y, y_val = train_test_split(data[layer]['features'], data[layer]['labels'], test_size=size, random_state=123)
+            logging.info("Computing label identity matrix for {} datapoints".format(len(y_val)))
+            y_val_sim = torch.tensor(y_val.reshape((-1, 1)) == y_val).float()
+            logging.info("Computing activation similarities for {} datapoints".format(len(X_val)))
+            X_val = torch.tensor(X_val).float()
+            X_val_sim = S.cosine_matrix(X_val, X_val)
+            cor = S.pearson_r(S.triu(y_val_sim), S.triu(X_val_sim)).item()
+            logging.info("Point biserial correlation for {}, {}: {}".format(mode, layer, cor))
+            result.append(dict(model=mode, layer=layer, cor=cor))
     return result
 
-def framewise_RSA_no_matrix(test_size=1/2):
+def framewise_RSA(directory, layers, size=70000):
     result = []
     mfcc_done = False
+    data = pickle.load(open("{}/local_input.pkl".format(directory), "rb"))
     for mode in ["trained", "random"]:
-        logging.info("Loading phoneme data for {}".format(mode))
-        data = pickle.load(open("phoneme_data_{}.pkl".format(mode), "rb"))
         mfcc_cor = [ item['cor']  for item in result if item['layer'] == 'mfcc']
         if len(mfcc_cor) > 0:
             logging.info("Result for MFCC computed previously")
             result.append(dict(model=mode, layer='mfcc', cor=mfcc_cor[0]))
         else:
-            cor = correlation_score(data['mfcc']['features'], data['mfcc']['labels'], size=test_size) 
+            cor = correlation_score(data['features'], data['labels'], size=size) 
             logging.info("Point biserial correlation for {}, mfcc: {}".format(mode, cor))
             result.append(dict(model=mode, layer='mfcc', cor=cor))
-        for layer in ['conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']:
-            cor = correlation_score(data[mode][layer]['features'], data[mode][layer]['labels'], size=test_size) 
+        for layer in layers:
+            logging.info("Loading phoneme data for {} {}".format(mode, layer))
+            data = pickle.load(open("{}/local_{}_{}.pkl".format(directory, mode, layer), "rb"))
+            cor = correlation_score(data[layer]['features'], data[layer]['labels'], size=size)
             logging.info("Point biserial correlation for {}, {}: {}".format(mode, layer, cor))
             result.append(dict(model=mode, layer=layer, cor=cor))
     return result

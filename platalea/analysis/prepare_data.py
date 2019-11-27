@@ -22,6 +22,25 @@ def prepare():
         save_data(nets, directory='.', batch_size=32, framewise=True)
 
 
+def massage_transformer_data():
+    logging.getLogger().setLevel('INFO')
+    factors = pickle.load(open("data/in/trans/downsampling_factors.pkl", "rb"))
+    layers = factors.keys()
+    logging.info("Loading input")
+    data = pickle.load(open("data/in/trans/global_input.pkl", "rb"))
+    logging.info("Fixing IDs")
+    data['audio_id'] = np.array([ i + '.wav' for i in data['audio_id']])
+    logging.info("Saving input")
+    pickle.dump(data, open("data/out/trans/global_input.pkl", "wb"), protocol=4)
+    for mode in ['trained', 'random']:
+        for layer in layers:
+            logging.info("Loading data for {} {}".format(mode, layer))
+            data = pickle.load(open("data/in/trans/global_{}.{}.pkl".format(mode, layer), "rb"))
+            data = {layer: data}
+            logging.info("Saving data for {} {}".format(mode, layer))
+            pickle.dump(data, open("data/out/trans/global_{}_{}.pkl".format(mode, layer), "wb"), protocol=4)
+
+        
 def save_data(nets, directory, batch_size=32, framewise=True):
     save_global_data(nets, batch_size=batch_size, framewise=framewise) # FIXME adapt this per directory too
     save_local_data(directory=directory, framewise=framewise)
@@ -86,8 +105,26 @@ def good_alignment(item):
         if word['case'] != 'success' or word['alignedWord'] == '<unk>':
             return False
     return True
-            
-def save_local_data(directory, index=lambda ms: ms//20, framewise=True):
+
+def make_indexer(factors, layer): 
+     def inout(pad, ksize, stride, L): 
+         return ((L + 2*pad - 1*(ksize-1) - 1) // stride + 1) 
+     def index(ms): 
+         t = ms//10 
+         for l in factors: 
+             if factors[l] is None: 
+                 pass 
+             else: 
+                 pad = factors[l]['pad'] 
+                 ksize = factors[l]['ksize'] 
+                 stride = factors[l]['stride'] 
+                 t = inout(pad, ksize, stride, t) 
+             if l == layer: 
+                 break 
+         return t 
+     return index 
+    
+def save_local_data(directory):
     logging.getLogger().setLevel('INFO')
     logging.info("Loading alignments")
     global_input =  pickle.load(open("{}/global_input.pkl".format(directory), "rb"))
@@ -96,20 +133,23 @@ def save_local_data(directory, index=lambda ms: ms//20, framewise=True):
     ## Local data
     local_data = {}
     logging.info("Computing local data for MFCC")
-    y, X = phoneme_activations(global_input['audio'], alignments, index=lambda ms: ms//10, framewise=framewise) # FIXME OFF BY ONE
+    y, X = phoneme_activations(global_input['audio'], alignments, index=lambda ms: ms//10, framewise=True)
     local_input = check_nan(features=X, labels=y)
     pickle.dump(local_input, open("{}/local_input.pkl".format(directory), "wb"), protocol=4)
-    for name in ['trained', 'random']:
-        global_act = pickle.load(open("{}/global_{}.pkl".format(directory, name), "rb"))
-        local_act = {}
-        #index = lambda ms: encoders.inout(net.SpeechEncoder.Conv, torch.tensor(ms)//10).numpy()
-        global_act = pickle.load(open("{}/global_{}.pkl".format(directory, name), "rb"))
-        for key in global_act.keys():
-                logging.info("Computing local data for {}, {}".format(name, key))
-                y, X = phoneme_activations(global_act[key], alignments, index=index)
-                local_act[key] = check_nan(features=X, labels=y)
-        logging.info("Saving local data in local_{}.pkl".format(name))
-        pickle.dump(local_act, open("{}/local_{}.pkl".format(directory, name), "wb"), protocol=4)
+    factors = pickle.load(open("{}/downsampling_factors.pkl".format(directory), "rb"))
+    for mode in ['trained', 'random']:
+        for layer in factors.keys():
+            if layer == "conv1":
+                pass # This data is too big
+            else:
+                global_act = pickle.load(open("{}/global_{}_{}.pkl".format(directory, mode, layer), "rb"))
+                local_act = {}
+                index = make_indexer(factors, layer)
+                logging.info("Computing local data for {}, {}".format(mode, layer))
+                y, X = phoneme_activations(global_act[layer], alignments, index=index, framewise=True)
+                local_act[layer] = check_nan(features=X, labels=y)
+                logging.info("Saving local data in local_{}_{}.pkl".format(mode, layer))
+                pickle.dump(local_act, open("{}/local_{}_{}.pkl".format(directory, mode, layer), "wb"), protocol=4)
 
 def load_alignment(path):
     data = {}
