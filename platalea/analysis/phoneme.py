@@ -23,7 +23,7 @@ import pickle
 ### Local
 
 def local_diagnostic(config):
-    directory = config['datadir']
+    directory = config['directory']
     logging.getLogger().setLevel('INFO')
     output = []
     data_mfcc = pickle.load(open('{}/local_input.pkl'.format(directory), 'rb'))
@@ -78,7 +78,7 @@ def local_diagnostic_plot():
     order = list(data['layer'].unique())
     data['layer_id'] = [ order.index(x) for x in data['layer'] ]
     data['rer'] = rer(data['acc'], data['baseline'])
-    g = ggplot(data, aes(x='layer_id', y='acc', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, 1) + ggtitle("Local diagnostic")
+    g = ggplot(data, aes(x='layer_id', y='rer', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, 1) + ggtitle("Local diagnostic")
     ggsave(g, 'local_diagnostic.png')
 
 def global_diagnostic_plot():
@@ -118,7 +118,7 @@ def learning_effect():
     random  = data.loc[data['model']=='random']
     trained['learning_effect'] = le(trained['score'].values, random['score'].values)
     data = trained[['epoch', 'layer', 'method', 'scope', 'score', 'learning_effect']].reset_index()
-    order = ['mfcc', 'conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']
+    order = list(data['layer'].unique()) 
     data['layer_id'] = [ order.index(x) for x in data['layer'] ] 
     json.dump(data.to_dict(orient='records'), open('learning_effect.json', 'w'))
     g = ggplot(data, aes(x='layer_id', y='learning_effect', color='method', linetype='scope')) + geom_point(size=2) + geom_line(size=1) 
@@ -365,85 +365,6 @@ def weighted_average_diagnostic(directory='.', layers=[], attention='scalar', te
             del X, X_val
             logging.info("Maximum accuracy on val: {} at epoch {}".format(result[-1]['acc'], result[-1]['epoch']))
     return result
-
-# def train_wa_diagnostic(X, y, X_val, y_val, attention='scalar', hidden_size=1024, epochs=1, patience=50, device='cpu'):
-#     import platalea.encoders
-#     #model = PooledRegressor(X[0].size(1), hidden_size, y.size(1), attention=attention).to(device)
-#     model = PooledClassifier(X[0].size(1), hidden_size, y.size(1), attention=attention).to(device)
-#     optim = torch.optim.Adam(model.parameters(), lr=1e-3)
-#     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, 'min', factor=0.1, patience=10)
-#     minloss = np.finfo(np.float32).max; minepoch = 0; minacc = 0
-#     data = torch.utils.data.DataLoader(list(zip(X, y)), batch_size=64, shuffle=True, collate_fn=collate)
-#     data_val = torch.utils.data.DataLoader(list(zip(X_val, y_val)), batch_size=64, shuffle=False, collate_fn=collate)
-#     logging.info("Optimizing for {} epochs".format(epochs))
-#     N_val = y_val.shape[0] * y_val.shape[1]
-#     with torch.no_grad():
-#         mean = (y.mean(dim=0) >= 0.0).float()
-#         base = np.sum([(mean.expand_as(y_i) == y_i).sum().item() for y_i in y]) / N_val
-#         logging.info("Baseline accuracy: {}".format(base))
-#     for epoch in range(1, 1+epochs):
-#         epoch_loss = []
-#         for x, y in data:
-#             x = x.to(device)
-#             y = y.to(device)
-#             y_pred = model(x) 
-#             #loss = nn.functional.mse_loss(y_pred, y)
-#             loss = nn.functional.binary_cross_entropy_with_logits(y_pred, y)
-#             optim.zero_grad()
-#             loss.backward()
-#             optim.step()
-#             epoch_loss.append(loss.item())
-#         with torch.no_grad():
-#             #loss_val = np.sum([nn.functional.mse_loss(model(x.to(device)), y.to(device), reduction='sum').item() for x, y in data_val]) / N_val
-#             loss_val = np.sum([nn.functional.binary_cross_entropy_with_logits(model(x.to(device)), y.to(device), reduction='sum').item() for x, y in data_val]) / N_val
-#             accuracy_val = np.sum([(model.predict(x.to(device)) == y.to(device)).sum().item() for x, y in data_val]) / N_val
-#             scheduler.step(loss_val)
-#             logging.info("{} {} {} {}".format(epoch, np.mean(epoch_loss), loss_val, accuracy_val))
-#         if loss_val <= minloss:
-#             minloss = loss_val; minepoch = epoch; minacc = accuracy_val
-#         if epoch - minepoch >= patience:
-#             logging.info("No improvement for {} epochs, stopping.".format(patience))
-#             break
-#         # Release CUDA-allocated tensors
-#         del x, y, loss, loss_val,  y_pred
-#     del model, optim
-#     return {'epoch': minepoch, 'error': minloss, 'acc': minacc, 'base': base}
-
-def train_diagnostic(X, y, X_val, y_val, epochs=1, device='cpu'):
-    from sklearn.metrics import accuracy_score
-    model = nn.Linear(X.size(1), y.max().item()+1).to(device)
-    optim = torch.optim.Adam(model.parameters())
-    minloss = np.finfo(np.float32).max; minepoch = None
-    data = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X, y), batch_size=128, shuffle=True, pin_memory=True)
-    data_val = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_val, y_val), batch_size=128, shuffle=False, pin_memory=True)
-    logging.info("Optimizing for {} epochs".format(epochs))
-    N_val = y_val.shape[0] # FIXME this needs checked
-    for epoch in range(1, 1+epochs):
-        epoch_loss = []
-        for x, y in data:
-            x = x.to(device)
-            y = y.to(device)
-            y_pred = model(x)
-            loss = nn.functional.cross_entropy(y_pred, y)
-            #print(torch.stack([y_pred.argmax(dim=1), y]).t())
-            optim.zero_grad()
-            loss.backward()
-            optim.step()
-            epoch_loss.append(loss.item())
-        with torch.no_grad():
-            loss_val = torch.sum([nn.functional.cross_entropy(model(x.to(device)), y.to(device), reduction='sum').item() for x, y in data_val]) / N_val
-            logging.info("{} {} {}".format(epoch, np.mean(epoch_loss), loss_val))
-        if loss_val <= minloss:
-            minloss = loss_val
-            minepoch = epoch
-
-        # Release CUDA-allocated tensors
-        #del loss, loss_val,  y_pred
-    # compute accuracy
-    y_val_pred = torch.cat([model(x.to(device)) for x, y in data_val]).argmax(dim=1)
-    acc = accuracy_score(y_val.detach().cpu().numpy(), y_val_pred.detach().cpu().numpy())
-    del model, optim
-    return {'epoch': minepoch, 'error': minloss, 'accuracy': acc}
 
 class PooledClassifier(nn.Module):
 
