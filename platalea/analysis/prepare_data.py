@@ -14,12 +14,12 @@ def prepare():
     net_rand = basic.SpeechImage(basic.DEFAULT_CONFIG).cuda()
     net_rand.eval()
     net_train = basic.SpeechImage(basic.DEFAULT_CONFIG)
-    net_train.load_state_dict(torch.load("experiments/basic-stack/net.20.pt").state_dict())
+    net_train.load_state_dict(torch.load("net.20.pt").state_dict())
     net_train.cuda()
     net_train.eval()
     nets = [('trained', net_train), ('random', net_rand)]
     with torch.no_grad():
-        save_data(nets, directory='.', batch_size=32, framewise=True)
+        save_data(nets, directory='.', batch_size=32)
 
 
 def massage_transformer_data():
@@ -44,14 +44,14 @@ def massage_transformer_data():
             pickle.dump(data, open("data/out/trans/global_{}_{}.pkl".format(mode, layer), "wb"), protocol=4)
 
         
-def save_data(nets, directory, batch_size=32, framewise=True):
-    save_global_data(nets, batch_size=batch_size, framewise=framewise) # FIXME adapt this per directory too
-    save_local_data(directory=directory, framewise=framewise)
+def save_data(nets, directory, batch_size=32):
+    save_global_data(nets, directory=directory, batch_size=batch_size) # FIXME adapt this per directory too
+    save_local_data(directory=directory)
     
-def save_global_data(nets,  batch_size, framewise=True):
+def save_global_data(nets,  directory='.', batch_size=32):
     """Generate data for training a phoneme decoding model."""
     logging.info("Loading alignments")
-    data = load_alignment("/roaming/gchrupal/datasets/flickr8k/dataset.val.fa.json")
+    data = load_alignment("{}/fa.json".format(directory))
     logging.info("Loading audio features")
     val = dataset.Flickr8KData(root='/roaming/gchrupal/datasets/flickr8k/', split='val')
     # 
@@ -70,10 +70,11 @@ def save_global_data(nets,  batch_size, framewise=True):
                        audio = np.array(audio_np))
     pickle.dump(global_input, open("global_input.pkl", "wb"), protocol=4)
     
-    for name, net in nets:
+    for mode, net in nets:
         global_act = collect_activations(net, audio, batch_size=batch_size)
-        logging.info("Saving global data in global_{}.pkl".format(name))
-        pickle.dump(global_act, open("global_{}.pkl".format(name), "wb"), protocol=4)
+        for layer in global_act:
+            logging.info("Saving global data in {}/global_{}_{}.pkl".format(directory, mode, layer))
+            pickle.dump({layer: global_act[layer]}, open("{}/global_{}_{}.pkl".format(directory, mode, layer), "wb"), protocol=4)
 
 def filter_global_data(directory):
     """Remove sentences with OOV items from data."""
@@ -139,7 +140,15 @@ def save_local_data(directory):
     y, X = phoneme_activations(global_input['audio'], alignments, index=lambda ms: ms//10, framewise=True)
     local_input = check_nan(features=X, labels=y)
     pickle.dump(local_input, open("{}/local_input.pkl".format(directory), "wb"), protocol=4)
-    factors = pickle.load(open("{}/downsampling_factors.pkl".format(directory), "rb"))
+    try:
+        factors = pickle.load(open("{}/downsampling_factors.pkl".format(directory), "rb"))
+    except FileNotFoundError:
+        # Default VGS settings
+        factors = {'conv': {'pad': 0, 'ksize': 6, 'stride': 2 },
+                   'rnn0': None,
+                   'rnn1': None,
+                   'rnn2': None,
+                   'rnn3': None }
     for mode in ['trained', 'random']:
         for layer in factors.keys():
             if layer == "conv1":
