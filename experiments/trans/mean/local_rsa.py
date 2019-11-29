@@ -1,5 +1,11 @@
+SEED=666
+import torch
+torch.manual_seed(SEED)
 import random
-random.seed(123)
+random.seed(SEED)
+import numpy as np
+np.random.seed(SEED)
+
 
 import platalea.analysis.phoneme as P
 

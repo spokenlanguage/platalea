@@ -1,10 +1,6 @@
-SEED=123
 import torch
-torch.manual_seed(SEED)
 import random
-random.seed(SEED)
 import numpy as np
-np.random.seed(SEED)
 import sys
 import torch.nn as nn
 import platalea.basic as basic
@@ -56,7 +52,7 @@ def local_rsa(config):
     else:
         del config['matrix']
         result = framewise_RSA(**config)
-    json.dump(result, open('local_rsa.json'.format(directory), 'w'), indent=2)
+    json.dump(result, open('local_rsa.json', 'w'), indent=2)
     
 ### Global
     
@@ -139,9 +135,10 @@ def local_classifier(features, labels, test_size=1/2, epochs=1, device='cpu', hi
     """Fit classifier on part of features and labels and return accuracy on the other part."""
     from sklearn.preprocessing import StandardScaler, LabelEncoder
     from sklearn.model_selection import train_test_split
-    ### FIXME
-    #weight_decay=0.1
-    X, X_val, y, y_val = train_test_split(features, labels, test_size=test_size, random_state=123)
+
+    splitseed = random.randint(0, 1024)
+    
+    X, X_val, y, y_val = train_test_split(features, labels, test_size=test_size, random_state=splitseed)
 
     le = LabelEncoder()
     y = torch.tensor(le.fit_transform(y)).long()
@@ -186,7 +183,7 @@ def weight_variance():
 def framewise_RSA_matrix(directory, layers, size=70000):
     
     from sklearn.model_selection import train_test_split
-    #from sklearn.metrics.pairwise import cosine_similarity
+    splitseed = random.randint(0, 1024)
     result = []
     mfcc_done = False
     data = pickle.load(open("{}/local_input.pkl".format(directory), "rb"))
@@ -197,7 +194,7 @@ def framewise_RSA_matrix(directory, layers, size=70000):
             result.append(dict(model=mode, layer='mfcc', cor=mfcc_cor[0]))
         else:
             
-            X, X_val, y, y_val = train_test_split(data['features'], data['labels'], test_size=size, random_state=123)
+            X, X_val, y, y_val = train_test_split(data['features'], data['labels'], test_size=size, random_state=splitseed)
             logging.info("Computing label identity matrix for {} datapoints".format(len(y_val)))
             y_val_sim = torch.tensor(y_val.reshape((-1, 1)) == y_val).float()
             logging.info("Computing activation similarities for {} datapoints".format(len(X_val)))
@@ -209,7 +206,7 @@ def framewise_RSA_matrix(directory, layers, size=70000):
         for layer in layers:
             logging.info("Loading phoneme data for {} {}".format(mode, layer))
             data = pickle.load(open("{}/local_{}_{}.pkl".format(directory, mode, layer), "rb"))
-            X, X_val, y, y_val = train_test_split(data[layer]['features'], data[layer]['labels'], test_size=size, random_state=123)
+            X, X_val, y, y_val = train_test_split(data[layer]['features'], data[layer]['labels'], test_size=size, random_state=splitseed)
             logging.info("Computing label identity matrix for {} datapoints".format(len(y_val)))
             y_val_sim = torch.tensor(y_val.reshape((-1, 1)) == y_val).float()
             logging.info("Computing activation similarities for {} datapoints".format(len(X_val)))
@@ -257,7 +254,7 @@ def weighted_average_RSA(directory='.', layers=[], attention='linear', test_size
     from sklearn.model_selection import train_test_split
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    splitseed = 123
+    splitseed = random.randint(0, 1024)
     result = []
     logging.info("Loading transcription data")
     data = pickle.load(open("{}/global_input.pkl".format(directory), "rb"))
@@ -332,7 +329,7 @@ def weighted_average_diagnostic(directory='.', layers=[], attention='scalar', te
     from sklearn.feature_extraction.text import CountVectorizer
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    splitseed = 123
+    splitseed = random.randint(0, 1024)
     result = []
     logging.info("Loading transcription data")
     data = pickle.load(open("{}/global_input.pkl".format(directory), "rb"))
