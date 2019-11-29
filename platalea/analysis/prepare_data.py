@@ -30,6 +30,9 @@ def massage_transformer_data():
     data = pickle.load(open("data/in/trans/global_input.pkl", "rb"))
     logging.info("Fixing IDs")
     data['audio_id'] = np.array([ i + '.wav' for i in data['audio_id']])
+    logging.info("Adding IPA")
+    alignment = load_alignment("data/out/trans/fa.json") 
+    data['ipa'] = np.array([ align2ipa(alignment[i]) for i in data['audio_id'] ])
     logging.info("Saving input")
     pickle.dump(data, open("data/out/trans/global_input.pkl", "wb"), protocol=4)
     for mode in ['trained', 'random']:

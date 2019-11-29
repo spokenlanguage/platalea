@@ -18,7 +18,16 @@ class LinearAttention(nn.Module):
         # return the resulting embedding
         return x
 
+class MeanPool(nn.Module):
+    def __init__(self):
+        super(MeanPool, self).__init__()
+        
+    def forward(self, input):
+        x = input.mean(dim=1)
+        # return the resulting embedding
+        return x
 
+    
 class ScalarAttention(nn.Module):
     def __init__(self, in_size, hidden_size):
         super(ScalarAttention, self).__init__()

@@ -59,17 +59,15 @@ def local_rsa(config):
     
 ### Global
     
-def global_rsa(directory='.'):
+def global_rsa(config):
     logging.getLogger().setLevel('INFO')
-    result = weighted_average_RSA(directory, scalar=True, test_size=1/2, hidden_size=1024, epochs=60, device="cuda:0")
-    json.dump(result, open('{}/global_rsa.json'.format(directory), 'w'), indent=2)
+    result = weighted_average_RSA(**config)
+    json.dump(result, open('global_rsa.json', 'w'), indent=2)
 
-def global_diagnostic(directory='.'):
+def global_diagnostic(config):
     logging.getLogger().setLevel('INFO')
-    #hidden_size=500
-    hidden_size = None
-    result = weighted_average_diagnostic(directory, attention='linear', test_size=1/2, hidden_size=hidden_size, attention_hidden_size=None, epochs=500, device="cuda:0")
-    json.dump(result, open('{}/global_diagnostic.json'.format(directory), 'w'), indent=2)
+    result = weighted_average_diagnostic(**config)
+    json.dump(result, open('global_diagnostic.json', 'w'), indent=2)
 
 def plots():
     local_diagnostic_plot()
@@ -86,13 +84,13 @@ def local_diagnostic_plot():
     g = ggplot(data, aes(x='layer_id', y='acc', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, 1) + ggtitle("Local diagnostic")
     ggsave(g, 'local_diagnostic.png')
 
-def global_diagnostic_plot(directory='.'):
-    data = pd.read_json("{}/global_diagnostic.json".format(directory), orient='records')
+def global_diagnostic_plot():
+    data = pd.read_json("global_diagnostic.json", orient='records')
     order = list(data['layer'].unique())
     data['layer_id'] = [ order.index(x) for x in data['layer'] ]
     data['rer'] = rer(data['acc'], data['baseline'])
-    g = ggplot(data, aes(x='layer_id', y='rer', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, 1) + ggtitle("Global diagnostic")
-    ggsave(g, "{}/global_diagnostic.png".format(directory))
+    g = ggplot(data, aes(x='layer_id', y='rer', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0.0, 1) + ggtitle("Global diagnostic")
+    ggsave(g, "global_diagnostic.png")
 
 def local_rsa_plot():
     data = pd.read_json("local_rsa.json", orient='records')
@@ -103,9 +101,9 @@ def local_rsa_plot():
 
 def global_rsa_plot():
     data = pd.read_json("global_rsa.json", orient='records')
-    order = ['mfcc', 'conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']
+    order = list(data['layer'].unique())
     data['layer_id'] = [ order.index(x) for x in data['layer'] ] 
-    g = ggplot(data, aes(x='layer_id', y='cor', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0, 1) + ggtitle("Global RSA")
+    g = ggplot(data, aes(x='layer_id', y='cor', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(-0.1, 1) + ggtitle("Global RSA")
     ggsave(g, "global_rsa.png")
 
 ## Tables
@@ -254,7 +252,7 @@ def correlation_score(features, labels, size):
     return pearsonr(x_sim, y_sim)[0]
 
     
-def weighted_average_RSA(directory, scalar=True, test_size=1/2, hidden_size=1024, epochs=1, device='cpu'):
+def weighted_average_RSA(directory='.', layers=[], attention='linear', test_size=1/2,  attention_hidden_size=None, epochs=1, device='cpu'):
     from sklearn.model_selection import train_test_split
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
@@ -271,31 +269,40 @@ def weighted_average_RSA(directory, scalar=True, test_size=1/2, hidden_size=1024
     edit_sim = torch.tensor(U.pairwise(S.stringsim, trans)).float().to(device)
     edit_sim_val = torch.tensor(U.pairwise(S.stringsim, trans_val)).float().to(device)
     logging.info("Training for input features")
-    this = train_wa(edit_sim, edit_sim_val, act, act_val, scalar=scalar, hidden_size=hidden_size, epochs=epochs, device=device)
+    this = train_wa(edit_sim, edit_sim_val, act, act_val, attention=attention, attention_hidden_size=None, epochs=epochs, device=device)
     result.append({**this, 'model': 'random', 'layer': 'mfcc'})
     result.append({**this, 'model': 'trained', 'layer': 'mfcc'})
     del act, act_val
     logging.info("Maximum correlation on val: {} at epoch {}".format(result[-1]['cor'], result[-1]['epoch']))
-    for mode in ["random", "trained"]:
-        logging.info("Loading activations for {} data".format(mode))
-        data = pickle.load(open("{}/global_{}.pkl".format(directory, mode), "rb"))
-        for layer in ['conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']:
+    for mode in ["trained", "random"]:
+        for layer in layers:
+            logging.info("Loading activations for {} {}".format(mode, layer))
+            data = pickle.load(open("{}/global_{}_{}.pkl".format(directory, mode, layer), "rb"))
             logging.info("Training for {} {}".format(mode, layer))
             act = [ torch.tensor([item[:, :]]).float().to(device) for item in data[layer] ]
             act, act_val = train_test_split(act, test_size=test_size, random_state=splitseed)
-            this = train_wa(edit_sim, edit_sim_val, act, act_val, scalar=scalar, hidden_size=hidden_size, epochs=epochs, device=device)
+            this = train_wa(edit_sim, edit_sim_val, act, act_val, attention=attention, attention_hidden_size=None, epochs=epochs, device=device)
             result.append({**this, 'model': mode, 'layer': layer}) 
             del act, act_val
-            print("Maximum correlation on val: {} at epoch {}".format(result[-1]['cor'], result[-1]['epoch']))
+            logging.info("Maximum correlation on val: {} at epoch {}".format(result[-1]['cor'], result[-1]['epoch']))
     return result
 
     
-def train_wa(edit_sim, edit_sim_val, stack, stack_val, scalar=True, hidden_size=1024, epochs=1, device='cpu'):
-    if scalar:
+def train_wa(edit_sim, edit_sim_val, stack, stack_val, attention='scalar', attention_hidden_size=None, epochs=1, device='cpu'):
+    if attention == 'scalar':
         wa = platalea.attention.ScalarAttention(stack[0].size(2), hidden_size).to(device)
+    elif attention == 'linear':
+        wa = platalea.attention.LinearAttention(stack[0].size(2)).to(device)
+    elif attention == 'mean':
+        wa = platalea.attention.MeanPool().to(device)
+        avg_pool_val = torch.cat([ wa(item) for item in stack_val])
+        avg_pool_sim_val = S.cosine_matrix(avg_pool_val, avg_pool_val)
+        cor_val = S.pearson_r(S.triu(avg_pool_sim_val), S.triu(edit_sim_val))
+        return {'epoch': None, 'cor': cor_val.item() }
+
     else:
-        # This crashes CUDA memory
-        wa = platalea.attention.Attention(stack[0].size(2), hidden_size).to(device)
+        wa = platalea.attention.Attention(stack[0].size(2), attention_hidden_size).to(device)
+
     optim = torch.optim.Adam(wa.parameters())
     minloss = 0; minepoch = None
     logging.info("Optimizing for {} epochs".format(epochs))
@@ -319,7 +326,7 @@ def train_wa(edit_sim, edit_sim_val, stack, stack_val, scalar=True, hidden_size=
     del wa, optim
     return {'epoch': minepoch, 'cor': -minloss}
 
-def weighted_average_diagnostic(directory, attention='scalar', test_size=1/2, attention_hidden_size=1024, hidden_size=500, epochs=1, device='cpu'):
+def weighted_average_diagnostic(directory='.', layers=[], attention='scalar', test_size=1/2, attention_hidden_size=None, hidden_size=None, epochs=1, device='cpu'):
     from sklearn.model_selection import train_test_split
     from sklearn.feature_extraction.text import CountVectorizer
     torch.backends.cudnn.deterministic = True
@@ -332,8 +339,6 @@ def weighted_average_diagnostic(directory, attention='scalar', test_size=1/2, at
     act = [ torch.tensor(item[:, :]).float().to(device) for item in data['audio'] ]
     
     trans, trans_val, X, X_val = train_test_split(trans, act, test_size=test_size, random_state=splitseed)
-    # FIXME FIXME
-    #trans, trans_val, X, X_val = train_test_split(trans[:len(trans)//4], act[:len(act)//4], test_size=test_size, random_state=splitseed) 
 
     logging.info("Computing targets")
     vec = CountVectorizer(lowercase=False, analyzer='char')
@@ -341,27 +346,26 @@ def weighted_average_diagnostic(directory, attention='scalar', test_size=1/2, at
     y = torch.tensor(vec.fit_transform(trans).toarray()).float().clamp(min=0, max=1)
     y_val = torch.tensor(vec.transform(trans_val).toarray()).float().clamp(min=0, max=1)
     logging.info("Training for input features")
-    #this = train_wa_diagnostic(X, y, X_val, y_val, attention=attention, hidden_size=hidden_size, epochs=epochs, device=device)
-    model = PooledClassifier(input_size=X[0].shape[1],  output_size=y[0].shape[0], attention_hidden_size=attention_hidden_size, attention=attention).to(device)
+    model = PooledClassifier(input_size=X[0].shape[1],  output_size=y[0].shape[0],
+                             hidden_size=hidden_size, attention_hidden_size=attention_hidden_size, attention=attention).to(device)
     this = train_classifier(model, X, y, X_val, y_val, epochs=epochs)
     result.append({**this, 'model': 'random', 'layer': 'mfcc'})
     result.append({**this, 'model': 'trained', 'layer': 'mfcc'})
     del X, X_val
     logging.info("Maximum accuracy on val: {} at epoch {}".format(result[-1]['acc'], result[-1]['epoch']))
     for mode in ["trained", "random"]:
-        logging.info("Loading activations for {} data".format(mode))
-        data = pickle.load(open("{}/global_{}.pkl".format(directory, mode), "rb"))
-        for layer in data:#['conv', 'rnn0', 'rnn1', 'rnn2', 'rnn3']:
+        for layer in layers:
+            logging.info("Loading activations for {} {}".format(mode, layer))
+            data = pickle.load(open("{}/global_{}_{}.pkl".format(directory, mode, layer), "rb"))
             logging.info("Training for {} {}".format(mode, layer))
             act = [ torch.tensor(item[:, :]).float() for item in data[layer] ]
             X, X_val = train_test_split(act, test_size=test_size, random_state=splitseed)
-            
-            #this = train_wa_diagnostic(X, y, X_val, y_val, attention=attention, hidden_size=hidden_size, epochs=epochs, device=device)
-            model = PooledClassifier(input_size=X[0].shape[1], hidden_size=hidden_size, output_size=y[0].shape[0], attention=attention).to(device)
+            model = PooledClassifier(input_size=X[0].shape[1], output_size=y[0].shape[0],
+                                     hidden_size=hidden_size, attention_hidden_size=attention_hidden_size, attention=attention).to(device)
             this = train_classifier(model, X, y, X_val, y_val, epochs=epochs)
             result.append({**this, 'model': mode, 'layer': layer}) 
             del X, X_val
-            print("Maximum accuracy on val: {} at epoch {}".format(result[-1]['acc'], result[-1]['epoch']))
+            logging.info("Maximum accuracy on val: {} at epoch {}".format(result[-1]['acc'], result[-1]['epoch']))
     return result
 
 # def train_wa_diagnostic(X, y, X_val, y_val, attention='scalar', hidden_size=1024, epochs=1, patience=50, device='cpu'):
@@ -451,6 +455,8 @@ class PooledClassifier(nn.Module):
             self.wa = platalea.attention.ScalarAttention(input_size, attention_hidden_size)
         elif attention == 'linear':
             self.wa = platalea.attention.LinearAttention(input_size)
+        elif attention == 'mean':
+            self.wa = platalea.attention.MeanPool()
         else:
             self.wa = platalea.attention.Attention(input_size, attention_hidden_size)
         if hidden_size is None:
