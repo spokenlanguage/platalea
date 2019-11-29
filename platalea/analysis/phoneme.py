@@ -49,12 +49,13 @@ def local_diagnostic(config):
     json.dump(output, open("local_diagnostic.json", "w"), indent=True)
 
 def local_rsa(config):
-    directory = config['datadir']
     logging.getLogger().setLevel('INFO')
     if config['matrix']:
-        result = framewise_RSA_matrix(directory, layers=config['layers'], size=config['size'])
+        raise NotImplementedError
+        #result = framewise_RSA_matrix(directory, layers=config['layers'], size=config['size'])
     else:
-        result = framewise_RSA(directory, layers=config['layers'], size=config['size'])
+        del config['matrix']
+        result = framewise_RSA(**config)
     json.dump(result, open('local_rsa.json'.format(directory), 'w'), indent=2)
     
 ### Global
@@ -219,7 +220,7 @@ def framewise_RSA_matrix(directory, layers, size=70000):
             result.append(dict(model=mode, layer=layer, cor=cor))
     return result
 
-def framewise_RSA(directory, layers, size=70000):
+def framewise_RSA(directory='.', layers=[], size=70000):
     result = []
     mfcc_done = False
     data = pickle.load(open("{}/local_input.pkl".format(directory), "rb"))
