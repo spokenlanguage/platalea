@@ -324,7 +324,17 @@ def train_wa(edit_sim, edit_sim_val, stack, stack_val, attention='scalar', atten
     del wa, optim
     return {'epoch': minepoch, 'cor': -minloss}
 
-def weighted_average_diagnostic(directory='.', layers=[], attention='scalar', test_size=1/2, attention_hidden_size=None, hidden_size=None, epochs=1, device='cpu'):
+
+def normalize(X, X_val):
+    flat = torch.cat(X)
+    mu = flat.mean(dim=0)
+    sigma = flat.std(dim=0)
+    X_norm = [ (item - mu) / sigma for item in X]
+    X_val_norm = [ (item - mu) /sigma for item in X_val ]
+    return X_norm, X_val_norm
+
+    
+def weighted_average_diagnostic(directory='.', layers=[], attention='scalar', test_size=1/2, attention_hidden_size=None, hidden_size=None, standardize=False, epochs=1, device='cpu'):
     from sklearn.model_selection import train_test_split
     from sklearn.feature_extraction.text import CountVectorizer
     torch.backends.cudnn.deterministic = True
@@ -337,7 +347,9 @@ def weighted_average_diagnostic(directory='.', layers=[], attention='scalar', te
     act = [ torch.tensor(item[:, :]).float().to(device) for item in data['audio'] ]
     
     trans, trans_val, X, X_val = train_test_split(trans, act, test_size=test_size, random_state=splitseed)
-
+    if standardize:
+        logging.info("Standardizing data")
+        X, X_val = normalize(X, X_val)
     logging.info("Computing targets")
     vec = CountVectorizer(lowercase=False, analyzer='char')
     # Binary instead of counts
@@ -358,6 +370,9 @@ def weighted_average_diagnostic(directory='.', layers=[], attention='scalar', te
             logging.info("Training for {} {}".format(mode, layer))
             act = [ torch.tensor(item[:, :]).float() for item in data[layer] ]
             X, X_val = train_test_split(act, test_size=test_size, random_state=splitseed)
+            if standardize:
+                logging.info("Standardizing data")
+                X, X_val = normalize(X, X_val)
             model = PooledClassifier(input_size=X[0].shape[1], output_size=y[0].shape[0],
                                      hidden_size=hidden_size, attention_hidden_size=attention_hidden_size, attention=attention).to(device)
             this = train_classifier(model, X, y, X_val, y_val, epochs=epochs)
