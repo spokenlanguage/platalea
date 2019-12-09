@@ -43,6 +43,32 @@ def massage_transformer_data():
             logging.info("Saving data for {} {}".format(mode, layer))
             pickle.dump(data, open("data/out/trans/global_{}_{}.pkl".format(mode, layer), "wb"), protocol=4)
 
+def vgs_factors():
+    return {'conv': {'pad': 0, 'ksize': 6, 'stride': 2 },
+                   'rnn0': None,
+                   'rnn1': None,
+                   'rnn2': None,
+                   'rnn3': None }
+
+def massage_vgs_asr_data():
+    logging.getLogger().setLevel('INFO')
+    filter_global_data("data/in/vgs-asr/")
+    factors = vgs_factors()
+    layers = factors.keys()
+    logging.info("Loading input")
+    data = pickle.load(open("data/in/vgs-asr/global_input.pkl", "rb"))
+    logging.info("Adding IPA")
+    alignment = load_alignment("data/out/vgs-asr/fa.json") 
+    data['ipa'] = np.array([ align2ipa(alignment[i]) for i in data['audio_id'] ])
+    logging.info("Saving input")
+    pickle.dump(data, open("data/out/vgs-asr/global_input.pkl", "wb"), protocol=4)
+    for mode in ['trained', 'random']:
+        logging.info("Loading data for {}".format(mode))
+        data = pickle.load(open("data/in/vgs-asr/global_{}.pkl".format(mode), "rb"))
+        for layer in layers:
+            ldata = {layer: data[layer]}
+            logging.info("Saving data for {} {}".format(mode, layer))
+            pickle.dump(data, open("data/out/vgs-asr/global_{}_{}.pkl".format(mode, layer), "wb"), protocol=4)
         
 def save_data(nets, directory, batch_size=32):
     save_global_data(nets, directory=directory, batch_size=batch_size) # FIXME adapt this per directory too
@@ -94,7 +120,14 @@ def filter_global_data(directory):
 
     include = np.array([ i in sentids for i in global_input['audio_id'] ])
     
-    filtered = { key: np.array(value)[include] for key, value in global_input.items() }
+    #filtered = { key: np.array(value)[include] for key, value in global_input.items() }
+    # Hack to fix broken format
+    filtered = {}
+    for key, value in global_input.items():
+        if key == "audio":
+            value = [ v.numpy() for v in value ]
+        filtered[key] = np.array(value)[include]
+        
     logging.info("Saving filtered data")
     pickle.dump(filtered, open("{}/global_input.pkl".format(directory), "wb"), protocol=4)
 
@@ -144,11 +177,7 @@ def save_local_data(directory):
         factors = pickle.load(open("{}/downsampling_factors.pkl".format(directory), "rb"))
     except FileNotFoundError:
         # Default VGS settings
-        factors = {'conv': {'pad': 0, 'ksize': 6, 'stride': 2 },
-                   'rnn0': None,
-                   'rnn1': None,
-                   'rnn2': None,
-                   'rnn3': None }
+        factors = vgs_factors()
     for mode in ['trained', 'random']:
         for layer in factors.keys():
             if layer == "conv1":

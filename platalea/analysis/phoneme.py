@@ -27,7 +27,8 @@ def local_diagnostic(config):
     logging.getLogger().setLevel('INFO')
     output = []
     data_mfcc = pickle.load(open('{}/local_input.pkl'.format(directory), 'rb'))
-    for mode in ['trained', 'random']:
+    #for mode in ['trained', 'random']:
+    for mode in ['random', 'trained']:
             logging.info("Fitting local classifier for mfcc")
             result  = local_classifier(data_mfcc['features'], data_mfcc['labels'], epochs=config['epochs'], device='cuda:0', hidden=config['hidden'])
             logging.info("Result for {}, {} = {}".format(mode, 'mfcc', result['acc']))
@@ -61,6 +62,11 @@ def global_rsa(config):
     result = weighted_average_RSA(**config)
     json.dump(result, open('global_rsa.json', 'w'), indent=2)
 
+def global_rsa_partial(config):
+    logging.getLogger().setLevel('INFO')
+    result = weighted_average_RSA_partial(**config)
+    json.dump(result, open('global_rsa_partial.json', 'w'), indent=2)
+
 def global_diagnostic(config):
     logging.getLogger().setLevel('INFO')
     result = weighted_average_diagnostic(**config)
@@ -86,7 +92,7 @@ def global_diagnostic_plot():
     order = list(data['layer'].unique())
     data['layer_id'] = [ order.index(x) for x in data['layer'] ]
     data['rer'] = rer(data['acc'], data['baseline'])
-    g = ggplot(data, aes(x='layer_id', y='rer', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(0.0, 1) + ggtitle("Global diagnostic")
+    g = ggplot(data, aes(x='layer_id', y='rer', color='model')) + geom_point(size=2) + geom_line(size=2) + ylim(-0.1, 1) + ggtitle("Global diagnostic")
     ggsave(g, "global_diagnostic.png")
 
 def local_rsa_plot():
@@ -113,7 +119,7 @@ def learning_effect():
     gr = pd.read_json("global_rsa.json", orient="records");          gr['scope'] = 'global';  gr['method'] = 'rsa'
     data = pd.concat([ld, lr, gd, gr], sort=False)
     data['rer'] = rer(data['acc'], data['baseline'])
-    data['score'] = data['rer'].fillna(0.0) + data['cor'].fillna(0.0) 
+    data['score'] = data['rer'].fillna(0.0) + data['cor'].fillna(0.0)
     trained = data.loc[data['model']=='trained']
     random  = data.loc[data['model']=='random']
     trained['learning_effect'] = le(trained['score'].values, random['score'].values)
@@ -250,7 +256,7 @@ def correlation_score(features, labels, size):
     return pearsonr(x_sim, y_sim)[0]
 
     
-def weighted_average_RSA(directory='.', layers=[], attention='linear', test_size=1/2,  attention_hidden_size=None, epochs=1, device='cpu'):
+def weighted_average_RSA(directory='.', layers=[], attention='linear', test_size=1/2,  attention_hidden_size=None, standardize=False, epochs=1, device='cpu'):
     from sklearn.model_selection import train_test_split
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
@@ -262,7 +268,9 @@ def weighted_average_RSA(directory='.', layers=[], attention='linear', test_size
     act = [ torch.tensor([item[:, :]]).float().to(device) for item in data['audio'] ]
 
     trans, trans_val, act, act_val = train_test_split(trans, act, test_size=test_size, random_state=splitseed) 
-
+    if standardize:
+        logging.info("Standardizing data")
+        act, act_val = normalize(act, act_val)
     logging.info("Computing edit distances")
     edit_sim = torch.tensor(U.pairwise(S.stringsim, trans)).float().to(device)
     edit_sim_val = torch.tensor(U.pairwise(S.stringsim, trans_val)).float().to(device)
@@ -279,6 +287,9 @@ def weighted_average_RSA(directory='.', layers=[], attention='linear', test_size
             logging.info("Training for {} {}".format(mode, layer))
             act = [ torch.tensor([item[:, :]]).float().to(device) for item in data[layer] ]
             act, act_val = train_test_split(act, test_size=test_size, random_state=splitseed)
+            if standardize:
+                logging.info("Standardizing data")
+                act, act_val = normalize(act, act_val)
             this = train_wa(edit_sim, edit_sim_val, act, act_val, attention=attention, attention_hidden_size=None, epochs=epochs, device=device)
             result.append({**this, 'model': mode, 'layer': layer}) 
             del act, act_val
@@ -324,17 +335,120 @@ def train_wa(edit_sim, edit_sim_val, stack, stack_val, attention='scalar', atten
     del wa, optim
     return {'epoch': minepoch, 'cor': -minloss}
 
+def weighted_average_RSA_partial(directory='.', layers=[], test_size=1/2,  standardize=False, epochs=1, device='cpu'):
+    from sklearn.model_selection import train_test_split
+    from platalea.dataset import Flickr8KData
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    splitseed = random.randint(0, 1024)
+    result = []
+    logging.info("Loading transcription data")
+    data = pickle.load(open("{}/global_input.pkl".format(directory), "rb"))
+    trans = data['ipa']
+    act = [ torch.tensor([item[:, :]]).float().to(device) for item in data['audio'] ]
+    val = Flickr8KData(root='/roaming/gchrupal/datasets/flickr8k/', split='val')
+    image_map = { item['audio_id']: item['image'] for item in val }
+    image = np.stack([ image_map[item] for item in data['audio_id'] ])
+
+    trans, trans_val, act, act_val, image, image_val = train_test_split(trans, act, image, test_size=test_size, random_state=splitseed) 
+    if standardize:
+        logging.info("Standardizing data")
+        act, act_val = normalize(act, act_val)
+    logging.info("Computing edit distances")
+    edit_sim = torch.tensor(U.pairwise(S.stringsim, trans)).float().to(device)
+    edit_sim_val = torch.tensor(U.pairwise(S.stringsim, trans_val)).float().to(device)
+    logging.info("Computing image similarities")
+    image = torch.tensor(image).float()
+    image_val = torch.tensor(image_val).float()
+    sim_image = S.cosine_matrix(image, image)
+    sim_image_val = S.cosine_matrix(image_val, image_val)
+
+    logging.info("Computing partial correlation for input features (mean pooling)")
+    wa = platalea.attention.MeanPool().to(device)
+    avg_pool = torch.cat([ wa(item) for item in act])
+    avg_pool_sim = S.cosine_matrix(avg_pool, avg_pool)
+    avg_pool_val = torch.cat([ wa(item) for item in act_val])
+    avg_pool_sim_val = S.cosine_matrix(avg_pool_val, avg_pool_val)
+    # Training data
+    #  Edit ~ Act + Image
+    Edit  = S.triu(edit_sim).cpu().numpy()
+    Image = S.triu(sim_image).cpu().numpy()
+    Act   = S.triu(avg_pool_sim).cpu().numpy()
+    # Val data
+    Edit_val  = S.triu(edit_sim_val).cpu().numpy()
+    Image_val = S.triu(sim_image_val).cpu().numpy()
+    Act_val   = S.triu(avg_pool_sim_val).cpu().numpy()
+    e_full, e_base, e_mean = partial_r2(Edit, Act, Image, Edit_val, Act_val, Image_val)
+    logging.info("Full, base, mean error: {} {}".format(e_full, e_base, e_mean))
+    r2 =  (e_base - e_full)/e_base
+    this =  {'epoch': None, 'error': e_full, 'baseline': e_base, 'error_mean': e_mean, 'r2': r2  }
+
+    #this = train_wa(edit_sim, edit_sim_val, act, act_val, attention=attention, attention_hidden_size=None, epochs=epochs, device=device)
+    result.append({**this, 'model': 'random', 'layer': 'mfcc'})
+    result.append({**this, 'model': 'trained', 'layer': 'mfcc'})
+    del act, act_val
+    logging.info("Partial r2 on val: {} at epoch {}".format(result[-1]['r2'], result[-1]['epoch']))
+    for mode in ["trained", "random"]:
+        for layer in layers:
+            logging.info("Loading activations for {} {}".format(mode, layer))
+            data = pickle.load(open("{}/global_{}_{}.pkl".format(directory, mode, layer), "rb"))
+            logging.info("Training for {} {}".format(mode, layer))
+            act = [ torch.tensor([item[:, :]]).float().to(device) for item in data[layer] ]
+            act, act_val = train_test_split(act, test_size=test_size, random_state=splitseed)
+            if standardize:
+                logging.info("Standardizing data")
+                act, act_val = normalize(act, act_val)
+            avg_pool = torch.cat([ wa(item) for item in act])
+            avg_pool_sim = S.cosine_matrix(avg_pool, avg_pool)
+            avg_pool_val = torch.cat([ wa(item) for item in act_val])
+            avg_pool_sim_val = S.cosine_matrix(avg_pool_val, avg_pool_val)
+            Act   = S.triu(avg_pool_sim).cpu().numpy()
+            Act_val   = S.triu(avg_pool_sim_val).cpu().numpy()
+            e_full, e_base, e_mean = partial_r2(Edit, Act, Image, Edit_val, Act_val, Image_val)
+            logging.info("Full, base, mean error: {} {}".format(e_full, e_base, e_mean))
+            r2 =  (e_base - e_full)/e_base
+            this =  {'epoch': None, 'error': e_full, 'baseline': e_base, 'error_mean': e_mean, 'r2': r2  }            
+            pickle.dump(dict(Edit=Edit, Act=Act, Image=Image, Edit_val=Edit_val, Act_val=Act_val, Image_val=Image_val), open("fufi_{}_{}.pkl".format(mode, layer), "wb"), protocol=4)
+            result.append({**this, 'model': mode, 'layer': layer}) 
+            del act, act_val
+            logging.info("Partial R2 on val: {} at epoch {}".format(result[-1]['r2'], result[-1]['epoch']))
+    return result
+
+def partial_r2(Y, X, Z, y, x, z):
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_squared_error
+    from sklearn.metrics import r2_score
+    from scipy.stats import pearsonr
+    full = LinearRegression()
+    full.fit(np.stack([X, Z], axis=1), Y)
+    base = LinearRegression()
+    base.fit(Z.reshape((-1, 1)), Y)
+    y_full = full.predict(np.stack([x, z], axis=1))
+    y_base = base.predict(z.reshape((-1, 1)))
+    e_full = mean_squared_error(y, y_full)
+    e_base = mean_squared_error(y, y_base)
+    e_mean = mean_squared_error(y, np.repeat(Y.mean().item(), len(y)))
+    r_full = pearsonr(y, y_full)[0]
+    r_base = pearsonr(y, y_base)[0]
+    logging.info("Pearson's r full : {}".format(r_full))
+    logging.info("Pearson's r base : {}".format(r_base))
+    logging.info("Pearson's partial: {}".format(rer(r_full, r_base)))
+    return e_full.item(), e_base.item(), e_mean.item()
 
 def normalize(X, X_val):
-    flat = torch.cat(X)
+    device = X[0].device
+    X = [x.cpu() for x in X ]
+    X_val = [x.cpu() for x in X_val]
+    d = X[0].shape[-1]
+    flat = torch.cat([ x.view(-1, d) for x in X])
     mu = flat.mean(dim=0)
     sigma = flat.std(dim=0)
     X_norm = [ (item - mu) / sigma for item in X]
     X_val_norm = [ (item - mu) /sigma for item in X_val ]
-    return X_norm, X_val_norm
+    return [x.to(device) for x in X_norm], [x.to(device) for x in X_val_norm ]
 
     
-def weighted_average_diagnostic(directory='.', layers=[], attention='scalar', test_size=1/2, attention_hidden_size=None, hidden_size=None, standardize=False, epochs=1, device='cpu'):
+def weighted_average_diagnostic(directory='.', layers=[], attention='scalar', test_size=1/2, attention_hidden_size=None, hidden_size=None, standardize=False, epochs=1, factor=0.1, device='cpu'):
     from sklearn.model_selection import train_test_split
     from sklearn.feature_extraction.text import CountVectorizer
     torch.backends.cudnn.deterministic = True
@@ -358,7 +472,7 @@ def weighted_average_diagnostic(directory='.', layers=[], attention='scalar', te
     logging.info("Training for input features")
     model = PooledClassifier(input_size=X[0].shape[1],  output_size=y[0].shape[0],
                              hidden_size=hidden_size, attention_hidden_size=attention_hidden_size, attention=attention).to(device)
-    this = train_classifier(model, X, y, X_val, y_val, epochs=epochs)
+    this = train_classifier(model, X, y, X_val, y_val, epochs=epochs, factor=factor)
     result.append({**this, 'model': 'random', 'layer': 'mfcc'})
     result.append({**this, 'model': 'trained', 'layer': 'mfcc'})
     del X, X_val
@@ -375,7 +489,7 @@ def weighted_average_diagnostic(directory='.', layers=[], attention='scalar', te
                 X, X_val = normalize(X, X_val)
             model = PooledClassifier(input_size=X[0].shape[1], output_size=y[0].shape[0],
                                      hidden_size=hidden_size, attention_hidden_size=attention_hidden_size, attention=attention).to(device)
-            this = train_classifier(model, X, y, X_val, y_val, epochs=epochs)
+            this = train_classifier(model, X, y, X_val, y_val, epochs=epochs, factor=factor)
             result.append({**this, 'model': mode, 'layer': layer}) 
             del X, X_val
             logging.info("Maximum accuracy on val: {} at epoch {}".format(result[-1]['acc'], result[-1]['epoch']))
@@ -451,10 +565,10 @@ def tuple_stack(xy):
 def rer(hi, lo): 
     return ((1-lo) - (1-hi))/(1-lo)
 
-def train_classifier(model, X, y, X_val, y_val, epochs=1, patience=50, majority=majority_binary):
+def train_classifier(model, X, y, X_val, y_val, epochs=1, patience=50, factor=0.1, majority=majority_binary):
     device = list(model.parameters())[0].device
     optim = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=model.weight_decay)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, 'min', factor=0.1, patience=10)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, 'min', factor=factor, patience=10)
     data = torch.utils.data.DataLoader(list(zip(X, y)), batch_size=64, shuffle=True, collate_fn=collate)
     data_val = torch.utils.data.DataLoader(list(zip(X_val, y_val)), batch_size=64, shuffle=False, collate_fn=collate)
     logging.info("Optimizing for {} epochs".format(epochs))
