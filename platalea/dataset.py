@@ -13,10 +13,10 @@ class Flickr8KData(torch.utils.data.Dataset):
         tokens = ['<sos>', '<eos>', '<unk>', '<pad>'] + \
                  [c for d in dataset.split_data for c in d[2]]
         cls.le.fit(tokens)
-        cls.sos = cls.le.classes_['<sos>']
-        cls.eos = cls.le.classes_['<eos>']
-        cls.unk = cls.le.classes_['<unk>']
-        cls.pad = cls.le.classes_['<pad>']
+        cls.sos = cls.le.transform(['<sos>'])[0]
+        cls.eos = cls.le.transform(['<eos>'])[0]
+        cls.unk = cls.le.transform(['<unk>'])[0]
+        cls.pad = cls.le.transform(['<pad>'])[0]
 
     @classmethod
     def vocabulary_size(cls):
@@ -24,7 +24,7 @@ class Flickr8KData(torch.utils.data.Dataset):
             raise ValueError('Vocabulary not initialized')
         return len(cls.le.classes_)
 
-    def __init__(self, root, split='train'):
+    def __init__(self, root, feature_fname, split='train'):
         self.root = root
         self.split = split
         self.metadata = json.load(open(root + 'dataset.json'))['images']
@@ -48,11 +48,11 @@ class Flickr8KData(torch.utils.data.Dataset):
         audio = torch.load(root + 'mfcc_features.pt')
         self.audio = dict(zip(audio['filenames'], audio['features']))
 
-    def caption2tensor(capt):
+    def caption2tensor(self, capt):
         if not self.le:
             raise ValueError('Vocabulary not initialized')
         capt = [c if c in self.le.classes_ else '<unk>' for c in capt]
-        capt = ['<sos>'] + text + ['<eos>']
+        capt = ['<sos>'] + capt + ['<eos>']
         return torch.Tensor(self.le.transform(capt))
 
     def __getitem__(self, index):
@@ -92,8 +92,8 @@ class Flickr8KData(torch.utils.data.Dataset):
 def batch_audio(audios, max_frames=2048):
     """Merge audio captions. Truncate to max_frames. Pad with <pad> token."""
     mfcc_lengths = [len(cap[:max_frames, :]) for cap in audios]
-    mfcc = torch.new_fill((len(audios), max(mfcc_lengths), audios[0].size(1)),
-                          self.pad_id)
+    mfcc = torch.empty(len(audios), max(mfcc_lengths), audios[0].size(1))
+    mfcc.fill_(Flickr8KData.pad)
     for i, cap in enumerate(audios):
         end = mfcc_lengths[i]
         mfcc[i, :end] = cap[:end]
@@ -105,7 +105,8 @@ def batch_text(texts):
     <pad> token."""
     # FIXME this needs to be done properly, eventually
     char_lengths = [len(cap) for cap in texts]
-    chars = torch.new_fill((len(texts), max(char_lengths)), self.pad_id).long()
+    chars = torch.Tensor(len(texts), max(char_lengths)).long()
+    chars.fill_(Flickr8KData.pad)
     for i, cap in enumerate(texts):
         end = char_lengths[i]
         chars[i, :end] = cap[:end]
@@ -131,9 +132,10 @@ def collate_fn(data, max_frames=2048):
 
 
 def flickr8k_loader(split='train', batch_size=32, shuffle=False,
-                    max_frames=2048):
+                    max_frames=2048, feature_fname='mfcc_features.pt'):
     return torch.utils.data.DataLoader(
         dataset=Flickr8KData(root='/roaming/gchrupal/datasets/flickr8k/',
+                             feature_fname=feature_fname,
                              split=split),
         batch_size=batch_size,
         shuffle=shuffle,

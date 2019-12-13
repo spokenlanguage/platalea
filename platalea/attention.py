@@ -21,13 +21,13 @@ class LinearAttention(nn.Module):
 class MeanPool(nn.Module):
     def __init__(self):
         super(MeanPool, self).__init__()
-        
+
     def forward(self, input):
         x = input.mean(dim=1)
         # return the resulting embedding
         return x
 
-    
+
 class ScalarAttention(nn.Module):
     def __init__(self, in_size, hidden_size):
         super(ScalarAttention, self).__init__()
@@ -78,7 +78,6 @@ class BahdanauAttention(nn.Module):
 
     def forward(self, hidden, encoder_outputs):
         # Calculate energies for each encoder output
-        hidden = hidden.permute(1, 0, 2)  # B x S x N
         attn_energies = self.W_a(hidden) + self.U_a(encoder_outputs)
         attn_energies = torch.tanh(attn_energies)
         attn_energies = self.v_a(attn_energies)

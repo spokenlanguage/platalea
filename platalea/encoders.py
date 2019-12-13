@@ -28,11 +28,14 @@ class SpeechEncoder(nn.Module):
         super(SpeechEncoder, self).__init__()
         conv = config['conv']
         rnn  = config['rnn']
-        att  = config['att']
+        att  = config.get('att', None)
         self.Conv = nn.Conv1d(**conv)
         rnn_layer_type = config.get('rnn_layer_type', nn.GRU)
         self.RNN = rnn_layer_type(batch_first=True, **rnn)
-        self.att = Attention(**att)
+        if att is not None:
+            self.att = Attention(**att)
+        else:
+            self.att = None
 
     def forward(self, input, l):
         x = self.Conv(input)
@@ -45,7 +48,8 @@ class SpeechEncoder(nn.Module):
         x, _ = self.RNN(x)
         # unpack again as at the moment only rnn layers except packed_sequence objects
         x, lens = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
-        x = nn.functional.normalize(self.att(x), p=2, dim=1)
+        if self.att is not None:
+            x = nn.functional.normalize(self.att(x), p=2, dim=1)
         return x
 
     def introspect(self, input, l):
@@ -68,8 +72,9 @@ class SpeechEncoder(nn.Module):
         # Computing aggregated and normalized encoding
         x, _ = self.RNN(conv_padded)
         x, _lens = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
-        x = nn.functional.normalize(self.att(x), p=2, dim=1)
-        result['att'] = list(x)
+        if self.att is not None:
+            x = nn.functional.normalize(self.att(x), p=2, dim=1)
+            result['att'] = list(x)
         return result
 
 

@@ -1,7 +1,7 @@
-import torch
 import platalea.rank_eval as E
+import platalea.xer as xer
 import numpy as np
-import logging
+
 
 def score(net, dataset):
     data = dataset.evaluation()
@@ -15,3 +15,13 @@ def score(net, dataset):
                        10: np.mean(result['recall'][10])})
 
 
+def score_asr(net, dataset, use_beam=False):
+    data = dataset.evaluation()
+    if use_beam:
+        trn = net.transcribe_beam(data['audio'])
+    else:
+        trn = net.transcribe(data['audio'])
+    ref = [txt['raw'] for txt in data['text']]
+    cer = xer.cer(trn, ref)
+    wer = xer.wer(trn, ref)
+    return dict(wer=wer, cer=cer)
