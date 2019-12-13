@@ -11,96 +11,109 @@ import numpy
 
 
 def flickr8k_features():
-    config = dict(audio=dict(dir='/roaming/gchrupal/datasets/flickr8k/', type='mfcc', delta=True, alpha=0.97, n_filters=40, window_size=0.025, frame_shift=0.010),
-                  image=dict(dir='/roaming/gchrupal/datasets/flickr8k/', model='resnet'))
+    config = dict(audio=dict(dir='/roaming/gchrupal/datasets/flickr8k/',
+                             type='mfcc', delta=True, alpha=0.97, n_filters=40,
+                             window_size=0.025, frame_shift=0.010),
+                  image=dict(dir='/roaming/gchrupal/datasets/flickr8k/',
+                             model='resnet'))
     flickr8k_audio_features(config['audio'])
     flickr8k_image_features(config['image'])
-                  
+
+
 def flickr8k_audio_features(config):
-    directory = config['dir'] + 'flickr_audio/wavs/'
-    files = [ line.split()[0] for line in open(config['dir'] + 'wav2capt.txt') ]
-    paths = [ directory + file for file in files ]
+    directory = os.path.join(config['dir'], 'flickr_audio/wavs')
+    wav2capt_fname = os.path.join(config['dir'], 'flickr_audio/wav2capt.txt')
+    files = [line.split()[0] for line in open(wav2capt_fname)]
+    paths = [os.path.join(directory, file) for file in files]
     features = audio_features(paths, config)
-    torch.save(dict(features=features, filenames=files), config['dir'] + 'mfcc_features.pt')
-    
-    
+    save_fname = os.path.join(config['dir'], 'mfcc_features.pt')
+    torch.save(dict(features=features, filenames=files), save_fname)
+
+
 def flickr8k_image_features(config):
-    directory = config['dir'] + 'Flickr8k_Dataset/Flicker8k_Dataset/'
-    data = json.load(open(config['dir'] + 'dataset.json'))
-    files =  [ image['filename'] for image in data['images'] ]
-    paths = [ directory + file for file in files ]
+    directory = os.path.join(config['dir'],
+                             'Flickr8k_Dataset/Flicker8k_Dataset')
+    data = json.load(open(os.path.join(config['dir'], 'dataset.json')))
+    files = [image['filename'] for image in data['images']]
+    paths = [os.path.join(directory, file) for file in files]
 
     features = image_features(paths, config).cpu()
-    torch.save(dict(features=features, filenames=files), config['dir'] + 'resnet_features.pt')
-    
+    torch.save(dict(features=features, filenames=files),
+               os.path.join(config['dir'], 'resnet_features.pt'))
+
 
 def image_features(paths, config):
     if config['model'] == 'resnet':
-        model = models.resnet152(pretrained = True)
+        model = models.resnet152(pretrained=True)
         model = nn.Sequential(*list(model.children())[:-1])
     elif config['model'] == 'vgg19':
-        model = models.vgg19_bn(pretrained = True)
+        model = models.vgg19_bn(pretrained=True)
         model.classifier = nn.Sequential(*list(model.classifier.children())[:-1])
     if torch.cuda.is_available():
         model.cuda()
     for p in model.parameters():
-    	p.requires_grad = False
+        p.requires_grad = False
     model.eval()
     device = list(model.parameters())[0].device
+
     def one(path):
         logging.info("Extracting features from {}".format(path))
         im = PIL.Image.open(path)
         return prep_tencrop(im, model, device)
 
     return torch.stack([one(path) for path in paths])
-    
 
 
 def prep_tencrop(im, model, device):
     # Adapted from: https://github.com/gchrupala/speech2image/blob/master/preprocessing/visual_features.py#L60
 
-    # some functions such as taking the ten crop (four corners, center and horizontal flip) normalise and resize.
+    # some functions such as taking the ten crop (four corners, center and
+    # horizontal flip) normalise and resize.
     tencrop = transforms.TenCrop(224)
     tens = transforms.ToTensor()
-    normalise = transforms.Normalize(mean = [0.485,0.456,0.406], 
-                                     std = [0.229, 0.224, 0.225])
+    normalise = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
     resize = transforms.Resize(256, PIL.Image.ANTIALIAS)
-    
+
     im = tencrop(resize(im))
     im = torch.cat([normalise(tens(x)).unsqueeze(0) for x in im])
     im = im.to(device)
-    # there are some grayscale images in mscoco that the vgg and resnet networks
-    # wont take
+    # there are some grayscale images in mscoco that the vgg and resnet
+    # networks wont take
     if not im.size()[1] == 3:
         im = im.expand(im.size()[0], 3, im.size()[2], im.size()[3])
     activations = model(im)
     return activations.mean(0).squeeze()
 
+
 def fix_wav(path):
     import wave
     logging.warning("Trying to fix {}".format(path))
-    #fix wav file. In the flickr dataset there is one wav file with an incorrect 
-    #number of frames indicated in the header, causing it to be unreadable by pythons
-    #wav read function. This opens the file with the wave package, extracts the correct
-    #number of frames and saves a copy of the file with a correct header
-    
+    # fix wav file. In the flickr dataset there is one wav file with an
+    # incorrect number of frames indicated in the header, causing it to be
+    # unreadable by pythons wav read function. This opens the file with the
+    # wave package, extracts the correct number of frames and saves a copy of
+    # the file with a correct header
+
     file = wave.open(path, 'r')
     # derive the correct number of frames from the file
     frames = file.readframes(file.getnframes())
     # get all other header parameters
     params = file.getparams()
     file.close()
-    # now save the file with a new header containing the correct number of frames
+    # now save the file with a new header containing the correct number of
+    # frames
     out_file = wave.open(path + '.fix', 'w')
     out_file.setparams(params)
     out_file.writeframes(frames)
     out_file.close()
     return path + '.fix'
-    
+
+
 def audio_features(paths, config):
     # Adapted from https://github.com/gchrupala/speech2image/blob/master/preprocessing/audio_features.py#L45
     from platalea.audio.features import get_fbanks, get_freqspectrum, get_mfcc, delta, raw_frames
-    if config['type'] != 'mfcc':
+    if config['type'] != 'mfcc' and config['type'] != 'fbank':
         raise NotImplementedError()
     output = []
     for cap in paths:
@@ -116,18 +129,22 @@ def audio_features(paths, config):
         # get window and frameshift size in samples
         window_size = int(fs*config['window_size'])
         frame_shift = int(fs*config['frame_shift'])
-        
+
         [frames, energy] = raw_frames(input_data, frame_shift, window_size)
-        freq_spectrum = get_freqspectrum(frames, config['alpha'], fs, window_size)
+        freq_spectrum = get_freqspectrum(frames, config['alpha'], fs,
+                                         window_size)
         fbanks = get_fbanks(freq_spectrum, config['n_filters'], fs)
-        features = get_mfcc(fbanks)
-            
-        #  add the frame energy
-        features = numpy.concatenate([energy[:,None], features], 1)
+        if config['type'] == 'fbank':
+            features = fbanks
+        else:
+            features = get_mfcc(fbanks)
+            #  add the frame energy
+            features = numpy.concatenate([energy[:, None], features], 1)
+
         # optionally add the deltas and double deltas
         if config['delta']:
-            single_delta= delta (features, 2)
-            double_delta= delta(single_delta, 2)
-            features= numpy.concatenate([features, single_delta, double_delta], 1)
+            single_delta = delta(features, 2)
+            double_delta = delta(single_delta, 2)
+            features = numpy.concatenate([features, single_delta, double_delta], 1)
         output.append(torch.tensor(features))
     return output
