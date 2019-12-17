@@ -136,7 +136,7 @@ def experiment(net, data, config):
             else:
                 net.load_state_dict(torch.load('net.{}.pt'.format(epoch - 1)))
                 if 'epsilon_decay' in config.keys():
-                    for p in net.optimizer.param_groups:
+                    for p in optimizer.param_groups:
                         p["eps"] *= config['epsilon_decay']
                         print('Epsilon decay - new value: ', p["eps"])
     # Save full model for inference
