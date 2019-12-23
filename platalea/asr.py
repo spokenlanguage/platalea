@@ -67,7 +67,7 @@ class SpeechTranscriber(nn.Module):
         return trn
 
     def cost(self, item):
-        target = item['text']
+        target = item['text'][:, 1:].contiguous()
         pred, _ = self.forward(item['audio'], item['audio_len'], target)
 
         # Masking padding
