@@ -236,12 +236,14 @@ def inout(layer, L):
     convolutional layer.
     https://pytorch.org/docs/stable/nn.html#torch.nn.Conv1d
     """
+    maxpool = False
     if type(layer) == nn.Conv1d:
         fn = lambda x: x[0]
     elif type(layer) == nn.Conv2d:
         fn = lambda x: x[1]
     elif type(layer) == nn.MaxPool1d or type(layer) == nn.MaxPool2d:
         fn = lambda x: x
+        maxpool = True
     else:
         raise NotImplementedError
     pad = fn(layer.padding)
@@ -249,4 +251,8 @@ def inout(layer, L):
     stride = fn(layer.stride)
     dilation = fn(layer.dilation)
     L = ((L.float() + 2 * pad - dilation * (ksize - 1) - 1) / stride + 1)
-    return L.floor().long()
+    if maxpool and layer.ceil_mode:
+        L = L.ceil()
+    else:
+        L = L.floor()
+    return L.long()
