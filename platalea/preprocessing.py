@@ -1,3 +1,4 @@
+from config import CONFIG
 import torch
 import torchvision.models as models
 import torchvision.transforms as transforms
@@ -11,10 +12,10 @@ import numpy
 
 
 def flickr8k_features():
-    config = dict(audio=dict(dir='/roaming/gchrupal/datasets/flickr8k/',
+    config = dict(audio=dict(dir=CONFIG['flickr8k_root'],
                              type='mfcc', delta=True, alpha=0.97, n_filters=40,
                              window_size=0.025, frame_shift=0.010),
-                  image=dict(dir='/roaming/gchrupal/datasets/flickr8k/',
+                  image=dict(dir=CONFIG['flickr8k_root'],
                              model='resnet'))
     flickr8k_audio_features(config['audio'])
     flickr8k_image_features(config['image'])
