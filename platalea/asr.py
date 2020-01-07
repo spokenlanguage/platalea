@@ -9,7 +9,7 @@ import torch.optim as optim
 #from platalea.basic import cyclic_scheduler
 import platalea.dataset as D
 from platalea.decoders import TextDecoder
-from platalea.encoders import SpeechEncoder
+from platalea.encoders import SpeechEncoder, SpeechEncoderVGG, SpeechEncoderMultiConv
 import platalea.loss
 import platalea.score
 
@@ -18,7 +18,14 @@ class SpeechTranscriber(nn.Module):
     def __init__(self, config):
         super(SpeechTranscriber, self).__init__()
         self.config = config
-        self.SpeechEncoder = SpeechEncoder(config['SpeechEncoder'])
+        if 'SpeechEncoder' in config:
+            self.SpeechEncoder = SpeechEncoder(config['SpeechEncoder'])
+        elif 'SpeechEncoderVGG' in config:
+            self.SpeechEncoder = SpeechEncoderVGG(config['SpeechEncoderVGG'])
+        elif 'SpeechEncoderMultiConv' in config:
+            self.SpeechEncoder = SpeechEncoderMultiConv(config['SpeechEncoderMultiConv'])
+        else:
+            raise ValueError('Unknown encoder')
         self.TextDecoder = TextDecoder(config['TextDecoder'])
         self.inverse_transform_fn = config['inverse_transform_fn']
 
@@ -99,8 +106,14 @@ def experiment(net, data, config):
 
     net.cuda()
     net.train()
-    #optimizer = optim.Adam(net.parameters(), lr=1)
-    optimizer = optim.Adadelta(net.parameters(), rho=0.95, eps=1e-8)
+    if 'lr' in config.keys():
+        lr = config['lr']
+    else:
+        lr = 1.0
+    if 'opt' in config.keys() and config['opt'] == 'adam':
+        optimizer = optim.Adam(net.parameters(), lr=lr)
+    else:
+        optimizer = optim.Adadelta(net.parameters(), lr=lr, rho=0.95, eps=1e-8)
     #scheduler = cyclic_scheduler(optimizer, len(data['train']), max_lr = config['max_lr'], min_lr = 1e-6)
     optimizer.zero_grad()
 
@@ -128,8 +141,6 @@ def experiment(net, data, config):
                 net.train()
             result['epoch'] = epoch
             print(result, file=out, flush=True)
-            logging.info("Saving model in net.{}.pt".format(epoch))
-            torch.save(net.state_dict(), "net.{}.pt".format(epoch))
             wer = result['wer']['WER']
             if best_wer is None or wer < best_wer:
                 best_wer = wer
@@ -139,5 +150,7 @@ def experiment(net, data, config):
                     for p in optimizer.param_groups:
                         p["eps"] *= config['epsilon_decay']
                         print('Epsilon decay - new value: ', p["eps"])
+            logging.info("Saving model in net.{}.pt".format(epoch))
+            torch.save(net.state_dict(), "net.{}.pt".format(epoch))
     # Save full model for inference
     torch.save(net, 'net.best.pt')
