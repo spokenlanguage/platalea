@@ -92,17 +92,14 @@ class SpeechTranscriber(nn.Module):
 
 def experiment(net, data, config):
     def val_loss():
-        net.eval()
-        result = []
-        for item in data['val']:
-            item = {key: value.cuda() for key, value in item.items()}
-            result.append(net.cost(item).item())
-        net.train()
-        return torch.tensor(result).mean()
-
-    def val_loss_no_grad():
         with torch.no_grad():
-            return val_loss()
+            net.eval()
+            result = []
+            for item in data['val']:
+                item = {key: value.cuda() for key, value in item.items()}
+                result.append(net.cost(item).item())
+            net.train()
+        return torch.tensor(result).mean()
 
     net.cuda()
     net.train()
