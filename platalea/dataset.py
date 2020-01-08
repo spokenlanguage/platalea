@@ -90,7 +90,9 @@ class Flickr8KData(torch.utils.data.Dataset):
                 image.append(self.image[img['filename']])
                 for text_id, audio_id in self.image_captions[img['filename']]:
                     text.append(img['sentences'][text_id])
-                    audio.append(self.audio[audio_id])
+                    # FIXME: remove after testing old vs. new features
+                    if audio_id in self.audio.keys():
+                        audio.append(self.audio[audio_id])
                     matches.append((len(audio)-1, len(image)-1))
         correct = torch.zeros(len(audio), len(image)).bool()
         for i, j in matches:
