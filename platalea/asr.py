@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-#from platalea.basic import cyclic_scheduler
+from platalea.basic import cyclic_scheduler
 import platalea.dataset as D
 from platalea.decoders import TextDecoder
 from platalea.encoders import SpeechEncoder, SpeechEncoderVGG, SpeechEncoderMultiConv
@@ -109,9 +109,9 @@ def experiment(net, data, config):
         lr = 1.0
     if 'opt' in config.keys() and config['opt'] == 'adam':
         optimizer = optim.Adam(net.parameters(), lr=lr)
+        scheduler = cyclic_scheduler(optimizer, len(data['train']), max_lr = config['max_lr'], min_lr = 1e-6)
     else:
         optimizer = optim.Adadelta(net.parameters(), lr=lr, rho=0.95, eps=1e-8)
-    #scheduler = cyclic_scheduler(optimizer, len(data['train']), max_lr = config['max_lr'], min_lr = 1e-6)
     optimizer.zero_grad()
 
     with open("result.json", "w") as out:
@@ -125,7 +125,8 @@ def experiment(net, data, config):
                 loss.backward()
                 nn.utils.clip_grad_norm_(net.parameters(), config['max_norm'])
                 optimizer.step()
-                #scheduler.step()
+                if 'opt' in config.keys() and config['opt'] == 'adam':
+                    scheduler.step()
                 cost += Counter({'cost': loss.item(), 'N': 1})
                 if j % 100 == 0:
                     logging.info("train {} {} {}".format(
@@ -138,16 +139,21 @@ def experiment(net, data, config):
                 net.train()
             result['epoch'] = epoch
             print(result, file=out, flush=True)
-            wer = result['wer']['WER']
-            if best_wer is None or wer < best_wer:
-                best_wer = wer
-            else:
-                net.load_state_dict(torch.load('net.{}.pt'.format(epoch - 1)))
-                if 'epsilon_decay' in config.keys():
+            if 'epsilon_decay' in config.keys():
+                wer = result['wer']['WER']
+                if best_wer is None or wer < best_wer:
+                    best_wer = wer
+                else:
+                    net.load_state_dict(torch.load('net.{}.pt'.format(epoch - 1)))
                     for p in optimizer.param_groups:
                         p["eps"] *= config['epsilon_decay']
                         print('Epsilon decay - new value: ', p["eps"])
-            logging.info("Saving model in net.{}.pt".format(epoch))
-            torch.save(net.state_dict(), "net.{}.pt".format(epoch))
-    # Save full model for inference
-    torch.save(net, 'net.best.pt')
+                logging.info("Saving model in net.{}.pt".format(epoch))
+                # Saving weights only
+                torch.save(net.state_dict(), "net.{}.pt".format(epoch))
+            else:
+                logging.info("Saving model in net.{}.pt".format(epoch))
+                torch.save(net, "net.{}.pt".format(epoch))
+    if 'epsilon_decay' in config.keys():
+        # Save full model for inference
+        torch.save(net, 'net.best.pt')
