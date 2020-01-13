@@ -59,21 +59,21 @@ class Flickr8KData(torch.utils.data.Dataset):
         return torch.Tensor(self.le.transform(capt))
 
     def __getitem__(self, index):
-        ids = self.split_data[index]
-        image = self.image[ids[0]]
+        sd = self.split_data[index]
+        image = self.image[sd[0]]
         # FIXME: remove after testing old vs. new features
-        if ids[1] not in self.audio.keys():
-            logging.warning("Missing audio data for {}".format(ids[1]))
+        if sd[1] not in self.audio.keys():
+            logging.warning("Missing audio data for {}".format(sd[1]))
             return None
         else:
-            audio = self.audio[ids[1]]
-        text = self.caption2tensor(ids[2])
-        return dict(image_id=ids[0],
-                    audio_id=ids[1],
+            audio = self.audio[sd[1]]
+        text = self.caption2tensor(sd[2])
+        return dict(image_id=sd[0],
+                    audio_id=sd[1],
                     image=image,
                     text=text,
                     audio=audio,
-                    gloss=ids[2])
+                    gloss=sd[2])
 
     def __len__(self):
         return len(self.split_data)
@@ -144,7 +144,7 @@ def collate_fn(data, max_frames=2048):
 
 
 def flickr8k_loader(split='train', batch_size=32, shuffle=False,
-                    max_frames=2048, feature_fname='mfcc_features.pt'):
+                    max_frames=2048, feature_fname='mfcc_delta_features.pt'):
     return torch.utils.data.DataLoader(
         dataset=Flickr8KData(root=CONFIG['flickr8k_root'],
                              feature_fname=feature_fname,
