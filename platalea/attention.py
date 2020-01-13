@@ -75,10 +75,14 @@ class BahdanauAttention(nn.Module):
         self.U_a = nn.Linear(in_size_enc, hidden_size, bias=False)
         self.W_a = nn.Linear(in_size_state, hidden_size, bias=False)
         self.v_a = nn.Linear(hidden_size, 1, bias=True)
+        self.prev_enc_out= None
 
     def forward(self, hidden, encoder_outputs):
         # Calculate energies for each encoder output
-        attn_energies = self.W_a(hidden) + self.U_a(encoder_outputs)
+        if self.prev_enc_out is None or not self.prev_enc_out.is_set_to(encoder_outputs):
+            self.prev_enc_out = encoder_outputs
+            self.precompute_proj = self.U_a(encoder_outputs)
+        attn_energies = self.W_a(hidden) + self.precompute_proj
         attn_energies = torch.tanh(attn_energies)
         attn_energies = self.v_a(attn_energies)
 
