@@ -34,31 +34,20 @@ class SpeechTranscriber(nn.Module):
         pred, attn_weights = self.TextDecoder.decode(out, target)
         return pred, attn_weights
 
-    def transcribe(self, audio):
-        audio = torch.utils.data.DataLoader(dataset=audio, batch_size=32,
-                                            shuffle=False,
-                                            collate_fn=D.batch_audio)
-        trn = []
-        for a, l in audio:
-            pred, _ = self.forward(a.cuda(), l.cuda())
-            trn.append(self.pred2trn(pred.detach().cpu()))
-        trn = np.concatenate(trn)
-        return trn
+    def transcribe(self, audio, audio_len):
+        pred, _ = self.forward(audio.cuda(), audio_len.cuda())
+        return self.pred2trn(pred.detach().cpu())
 
     def transcribe_beam(self, audio, audio_len, beam_size):
-        audio = torch.utils.data.DataLoader(dataset=audio, batch_size=32,
-                                            shuffle=False,
-                                            collate_fn=D.batch_audio)
         trn = []
-        for a, l in audio:
-            enc_out = self.SpeechEncoder(a, l)
-            preds = self.TextDecoder.beam_search(enc_out, beam_size)
-            for i_seq in range(preds.shape[0]):
-                seq = preds[i_seq]
-                i_eos = (seq == self.TextDecoder.eos_id).nonzero()[0]
-                i_last = i_eos[0] if i_eos.shape[0] > 0 else seq.shape[0]
-                chars = [self.inverse_transform_fn(id.item()) for id in seq[:i_last]]
-                trn.append(''.join(chars))
+        enc_out = self.SpeechEncoder(audio.cuda(), audio_len.cuda())
+        preds = self.TextDecoder.beam_search(enc_out, beam_size)
+        for i_seq in range(preds.shape[0]):
+            seq = preds[i_seq]
+            i_eos = (seq == self.TextDecoder.eos_id).nonzero()[0]
+            i_last = i_eos[0] if i_eos.shape[0] > 0 else seq.shape[0]
+            chars = [self.inverse_transform_fn(id.item()) for id in seq[:i_last]]
+            trn.append(''.join(chars))
         trn = np.concatenate(trn)
         return trn
 

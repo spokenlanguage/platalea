@@ -22,25 +22,17 @@ class SpeechImage(nn.Module):
     def cost(self, item):
         speech_enc = self.SpeechEncoder(item['audio'], item['audio_len'])
         image_enc = self.ImageEncoder(item['image'])
-        scores = platalea.loss.cosine_matrix(speech_enc, image_enc) 
+        scores = platalea.loss.cosine_matrix(speech_enc, image_enc)
         loss =  platalea.loss.contrastive(scores, margin=self.config['margin_size'])
         return loss
 
-    def embed_image(self, images):
-        image = torch.utils.data.DataLoader(dataset=images, batch_size=32, shuffle=False, collate_fn=D.batch_image)
-        image_e = []
-        for i in image:
-            image_e.append(self.ImageEncoder(i.cuda()).detach().cpu().numpy())
-        image_e = np.concatenate(image_e)
-        return image_e
+    def embed_image(self, image):
+        image_embed = self.ImageEncoder(image.cuda())
+        return image_embed.detach().cpu().numpy()
 
-    def embed_audio(self, audios):
-        audio = torch.utils.data.DataLoader(dataset=audios, batch_size=32, shuffle=False, collate_fn=D.batch_audio)
-        audio_e = []
-        for a, l in audio:
-            audio_e.append(self.SpeechEncoder(a.cuda(), l.cuda()).detach().cpu().numpy())
-        audio_e = np.concatenate(audio_e)
-        return audio_e
+    def embed_audio(self, audio, audio_len):
+        audio_embed = self.SpeechEncoder(audio.cuda(), audio_len.cuda())
+        return audio_embed.detach().cpu().numpy()
 
 def cyclic_scheduler(optimizer, n_batches, max_lr, min_lr=1e-6):
     stepsize = n_batches * 4
@@ -49,7 +41,7 @@ def cyclic_scheduler(optimizer, n_batches, max_lr, min_lr=1e-6):
     scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda, last_epoch=-1)
     # lambda function which uses the cosine function to cycle the learning rate between the given min and max rates
     # the function operates between 1 and 3 (so the cos cycles from -1 to -1 ) normalise between 0 and 1 and then press between
-    # min and max lr   
+    # min and max lr
     return scheduler
 
 def experiment(net, data, config):
@@ -62,13 +54,13 @@ def experiment(net, data, config):
             result.append(net.cost(item).item())
         net.train()
         return torch.tensor(result).mean()
-    
+
     net.cuda()
     net.train()
     optimizer = optim.Adam(net.parameters(), lr=1)
     scheduler = cyclic_scheduler(optimizer, len(data['train']), max_lr = config['max_lr'], min_lr = 1e-6)
     optimizer.zero_grad()
-    
+
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
@@ -89,11 +81,11 @@ def experiment(net, data, config):
             print(result, file=out, flush=True)
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
-            
-    
+
+
 DEFAULT_CONFIG = dict(SpeechEncoder=dict(conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0, bias=False),
-                                         rnn= dict(input_size=64, hidden_size=1024, num_layers=4, 
-                                                   bidirectional=True, dropout=0), 
+                                         rnn= dict(input_size=64, hidden_size=1024, num_layers=4,
+                                                   bidirectional=True, dropout=0),
                                          att= dict(in_size=2048, hidden_size=128)),
               ImageEncoder=dict(linear=dict(in_size=2048, out_size=2*1024), norm=True),
               margin_size=0.2)

@@ -131,6 +131,7 @@ def batch_image(images):
 def collate_fn(data, max_frames=2048):
     #data.sort(key=lambda x: len(x[1]), reverse=True)
     # FIXME: remove after testing old vs. new features
+    #images, texts, audios = zip(* [(datum['image'], datum['text'], datum['audio']) for datum in data])
     images, texts, audios = zip(* [(datum['image'], datum['text'], datum['audio']) for datum in data if datum is not None])
 
     # Merge images (from tuple of 3D tensor to 4D tensor).
