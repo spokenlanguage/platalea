@@ -44,7 +44,7 @@ def score_asr(net, dataset, use_beam=False):
         fn = lambda x, y: net.transcribe_beam(x, y, beam_size=10)
     else:
         fn = net.transcribe
-    res = np.concatenate([fn(*d) for d in audio_dl])
+    trn = np.concatenate([fn(*d) for d in audio_dl])
     ref = [txt['raw'] for txt in data['text']]
     cer = xer.cer(trn, ref)
     wer = xer.wer(trn, ref)
