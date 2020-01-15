@@ -114,13 +114,13 @@ class TextDecoder(nn.Module):
 
     def beam_search(self, encoder_outputs, beam_size):
         # Prepare variables
-        preds = np.empty([encoder_outputs.shape[0], self.max_output_length])
+        # TODO: add output dimension
+        predictions = np.empty([encoder_outputs.shape[0], self.max_output_length])
         # Loop over sequences
         for i_seq, eo in enumerate(encoder_outputs):
             eo = eo.unsqueeze(0)
-            input = encoder_outputs.new_full((1, 1), self.sos_id,
-                                             sos_iddtype=torch.long)
-            state = self.init_state(encoder_outputs)
+            input = eo.new_full((1, 1), self.sos_id, dtype=torch.long)
+            state = self.init_state(eo)
             hyps = np.empty([1, 0], dtype=int)
             scores = np.ones(1)
             num_ended = 0
@@ -140,7 +140,7 @@ class TextDecoder(nn.Module):
                     else:
                         ht = st
                     tmp_hidden = ht[:, idx_h].repeat([beam_size, 1]).unsqueeze(0)
-                    if num_ended > 0:
+                    if num_ended == 0:
                         new_hyps = tmp_hyps
                         new_scores = tmp_scores
                         new_hidden = tmp_hidden
@@ -190,5 +190,5 @@ class TextDecoder(nn.Module):
                     input = input.cuda()
                 # Duplicate encoder's output
                 eo = eo[0].unsqueeze(0).repeat([beam_size - num_ended, 1, 1])
-            preds[i_seq, :len(new_hyps[0])] = new_hyps[0]
-        return preds
+            predictions[i_seq, :len(new_hyps[0])] = new_hyps[0]
+        return predictions
