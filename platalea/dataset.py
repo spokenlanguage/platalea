@@ -61,12 +61,7 @@ class Flickr8KData(torch.utils.data.Dataset):
     def __getitem__(self, index):
         sd = self.split_data[index]
         image = self.image[sd[0]]
-        # FIXME: remove after testing old vs. new features
-        if sd[1] not in self.audio.keys():
-            logging.warning("Missing audio data for {}".format(sd[1]))
-            return None
-        else:
-            audio = self.audio[sd[1]]
+        audio = self.audio[sd[1]]
         text = self.caption2tensor(sd[2])
         return dict(image_id=sd[0],
                     audio_id=sd[1],
@@ -90,9 +85,7 @@ class Flickr8KData(torch.utils.data.Dataset):
                 image.append(self.image[img['filename']])
                 for text_id, audio_id in self.image_captions[img['filename']]:
                     text.append(img['sentences'][text_id])
-                    # FIXME: remove after testing old vs. new features
-                    if audio_id in self.audio.keys():
-                        audio.append(self.audio[audio_id])
+                    audio.append(self.audio[audio_id])
                     matches.append((len(audio)-1, len(image)-1))
         correct = torch.zeros(len(audio), len(image)).bool()
         for i, j in matches:
@@ -130,9 +123,7 @@ def batch_image(images):
 
 def collate_fn(data, max_frames=2048):
     #data.sort(key=lambda x: len(x[1]), reverse=True)
-    # FIXME: remove after testing old vs. new features
-    #images, texts, audios = zip(* [(datum['image'], datum['text'], datum['audio']) for datum in data])
-    images, texts, audios = zip(* [(datum['image'], datum['text'], datum['audio']) for datum in data if datum is not None])
+    images, texts, audios = zip(* [(datum['image'], datum['text'], datum['audio']) for datum in data])
 
     # Merge images (from tuple of 3D tensor to 4D tensor).
     images = batch_image(images)
