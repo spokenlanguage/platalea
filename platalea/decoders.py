@@ -114,8 +114,8 @@ class TextDecoder(nn.Module):
 
     def beam_search(self, encoder_outputs, beam_size):
         # Prepare variables
-        # TODO: add output dimension
-        predictions = np.empty([encoder_outputs.shape[0], self.max_output_length])
+        predictions = np.empty([encoder_outputs.shape[0],
+                                self.max_output_length])
         # Loop over sequences
         for i_seq, eo in enumerate(encoder_outputs):
             eo = eo.unsqueeze(0)
@@ -123,7 +123,7 @@ class TextDecoder(nn.Module):
             state = self.init_state(eo)
             hyps = np.empty([1, 0], dtype=int)
             scores = np.ones(1)
-            num_ended = 0
+            best_ended_hyp = None
             # Loop over time steps
             for di in range(self.max_output_length):
                 preds, st, _ = self.forward(input, state, eo)
@@ -140,55 +140,55 @@ class TextDecoder(nn.Module):
                     else:
                         ht = st
                     tmp_hidden = ht[:, idx_h].repeat([beam_size, 1]).unsqueeze(0)
-                    if num_ended == 0:
+                    if idx_h == 0:  # first iteration
                         new_hyps = tmp_hyps
                         new_scores = tmp_scores
                         new_hidden = tmp_hidden
                         if type(self.RNN) == nn.LSTM:
                             new_cell = tmp_cell
                     else:
-                        new_hyps = np.vstack((ended_hyps, tmp_hyps))
-                        new_scores = np.hstack((ended_scores, tmp_scores))
-                        new_hidden = torch.cat((ended_hidden, tmp_hidden), dim=1)
+                        new_hyps = np.vstack((new_hyps, tmp_hyps))
+                        new_scores = np.hstack((new_scores, tmp_scores))
+                        new_hidden = torch.cat((new_hidden, tmp_hidden), dim=1)
                         if type(self.RNN) == nn.LSTM:
-                            new_cell = torch.cat((ended_cell, tmp_cell), dim=1)
-                    # Keep only <beam_size> best examples
-                    new_order = np.argsort(-new_scores)
-                    new_scores = new_scores[new_order][:beam_size]
-                    new_hyps = new_hyps[new_order][:beam_size]
-                    new_hidden = new_hidden[:, new_order][:, :beam_size]
-                    if type(self.RNN) == nn.LSTM:
-                        new_cell = new_cell[:, new_order][:, :beam_size]
+                            new_cell = torch.cat((new_cell, tmp_cell), dim=1)
+                        # Keep only <beam_size> best examples
+                        new_order = np.argsort(-new_scores)
+                        new_scores = new_scores[new_order][:beam_size]
+                        new_hyps = new_hyps[new_order][:beam_size]
+                        new_hidden = new_hidden[:, new_order][:, :beam_size]
+                        if type(self.RNN) == nn.LSTM:
+                            new_cell = new_cell[:, new_order][:, :beam_size]
                 # Filter ended sequences
-                ended = ((new_hyps[:, -1] == self.eos_id) |
-                         (new_hyps[:, -1] == self.pad_id)).nonzero()[0]
-                num_ended = len(ended)
-                if num_ended == beam_size:
+                ended = (new_hyps[:, -1] == self.eos_id).nonzero()[0]
+                best_ended_idx = None
+                if len(ended) > 0:
+                    if best_ended_hyp is None or new_scores[ended[0]] > best_ended_score:
+                        best_ended_hyp = new_hyps[ended[0]]
+                        best_ended_score = new_scores[ended[0]]
+                        best_ended_idx = ended[0]
+                if best_ended_idx is None:
+                    if best_ended_hyp is not None:
+                        best_ended_idx = np.searchsorted(-new_scores,
+                                                         -best_ended_score)
+                    else:
+                        # keep all new hypothesis
+                        best_ended_idx = beam_size
+                if best_ended_idx == 0:
+                    # already have best hypothesis, others will only get worse
                     break
-                ended_hyps = np.hstack((
-                    new_hyps[ended],
-                    np.repeat([[self.pad_id]], num_ended, axis=0)))
-                ended_scores = new_scores[ended]
-                # cell and hidden vectors of ended sequences won't be used
-                # but we need to reserve the space for the indices to match
-                ended_hidden = new_hidden[:, ended]
+                hyps = new_hyps[:best_ended_idx]
+                scores = new_scores[:best_ended_idx]
+                state = new_hidden[:, :best_ended_idx]
                 if type(self.RNN) == nn.LSTM:
-                    ended_cell = new_cell[:, ended]
-                mask = np.ones(beam_size, dtype=bool)
-                mask[ended] = 0
-                hyps = new_hyps[mask]
-                scores = new_scores[mask]
-                indices = mask.nonzero()[0]
-                #hiddens = new_hidden[:, indices]
-                #cells = new_cell[:, indices]
-                state = new_hidden[:, indices]
-                if type(self.RNN) == nn.LSTM:
-                    state = (state, new_cell[:, indices])
+                    state = (state, new_cell[:, :best_ended_idx])
                 # Select next input
                 input = torch.unsqueeze(torch.from_numpy(hyps[:, -1]), 1)
                 if self.use_cuda:
                     input = input.cuda()
                 # Duplicate encoder's output
-                eo = eo[0].unsqueeze(0).repeat([beam_size - num_ended, 1, 1])
-            predictions[i_seq, :len(new_hyps[0])] = new_hyps[0]
+                eo = eo[0].unsqueeze(0).repeat([new_hyps.shape[0], 1, 1])
+            if best_ended_hyp is None:
+                best_ended_hyp = new_hyps[0]
+            predictions[i_seq, :len(best_ended_hyp)] = best_ended_hyp
         return predictions
