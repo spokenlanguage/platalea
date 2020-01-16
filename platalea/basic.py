@@ -11,7 +11,6 @@ import platalea.dataset as D
 import platalea.score
 
 class SpeechImage(nn.Module):
-
     def __init__(self, config):
         super(SpeechImage, self).__init__()
         self.config = config
@@ -26,13 +25,26 @@ class SpeechImage(nn.Module):
         loss =  platalea.loss.contrastive(scores, margin=self.config['margin_size'])
         return loss
 
-    def embed_image(self, image):
-        image_embed = self.ImageEncoder(image.cuda())
-        return image_embed.detach().cpu().numpy()
+    def embed_image(self, images):
+        image = torch.utils.data.DataLoader(dataset=images, batch_size=32,
+                                            shuffle=False,
+                                            collate_fn=D.batch_image)
+        image_e = []
+        for i in image:
+            image_e.append(self.ImageEncoder(i.cuda()).detach().cpu().numpy())
+        image_e = np.concatenate(image_e)
+        return image_e
 
-    def embed_audio(self, audio, audio_len):
-        audio_embed = self.SpeechEncoder(audio.cuda(), audio_len.cuda())
-        return audio_embed.detach().cpu().numpy()
+    def embed_audio(self, audios):
+        audio = torch.utils.data.DataLoader(dataset=audios, batch_size=32,
+                                            shuffle=False,
+                                            collate_fn=D.batch_audio)
+        audio_e = []
+        for a, l in audio:
+            audio_e.append(self.SpeechEncoder(a.cuda(), l.cuda()).detach().cpu().numpy())
+        audio_e = np.concatenate(audio_e)
+        return audio_e
+
 
 def cyclic_scheduler(optimizer, n_batches, max_lr, min_lr=1e-6):
     stepsize = n_batches * 4
@@ -44,8 +56,8 @@ def cyclic_scheduler(optimizer, n_batches, max_lr, min_lr=1e-6):
     # min and max lr
     return scheduler
 
-def experiment(net, data, config):
 
+def experiment(net, data, config):
     def val_loss():
         net.eval()
         result = []
