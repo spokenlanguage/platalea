@@ -77,7 +77,6 @@ class TextDecoder(nn.Module):
         return output, state, attn_weights
 
     def decode(self, encoder_outputs, input_seq=None):
-        # TODO: stop when predicting <eos>
         # Prepare variables
         batch_size = encoder_outputs.shape[0]
         input = encoder_outputs.new_full((batch_size, 1), self.sos_id,
@@ -90,7 +89,10 @@ class TextDecoder(nn.Module):
             target_length = input_seq.shape[1]
         else:
             target_length = self.max_output_length
-
+            # If input_seq is None (prediction mode), can end when all
+            # sentences ended
+            not_ended = encoder_outputs.new_full((batch_size, 1), True,
+                                                 dtype=torch.bool)
         for di in range(target_length):
             output, state, att = self.forward(input, state, encoder_outputs)
             if preds is None:
@@ -98,6 +100,12 @@ class TextDecoder(nn.Module):
             else:
                 preds = torch.cat((preds, output), 1)
             attn_weights = torch.cat((attn_weights, att.detach().cpu()), 2)
+            if input_seq is None:
+                # Check for ended sequences
+                no_eos = (output.argmax(dim=2) != self.eos_id)
+                not_ended = not_ended & no_eos
+                if not not_ended.any():
+                    break
             # Select next input
             use_teacher_forcing = False
             if input_seq is not None:
@@ -115,14 +123,14 @@ class TextDecoder(nn.Module):
     def beam_search(self, encoder_outputs, beam_size):
         # Prepare variables
         predictions = np.empty([encoder_outputs.shape[0],
-                                self.max_output_length])
+                                self.max_output_length], dtype=int)
         # Loop over sequences
         for i_seq, eo in enumerate(encoder_outputs):
             eo = eo.unsqueeze(0)
             input = eo.new_full((1, 1), self.sos_id, dtype=torch.long)
             state = self.init_state(eo)
             hyps = np.empty([1, 0], dtype=int)
-            scores = np.ones(1)
+            scores = np.zeros(1)
             best_ended_hyp = None
             # Loop over time steps
             for di in range(self.max_output_length):
@@ -187,7 +195,7 @@ class TextDecoder(nn.Module):
                 if self.use_cuda:
                     input = input.cuda()
                 # Duplicate encoder's output
-                eo = eo[0].unsqueeze(0).repeat([new_hyps.shape[0], 1, 1])
+                eo = eo[0].unsqueeze(0).repeat([hyps.shape[0], 1, 1])
             if best_ended_hyp is None:
                 best_ended_hyp = new_hyps[0]
             predictions[i_seq, :len(best_ended_hyp)] = best_ended_hyp
