@@ -34,43 +34,28 @@ class SpeechTranscriber(nn.Module):
         pred, attn_weights = self.TextDecoder.decode(out, target)
         return pred, attn_weights
 
-    def transcribe(self, audio):
+    def transcribe(self, audio, beam_size=None):
         audio = torch.utils.data.DataLoader(dataset=audio, batch_size=32,
                                             shuffle=False,
                                             collate_fn=D.batch_audio)
         trn = []
         for a, l in audio:
-            pred, _ = self.forward(a.cuda(), l.cuda())
-            trn.append(self.pred2trn(pred.detach().cpu()))
+            if beam_size is None:
+                preds, _ = self.forward(a.cuda(), l.cuda())
+                preds = preds.argmax(dim=2).detach().cpu().numpy().astype(int)
+            else:
+                enc_out = self.SpeechEncoder(a.cuda(), l.cuda())
+                preds = self.TextDecoder.beam_search(enc_out, beam_size)
+            trn.append(self.pred2trn(preds))
         trn = np.concatenate(trn)
         return trn
 
-    def transcribe_beam(self, audio, audio_len, beam_size):
-        audio = torch.utils.data.DataLoader(dataset=audio, batch_size=32,
-                                            shuffle=False,
-                                            collate_fn=D.batch_audio)
+    def pred2trn(self, preds):
         trn = []
-        for a, l in audio:
-            enc_out = self.SpeechEncoder(a, l)
-            preds = self.TextDecoder.beam_search(enc_out, beam_size)
-            for i_seq in range(preds.shape[0]):
-                seq = preds[i_seq]
-                i_eos = (seq == self.TextDecoder.eos_id).nonzero()[0]
-                i_last = i_eos[0] if i_eos.shape[0] > 0 else seq.shape[0]
-                chars = [self.inverse_transform_fn(id.item()) for id in seq[:i_last]]
-                trn.append(''.join(chars))
-        # FIXME: necessary to concatenate?
-        trn = np.concatenate(trn)
-        return trn
-
-    def pred2trn(self, pred):
-        trn = []
-        ids = pred.argmax(dim=2)
-        for i_seq in range(ids.shape[0]):
-            seq = ids[i_seq]
-            i_eos = (seq == self.TextDecoder.eos_id).nonzero()
-            i_last = i_eos[0] if i_eos.shape[0] > 0 else seq.shape[0]
-            chars = [self.inverse_transform_fn([id.item()])[0] for id in seq[:i_last]]
+        for p in preds:
+            i_eos = (p == self.TextDecoder.eos_id).nonzero()[0]
+            i_last = i_eos[0] if i_eos.shape[0] > 0 else p.shape[0]
+            chars = self.inverse_transform_fn(p[:i_last])
             trn.append(''.join(chars))
         return trn
 

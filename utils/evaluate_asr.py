@@ -9,7 +9,7 @@ import platalea.score
 torch.manual_seed(123)
 
 batch_size = 16
-feature_fname = 'mfcc_symbolic_bias.pt'
+feature_fname = 'mfcc_delta_features.pt'
 limit = None
 
 logging.basicConfig(level=logging.INFO)
@@ -42,6 +42,9 @@ for path in args.path:
     logging.info('Evaluating')
     with torch.no_grad():
         net.eval()
-        result = platalea.score.score_asr(net, data['val'].dataset,
-                                          use_beam=args.use_beam_decoding)
+        if args.use_beam_decoding:
+            result = platalea.score.score_asr(net, data['val'].dataset,
+                                              beam_size=10)
+        else:
+            result = platalea.score.score_asr(net, data['val'].dataset)
     print(json.dumps(result))

@@ -17,12 +17,9 @@ def score(net, dataset):
                        10: np.mean(result['recall'][10])})
 
 
-def score_asr(net, dataset, use_beam=False):
+def score_asr(net, dataset, beam_size=None):
     data = dataset.evaluation()
-    if use_beam:
-        trn = net.transcribe_beam(data['audio'])
-    else:
-        trn = net.transcribe(data['audio'])
+    trn = net.transcribe(data['audio'], beam_size=beam_size)
     ref = [txt['raw'] for txt in data['text']]
     cer = xer.cer(trn, ref)
     wer = xer.wer(trn, ref)
