@@ -9,7 +9,7 @@ import torch.optim as optim
 from platalea.basic import cyclic_scheduler
 import platalea.dataset as D
 from platalea.decoders import TextDecoder
-from platalea.encoders import SpeechEncoder, SpeechEncoderVGG, SpeechEncoderMultiConv
+from platalea.encoders import SpeechEncoder
 import platalea.loss
 import platalea.score
 
@@ -18,15 +18,15 @@ class SpeechTranscriber(nn.Module):
     def __init__(self, config):
         super(SpeechTranscriber, self).__init__()
         self.config = config
-        if 'SpeechEncoder' in config:
-            self.SpeechEncoder = SpeechEncoder(config['SpeechEncoder'])
-        elif 'SpeechEncoderVGG' in config:
-            self.SpeechEncoder = SpeechEncoderVGG(config['SpeechEncoderVGG'])
-        elif 'SpeechEncoderMultiConv' in config:
-            self.SpeechEncoder = SpeechEncoderMultiConv(config['SpeechEncoderMultiConv'])
+        # Components can be pre-instantiated or configured through a dictionary
+        if isinstance(config['SpeechEncoder'], nn.Module):
+            self.SpeechEncoder = config['SpeechEncoder']
         else:
-            raise ValueError('Unknown encoder')
-        self.TextDecoder = TextDecoder(config['TextDecoder'])
+            self.SpeechEncoder = SpeechEncoder(config['SpeechEncoder'])
+        if isinstance(config['TextDecoder'], nn.Module):
+            self.TextDecoder = config['TextDecoder']
+        else:
+            self.TextDecoder = TextDecoder(config['TextDecoder'])
         self.inverse_transform_fn = config['inverse_transform_fn']
 
     def forward(self, speech, seq_len, target=None):
@@ -95,7 +95,8 @@ def experiment(net, data, config):
         lr = 1.0
     if 'opt' in config.keys() and config['opt'] == 'adam':
         optimizer = optim.Adam(net.parameters(), lr=lr)
-        scheduler = cyclic_scheduler(optimizer, len(data['train']), max_lr = config['max_lr'], min_lr = 1e-6)
+        scheduler = cyclic_scheduler(optimizer, len(data['train']),
+                                     max_lr=config['max_lr'], min_lr=1e-6)
     else:
         optimizer = optim.Adadelta(net.parameters(), lr=lr, rho=0.95, eps=1e-8)
     optimizer.zero_grad()

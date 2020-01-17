@@ -14,9 +14,15 @@ class SpeechImage(nn.Module):
     def __init__(self, config):
         super(SpeechImage, self).__init__()
         self.config = config
-        self.SpeechEncoder = SpeechEncoder(config['SpeechEncoder'])
-        self.ImageEncoder = ImageEncoder(config['ImageEncoder'])
-
+        # Components can be pre-instantiated or configured through a dictionary
+        if isinstance(config['SpeechEncoder'], nn.Module):
+            self.SpeechEncoder = config['SpeechEncoder']
+        else:
+            self.SpeechEncoder = SpeechEncoder(config['SpeechEncoder'])
+        if isinstance(config['ImageEncoder'], nn.Module):
+            self.ImageEncoder = config['ImageEncoder']
+        else:
+            self.ImageEncoder = ImageEncoder(config['ImageEncoder'])
 
     def cost(self, item):
         speech_enc = self.SpeechEncoder(item['audio'], item['audio_len'])
