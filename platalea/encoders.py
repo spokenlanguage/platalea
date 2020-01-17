@@ -30,8 +30,8 @@ class SpeechEncoder(nn.Module):
     def __init__(self, config):
         super(SpeechEncoder, self).__init__()
         conv = config['conv']
-        rnn  = config['rnn']
-        att  = config.get('att', None)
+        rnn = config['rnn']
+        att = config.get('att', None)
         self.Conv = nn.Conv1d(**conv)
         rnn_layer_type = config.get('rnn_layer_type', nn.GRU)
         self.RNN = rnn_layer_type(batch_first=True, **rnn)
@@ -40,22 +40,23 @@ class SpeechEncoder(nn.Module):
         else:
             self.att = None
 
-    def forward(self, input, l):
+    def forward(self, input, length):
         x = self.Conv(input)
         # update the lengths to compensate for the convolution subsampling
-        # l = [int((y-(self.Conv.kernel_size[0]-self.Conv.stride[0]))/self.Conv.stride[0]) for y in l]
-        l = inout(self.Conv, l)
-        # create a packed_sequence object. The padding will be excluded from the update step
-        # thereby training on the original sequence length only
-        x = nn.utils.rnn.pack_padded_sequence(x.transpose(2, 1), l, batch_first=True, enforce_sorted=False)
+        length = inout(self.Conv, length)
+        # create a packed_sequence object. The padding will be excluded from
+        # the update step thereby training on the original sequence length only
+        x = nn.utils.rnn.pack_padded_sequence(
+            x.transpose(2, 1), length, batch_first=True, enforce_sorted=False)
         x, _ = self.RNN(x)
-        # unpack again as at the moment only rnn layers except packed_sequence objects
-        x, lens = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
+        # unpack again as at the moment only rnn layers except packed_sequence
+        # objects
+        x, _ = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
         if self.att is not None:
             x = nn.functional.normalize(self.att(x), p=2, dim=1)
         return x
 
-    def introspect(self, input, l):
+    def introspect(self, input, length):
         if not hasattr(self, 'IntrospectRNN'):
             logging.info("Creating IntrospectRNN wrapper")
             self.IntrospectRNN = platalea.introspect.IntrospectRNN(self.RNN)
@@ -63,15 +64,16 @@ class SpeechEncoder(nn.Module):
 
         # Computing convolutional activations
         conv = self.Conv(input).permute(0, 2, 1)
-        l = inout(self.Conv, l)
-        result['conv'] = [conv[i, :l[i], :] for i in range(len(conv))]
+        length = inout(self.Conv, length)
+        result['conv'] = [conv[i, :length[i], :] for i in range(len(conv))]
 
         # Computing full stack of RNN states
         conv_padded = nn.utils.rnn.pack_padded_sequence(
-            conv, l, batch_first=True, enforce_sorted=False)
+            conv, length, batch_first=True, enforce_sorted=False)
         rnn = self.IntrospectRNN.introspect(conv_padded)
-        for layer in range(self.RNN.num_layers):
-            result['rnn{}'.format(layer)] = [rnn[i, layer, :l[i], :] for i in range(len(rnn))]
+        for l in range(self.RNN.num_layers):
+            name = 'rnn{}'.format(l)
+            result[name] = [rnn[i, l, :length[i], :] for i in range(len(rnn))]
 
         # Computing aggregated and normalized encoding
         x, _ = self.RNN(conv_padded)
@@ -99,16 +101,16 @@ class SpeechEncoderMultiConv(nn.Module):
         else:
             self.att = None
 
-    def forward(self, input, l):
+    def forward(self, input, length):
         x = input
         for conv in self.Conv:
             x = conv(x)
             # update the lengths to compensate for the convolution subsampling
-            l = inout(conv, l)
+            length = inout(conv, length)
         # create a packed_sequence object. The padding will be excluded from
         # the update step thereby training on the original sequence length only
         x = nn.utils.rnn.pack_padded_sequence(
-            x.transpose(2, 1), l, batch_first=True, enforce_sorted=False)
+            x.transpose(2, 1), length, batch_first=True, enforce_sorted=False)
         x, _ = self.RNN(x)
         # unpack again as at the moment only rnn layers except packed_sequence
         # objects
@@ -117,7 +119,7 @@ class SpeechEncoderMultiConv(nn.Module):
             x = nn.functional.normalize(self.att(x), p=2, dim=1)
         return x
 
-    def introspect(self, input, l):
+    def introspect(self, input, length):
         if not hasattr(self, 'IntrospectRNN'):
             logging.info("Creating IntrospectRNN wrapper")
             self.IntrospectRNN = platalea.introspect.IntrospectRNN(self.RNN)
@@ -128,16 +130,18 @@ class SpeechEncoderMultiConv(nn.Module):
         for i, conv in enumerate(self.Conv):
             x = conv(x)
             # update the lengths to compensate for the convolution subsampling
-            l = inout(conv, l)
-            x_perm = x.permute(0, 2, 1)
-            result['conv{}'.format(i)] = [x_perm[i, :l[i], :] for i in range(len(x_perm))]
+            length = inout(conv, length)
+            xp = x.permute(0, 2, 1)
+            name = 'conv{}'.format(i)
+            result[name] = [xp[i, :length[i], :] for i in range(len(xp))]
 
         # Computing full stack of RNN states
         x_packed = nn.utils.rnn.pack_padded_sequence(
-            x.transpose(2, 1), l, batch_first=True, enforce_sorted=False)
+            x.transpose(2, 1), length, batch_first=True, enforce_sorted=False)
         rnn = self.IntrospectRNN.introspect(x_packed)
-        for layer in range(self.RNN.num_layers):
-            result['rnn{}'.format(layer)] = [rnn[i, layer, :l[i], :] for i in range(len(rnn))]
+        for l in range(self.RNN.num_layers):
+            name = 'rnn{}'.format(l)
+            result[name] = [rnn[i, l, :length[i], :] for i in range(len(rnn))]
 
         # Computing aggregated and normalized encoding
         x, _ = self.RNN(x_packed)
@@ -165,24 +169,24 @@ class SpeechEncoderVGG(nn.Module):
         else:
             self.att = None
 
-    def forward(self, input, l):
+    def forward(self, input, length):
         x = F.relu(self.Conv0(input.unsqueeze(1)))
-        l = inout(self.Conv0, l)
+        length = inout(self.Conv0, length)
         x = F.relu(self.Conv1(x))
-        l = inout(self.Conv1, l)
+        length = inout(self.Conv1, length)
         x = self.MaxPool(x)
-        l = inout(self.MaxPool, l)
+        length = inout(self.MaxPool, length)
         x = F.relu(self.Conv2(x))
-        l = inout(self.Conv2, l)
+        length = inout(self.Conv2, length)
         x = F.relu(self.Conv3(x))
-        l = inout(self.Conv3, l)
+        length = inout(self.Conv3, length)
         x = self.MaxPool(x)
-        l = inout(self.MaxPool, l)
+        length = inout(self.MaxPool, length)
         # create a packed_sequence object. The padding will be excluded from
         # the update step thereby training on the original sequence length only
         x = x.view(x.shape[0], x.shape[1], x.shape[2] * x.shape[3])
         x = nn.utils.rnn.pack_padded_sequence(
-            x.transpose(2, 1), l, batch_first=True, enforce_sorted=False)
+            x.transpose(2, 1), length, batch_first=True, enforce_sorted=False)
         x, _ = self.RNN(x)
         # unpack again as at the moment only rnn layers except packed_sequence
         # objects
@@ -191,7 +195,7 @@ class SpeechEncoderVGG(nn.Module):
             x = nn.functional.normalize(self.att(x), p=2, dim=1)
         return x
 
-    def introspect(self, input, l):
+    def introspect(self, input, length):
         if not hasattr(self, 'IntrospectRNN'):
             logging.info("Creating IntrospectRNN wrapper")
             self.IntrospectRNN = platalea.introspect.IntrospectRNN(self.RNN)
@@ -199,28 +203,29 @@ class SpeechEncoderVGG(nn.Module):
 
         # Computing convolutional activations
         x = F.relu(self.Conv0(input.unsqueeze(1)))
-        l = inout(self.Conv0, l)
-        result['conv0'] = [x[i, :l[i], :] for i in range(len(x))]
+        length = inout(self.Conv0, length)
+        result['conv0'] = [x[i, :length[i], :] for i in range(len(x))]
         x = F.relu(self.Conv1(x))
-        l = inout(self.Conv1, l)
+        length = inout(self.Conv1, length)
         x = self.MaxPool(x)
-        l = inout(self.MaxPool, l)
-        result['conv1'] = [x[i, :l[i], :] for i in range(len(x))]
+        length = inout(self.MaxPool, length)
+        result['conv1'] = [x[i, :length[i], :] for i in range(len(x))]
         x = F.relu(self.Conv2(x))
-        l = inout(self.Conv2, l)
-        result['conv2'] = [x[i, :l[i], :] for i in range(len(x))]
+        length = inout(self.Conv2, length)
+        result['conv2'] = [x[i, :length[i], :] for i in range(len(x))]
         x = F.relu(self.Conv3(x))
-        l = inout(self.Conv3, l)
+        length = inout(self.Conv3, length)
         x = self.Maxpool(x)
-        l = inout(self.MaxPool, l)
-        result['conv3'] = [x[i, :l[i], :] for i in range(len(x))]
+        length = inout(self.MaxPool, length)
+        result['conv3'] = [x[i, :length[i], :] for i in range(len(x))]
 
         # Computing full stack of RNN states
         x_packed = nn.utils.rnn.pack_padded_sequence(
-            x.transpose(2, 1), l, batch_first=True, enforce_sorted=False)
+            x.transpose(2, 1), length, batch_first=True, enforce_sorted=False)
         rnn = self.IntrospectRNN.introspect(x_packed)
-        for layer in range(self.RNN.num_layers):
-            result['rnn{}'.format(layer)] = [rnn[i, layer, :l[i], :] for i in range(len(rnn))]
+        for l in range(self.RNN.num_layers):
+            name = 'rnn{}'.format(l)
+            result[name] = [rnn[i, l, :length[i], :] for i in range(len(rnn))]
 
         # Computing aggregated and normalized encoding
         x, _ = self.RNN(x_packed)
@@ -231,6 +236,127 @@ class SpeechEncoderVGG(nn.Module):
         return result
 
 
+class SpeechEncoderBottom(nn.Module):
+    def __init__(self, config):
+        super(SpeechEncoderBottom, self).__init__()
+        # Convolutional layer
+        conv = config['conv']
+        self.Conv = nn.Conv1d(**conv)
+        # Potential RNN layer(s)
+        rnn = config.get('rnn', None)
+        if rnn is None:
+            self.RNN = None
+        else:
+            rnn_layer_type = config.get('rnn_layer_type', nn.GRU)
+            self.RNN = rnn_layer_type(batch_first=True, **rnn)
+
+    def forward(self, input, length):
+        x = self.Conv(input)
+        # Update the lengths to compensate for the convolution subsampling
+        length = inout(self.Conv, length)
+        # Create a packed_sequence object. The padding will be excluded from
+        # the update step thereby training on the original sequence length
+        # only.  Expecting a SpeechEncoderTop to unpack the sequence
+        x = nn.utils.rnn.pack_padded_sequence(
+            x.transpose(2, 1), length, batch_first=True, enforce_sorted=False)
+        if self.RNN is not None:
+            x, _ = self.RNN(x)
+        return x
+
+    def introspect(self, input, length):
+        if self.RNN is not None and not hasattr(self, 'IntrospectRNN'):
+            logging.info("Creating IntrospectRNN wrapper")
+            self.IntrospectRNN = platalea.introspect.IntrospectRNN(self.RNN)
+        result = {}
+
+        # Computing convolutional activations
+        conv = self.Conv(input).permute(0, 2, 1)
+        length = inout(self.Conv, length)
+        result['conv'] = [conv[i, :length[i], :] for i in range(len(conv))]
+
+        # Computing full stack of RNN states
+        x = nn.utils.rnn.pack_padded_sequence(
+            conv, length, batch_first=True, enforce_sorted=False)
+        if self.RNN is not None:
+            rnn = self.IntrospectRNN.introspect(x)
+            for l in range(self.RNN.num_layers):
+                name = 'rnn_bottom{}'.format(l)
+                result[name] = [rnn[i, l, :length[i], :] for i in range(len(rnn))]
+            x, _ = self.RNN(x)
+
+        return x, result
+
+
+class SpeechEncoderTop(nn.Module):
+    def __init__(self, config):
+        super(SpeechEncoderTop, self).__init__()
+        rnn = config.get('rnn', None)
+        if rnn is None:
+            self.RNN = None
+        else:
+            rnn_layer_type = config.get('rnn_layer_type', nn.GRU)
+            self.RNN = rnn_layer_type(batch_first=True, **rnn)
+        att = config.get('att', None)
+        if att is not None:
+            self.att = Attention(**att)
+        else:
+            self.att = None
+
+    def forward(self, x):
+        # Expecting packed sequence
+        if self.RNN is not None:
+            x, _ = self.RNN(x)
+        # unpack again as at the moment only rnn layers except packed_sequence
+        # objects
+        x, _ = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
+        if self.att is not None:
+            x = nn.functional.normalize(self.att(x), p=2, dim=1)
+        return x
+
+    def introspect(self, x, length):
+        if self.RNN is not None and not hasattr(self, 'IntrospectRNN'):
+            logging.info("Creating IntrospectRNN wrapper")
+            self.IntrospectRNN = platalea.introspect.IntrospectRNN(self.RNN)
+        result = {}
+
+        # Computing full stack of RNN states
+        if self.RNN is not None:
+            rnn = self.IntrospectRNN.introspect(x)
+            for l in range(self.RNN.num_layers):
+                name = 'rnn_top{}'.format(l)
+                result[name] = [rnn[i, l, :length[i], :] for i in range(len(rnn))]
+            x, _ = self.RNN(x)
+
+        # Computing aggregated and normalized encoding
+        x, _ = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
+        if self.att is not None:
+            x = nn.functional.normalize(self.att(x), p=2, dim=1)
+            result['att'] = list(x)
+        return result
+
+
+class SpeechEncoderSplit(nn.Module):
+    def __init__(self, config):
+        super(SpeechEncoderSplit, self).__init__()
+        # Components can be pre-instantiated or configured through a dictionary
+        if isinstance(config['SpeechEncoderBottom'], nn.Module):
+            self.Bottom = config['SpeechEncoderBottom']
+        else:
+            self.Bottom = SpeechEncoderBottom(config['SpeechEncoderBottom'])
+        if isinstance(config['SpeechEncoderTop'], nn.Module):
+            self.Top = config['SpeechEncoderTop']
+        else:
+            self.Top = SpeechEncoderTop(config['SpeechEncoderTop'])
+
+    def forward(self, input, length):
+        return self.Top(self.Bottom(input, length))
+
+    def introspect(self, input, length):
+        x, result = self.Bottom(input)
+        result.update(self.Top(x))
+        return result
+
+
 def inout(layer, L):
     """Mapping from size of input to the size of the output of a 1D
     convolutional layer.
@@ -238,11 +364,14 @@ def inout(layer, L):
     """
     maxpool = False
     if type(layer) == nn.Conv1d:
-        fn = lambda x: x[0]
+        def fn(x):
+            return x[0]
     elif type(layer) == nn.Conv2d:
-        fn = lambda x: x[1]
+        def fn(x):
+            return x[1]
     elif type(layer) == nn.MaxPool1d or type(layer) == nn.MaxPool2d:
-        fn = lambda x: x
+        def fn(x):
+            return x
         maxpool = True
     else:
         raise NotImplementedError
