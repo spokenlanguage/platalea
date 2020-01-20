@@ -4,7 +4,6 @@ import torch.nn as nn
 
 import platalea.dataset as D
 import platalea.mtl as M
-from platalea.score import score, score_asr
 
 torch.manual_seed(123)
 
@@ -66,8 +65,5 @@ logging.info('Building model')
 net = M.MTLNet(config)
 run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32, opt='adam')
 
-tasks = [dict(name='SI', net=net.SpeechImage, data=data, eval=score),
-         dict(name='ASR', net=net.SpeechTranscriber, data=data, eval=score_asr)]
-
 logging.info('Training')
-M.experiment(net, tasks, run_config)
+M.experiment_parallel(net, data, run_config)

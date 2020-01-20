@@ -40,7 +40,7 @@ class MTLNet(nn.Module):
         return loss, {'asr': loss_asr.item(), 'si': loss_si.item()}
 
 
-def experiment(net, data, config):
+def experiment_parallel(net, data, config):
     def val_loss():
         with torch.no_grad():
             net.eval()
@@ -53,20 +53,17 @@ def experiment(net, data, config):
 
     net.cuda()
     net.train()
+    # Preparing optimizer
     if 'lr' in config.keys():
         lr = config['lr']
     else:
         lr = 1.0
-    if 'opt' in config.keys() and config['opt'] == 'adam':
-        optimizer = optim.Adam(net.parameters(), lr=lr)
-        scheduler = cyclic_scheduler(optimizer, len(data['train']),
-                                     max_lr=config['max_lr'], min_lr=1e-6)
-    else:
-        optimizer = optim.Adadelta(net.parameters(), lr=lr, rho=0.95, eps=1e-8)
+    optimizer = optim.Adam(net.parameters(), lr=lr)
+    scheduler = cyclic_scheduler(optimizer, len(data['train']),
+                                 max_lr=config['max_lr'], min_lr=1e-6)
     optimizer.zero_grad()
 
     with open("result.json", "w") as out:
-        best_wer = None
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
             for j, item in enumerate(data['train'], start=1):
@@ -76,8 +73,7 @@ def experiment(net, data, config):
                 loss.backward()
                 nn.utils.clip_grad_norm_(net.parameters(), config['max_norm'])
                 optimizer.step()
-                if 'opt' in config.keys() and config['opt'] == 'adam':
-                    scheduler.step()
+                scheduler.step()
                 cost += Counter({'cost': loss.item(), 'N': 1})
                 cost += Counter(loss_details)
                 if j % 100 == 0:
@@ -95,21 +91,73 @@ def experiment(net, data, config):
                 net.train()
             result['epoch'] = epoch
             print(result, file=out, flush=True)
-            if 'epsilon_decay' in config.keys():
-                wer = result['wer']['WER']
-                if best_wer is None or wer < best_wer:
-                    best_wer = wer
-                else:
-                    net.load_state_dict(torch.load('net.{}.pt'.format(epoch - 1)))
-                    for p in optimizer.param_groups:
-                        p["eps"] *= config['epsilon_decay']
-                        print('Epsilon decay - new value: ', p["eps"])
-                logging.info("Saving model in net.{}.pt".format(epoch))
-                # Saving weights only
-                torch.save(net.state_dict(), "net.{}.pt".format(epoch))
-            else:
-                logging.info("Saving model in net.{}.pt".format(epoch))
-                torch.save(net, "net.{}.pt".format(epoch))
-    if 'epsilon_decay' in config.keys():
-        # Save full model for inference
-        torch.save(net, 'net.best.pt')
+            logging.info("Saving model in net.{}.pt".format(epoch))
+            torch.save(net, "net.{}.pt".format(epoch))
+
+
+def val_loss(net, data):
+    with torch.no_grad():
+        net.eval()
+        result = []
+        for item in data['val']:
+            item = {key: value.cuda() for key, value in item.items()}
+            result.append(net.cost(item).item())
+        net.train()
+    return torch.tensor(result).mean()
+
+
+def experiment(net, tasks, config):
+    for t in tasks:
+        # Preparing nets
+        t['net'].cuda()
+        t['net'].train()
+        # Preparing optimizer
+        if 'lr' in config.keys():
+            lr = config['lr']
+        else:
+            lr = 1.0
+        t['optimizer'] = optim.Adam(t['net'].parameters(), lr=lr)
+        t['scheduler'] = cyclic_scheduler(t['optimizer'],
+                                          len(t['data']['train']),
+                                          max_lr=config['max_lr'], min_lr=1e-6)
+        t['optimizer'].zero_grad()
+
+    with open("result.json", "w") as out:
+        for epoch in range(1, config['epochs']+1):
+            for t in tasks:
+                t['cost'] = Counter()
+            for j, items in enumerate(zip(*[t['data']['train'] for t in tasks]),
+                                      start=1):
+                for i_t, t in enumerate(tasks):
+                    item = {key: value.cuda() for key, value in items[i_t].items()}
+                    loss = t['net'].cost(item)
+                    t['optimizer'].zero_grad()
+                    loss.backward()
+                    nn.utils.clip_grad_norm_(t['net'].parameters(),
+                                             config['max_norm'])
+                    t['optimizer'].step()
+                    t['scheduler'].step()
+                    t['cost'] += Counter({'cost': loss.item(), 'N': 1})
+                    #if j % 100 == 0:
+                    if j % 10 == 0:
+                        logging.info("train {} {} {} {}".format(
+                            t['name'], epoch, j,
+                            t['cost']['cost'] / t['cost']['N']))
+                    #if j % 400 == 0:
+                    if j % 10 == 0:
+                        logging.info("valid {} {} {} {}".format(
+                            t['name'], epoch, j,
+                            val_loss(t['net'], t['data'])))
+            # Evaluation
+            result = {}
+            with torch.no_grad():
+                net.eval()
+                for t in tasks:
+                    result[t['name']] = t['eval'](t['net'],
+                                                  t['data']['val'].dataset)
+                net.train()
+            result['epoch'] = epoch
+            print(result, file=out, flush=True)
+            # Saving model
+            logging.info("Saving model in net.{}.pt".format(epoch))
+            torch.save(net, "net.{}.pt".format(epoch))
