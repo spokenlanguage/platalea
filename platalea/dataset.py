@@ -12,10 +12,15 @@ class Flickr8KData(torch.utils.data.Dataset):
 
     @classmethod
     def init_vocabulary(cls, dataset):
-        cls.le = LabelEncoder()
+        le = LabelEncoder()
         tokens = ['<sos>', '<eos>', '<unk>', '<pad>'] + \
                  [c for d in dataset.split_data for c in d[2]]
-        cls.le.fit(tokens)
+        le.fit(tokens)
+        cls.set_label_encoder(le)
+
+    @classmethod
+    def set_label_encoder(cls, le):
+        cls.le = le
         cls.sos = cls.le.transform(['<sos>'])[0]
         cls.eos = cls.le.transform(['<eos>'])[0]
         cls.unk = cls.le.transform(['<unk>'])[0]

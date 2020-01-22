@@ -1,7 +1,9 @@
-import torch
-import torch.nn as nn
 import logging
 import numpy as np
+import pickle
+import torch
+import torch.nn as nn
+
 import platalea.asr as M
 import platalea.dataset as D
 
@@ -23,6 +25,10 @@ data = dict(
                           feature_fname=feature_fname))
 fd = D.Flickr8KData
 fd.init_vocabulary(data['train'].dataset)
+
+# Saving config
+pickle.dump(dict(feature_fname=feature_fname, label_encoder=fd.le),
+            open('config.pkl', 'wb'))
 
 config = dict(
     SpeechEncoder=dict(

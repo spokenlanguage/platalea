@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import pickle
 import torch
 
 import platalea.dataset as D
@@ -9,7 +10,6 @@ import platalea.score
 torch.manual_seed(123)
 
 batch_size = 16
-feature_fname = 'mfcc_delta_features.pt'
 limit = None
 
 logging.basicConfig(level=logging.INFO)
@@ -27,14 +27,15 @@ args = parser.parse_args()
 if args.testmode:
     limit = 100
 
+# Loading config
+conf = pickle.load(open('config.pkl', 'rb'))
+
 logging.info('Loading data')
-data = dict(
-    train=D.flickr8k_loader(split='train', batch_size=batch_size,
-                            shuffle=True, feature_fname=feature_fname),
-    val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False,
-                          feature_fname=feature_fname))
+data = dict( val=D.flickr8k_loader(split='val', batch_size=batch_size,
+                                   shuffle=False,
+                                   feature_fname=conf['feature_fname']))
 fd = D.Flickr8KData
-fd.init_vocabulary(data['train'].dataset)
+fd.set_label_encoder(conf['label_encoder'])
 
 for path in args.path:
     logging.info('Loading model')

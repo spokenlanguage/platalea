@@ -24,6 +24,10 @@ data = dict(
 fd = D.Flickr8KData
 fd.init_vocabulary(data['train'].dataset)
 
+# Saving config
+pickle.dump(dict(feature_fname=feature_fname, label_encoder=fd.le),
+            open('config.pkl', 'wb'))
+
 config = dict(
     SharedEncoder=dict(
         conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,
