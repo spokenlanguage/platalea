@@ -138,13 +138,11 @@ def experiment(net, tasks, config):
                     t['optimizer'].step()
                     t['scheduler'].step()
                     t['cost'] += Counter({'cost': loss.item(), 'N': 1})
-                    #if j % 100 == 0:
-                    if j % 10 == 0:
+                    if j % 100 == 0:
                         logging.info("train {} {} {} {}".format(
                             t['name'], epoch, j,
                             t['cost']['cost'] / t['cost']['N']))
-                    #if j % 400 == 0:
-                    if j % 10 == 0:
+                    if j % 400 == 0:
                         logging.info("valid {} {} {} {}".format(
                             t['name'], epoch, j,
                             val_loss(t['net'], t['data'])))
