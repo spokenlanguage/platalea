@@ -87,4 +87,5 @@ class BahdanauAttention(nn.Module):
         attn_energies = self.v_a(attn_energies)
 
         # Normalize energies to weights in range 0 to 1,
+        # TODO: add masking of padding before softmax (as in espnet)?
         return F.softmax(attn_energies, dim=1)

@@ -31,11 +31,11 @@ if args.testmode:
 conf = pickle.load(open('config.pkl', 'rb'))
 
 logging.info('Loading data')
-data = dict( val=D.flickr8k_loader(split='val', batch_size=batch_size,
-                                   shuffle=False,
-                                   feature_fname=conf['feature_fname']))
+data = dict(val=D.flickr8k_loader(split='val', batch_size=batch_size,
+                                  shuffle=False,
+                                  feature_fname=conf['feature_fname']))
 fd = D.Flickr8KData
-fd.set_label_encoder(conf['label_encoder'])
+fd.set_label_encoder(conf['label_encoder'], 'en')
 
 for path in args.path:
     logging.info('Loading model')

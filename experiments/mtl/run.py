@@ -22,33 +22,33 @@ data = dict(
     val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False,
                           feature_fname=feature_fname))
 fd = D.Flickr8KData
-fd.init_vocabulary(data['train'].dataset)
+fd.init_vocabularies(data['train'].dataset)
 
 # Saving config
-pickle.dump(dict(feature_fname=feature_fname, label_encoder=fd.le),
+pickle.dump(dict(feature_fname=feature_fname, label_encoder=fd.get_label_encoder('en')),
             open('config.pkl', 'wb'))
 
 config = dict(
     SharedEncoder=dict(
         conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,
                   padding=0, bias=False),
-        rnn=dict(input_size=64, hidden_size=hidden_size, num_layers=2,
+        rnn=dict(input_size=64, hidden_size=hidden_size, num_layers=3,
                  bidirectional=True, dropout=dropout),
         rnn_layer_type=nn.GRU),
     SpeechEncoderTopSI=dict(
         rnn=dict(input_size=hidden_size * 2, hidden_size=hidden_size,
-                 num_layers=2, bidirectional=True, dropout=dropout),
+                 num_layers=1, bidirectional=True, dropout=dropout),
         att=dict(in_size=hidden_size * 2, hidden_size=128),
         rnn_layer_type=nn.GRU),
     SpeechEncoderTopASR=dict(
         rnn=dict(input_size=hidden_size * 2, hidden_size=hidden_size,
-                 num_layers=2, bidirectional=True, dropout=dropout),
+                 num_layers=1, bidirectional=True, dropout=dropout),
         rnn_layer_type=nn.GRU),
     ImageEncoder=dict(
         linear=dict(in_size=hidden_size * 2, out_size=hidden_size * 2),
         norm=True),
     TextDecoder=dict(
-        emb=dict(num_embeddings=fd.vocabulary_size(),
+        emb=dict(num_embeddings=fd.vocabulary_size('en'),
                  embedding_dim=hidden_size),
         drop=dict(p=dropout),
         att=dict(in_size_enc=hidden_size * 2, in_size_state=hidden_size,
@@ -56,13 +56,13 @@ config = dict(
         rnn=dict(input_size=hidden_size * 3, hidden_size=hidden_size,
                  num_layers=1, dropout=dropout),
         out=dict(in_features=hidden_size * 3,
-                 out_features=fd.vocabulary_size()),
+                 out_features=fd.vocabulary_size('en')),
         rnn_layer_type=nn.GRU,
         max_output_length=400,  # max length for flickr annotations is 199
-        sos_id=fd.sos,
-        eos_id=fd.eos,
-        pad_id=fd.pad),
-    inverse_transform_fn=fd.le.inverse_transform,
+        sos_id=fd.get_token_id('<sos>', 'en'),
+        eos_id=fd.get_token_id('<eos>', 'en'),
+        pad_id=fd.get_token_id('<pad>', 'en')),
+    inverse_transform_fn=fd.get_label_encoder('en').inverse_transform,
     margin_size=0.2,
     lmbd=0.5)
 
