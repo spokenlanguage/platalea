@@ -20,9 +20,9 @@ logging.basicConfig(level=logging.INFO)
 logging.info('Loading data')
 data = dict(
     train=D.flickr8k_loader(split='train', batch_size=batch_size, shuffle=True,
-                            feature_fname=feature_fname),
+                            feature_fname=feature_fname, language='jp'),
     val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False,
-                          feature_fname=feature_fname))
+                          feature_fname=feature_fname, language='jp'))
 fd = D.Flickr8KData
 fd.init_vocabulary(data['train'].dataset)
 

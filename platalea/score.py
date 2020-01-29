@@ -20,7 +20,7 @@ def score(net, dataset):
 def score_asr(net, dataset, beam_size=None):
     data = dataset.evaluation()
     trn = net.transcribe(data['audio'], beam_size=beam_size)
-    ref = [txt['raw'] for txt in data['text']]
+    ref = data['text']
     cer = xer.cer(trn, ref)
     wer = xer.wer(trn, ref)
     return dict(wer=wer, cer=cer)
