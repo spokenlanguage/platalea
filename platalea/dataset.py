@@ -119,7 +119,7 @@ def batch_audio(audios, max_frames=2048):
     return mfcc.permute(0, 2, 1), torch.tensor(mfcc_lengths)
 
 
-def batch_text(texts, language='en'):
+def batch_text(texts):
     """Merge captions (from tuple of 1D tensor to 2D tensor). Pad with
     pad token."""
     # FIXME this needs to be done properly, eventually
@@ -144,7 +144,7 @@ def collate_fn(data, max_frames=2048):
     # Merge images (from tuple of 3D tensor to 4D tensor).
     images = batch_image(images)
     mfcc, mfcc_lengths = batch_audio(audios, max_frames=max_frames)
-    chars, char_lengths = batch_text(texts, 'en')
+    chars, char_lengths = batch_text(texts)
     return dict(image=images, audio=mfcc, text=chars, audio_len=mfcc_lengths,
                 text_len=char_lengths)
 
