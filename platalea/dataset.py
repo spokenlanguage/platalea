@@ -34,6 +34,13 @@ class Flickr8KData(torch.utils.data.Dataset):
     def vocabulary_size(cls):
         return len(cls.get_label_encoder().classes_)
 
+    @classmethod
+    def caption2tensor(cls, capt):
+        le = cls.get_label_encoder()
+        capt = [c if c in le.classes_ else cls.unk for c in capt]
+        capt = [cls.sos] + capt + [cls.eos]
+        return torch.Tensor(le.transform(capt))
+
     def __init__(self, root, feature_fname, split='train', language='en'):
         if language == 'en':
             self.text_key = 'raw'
@@ -67,12 +74,6 @@ class Flickr8KData(torch.utils.data.Dataset):
         self.image = dict(zip(image['filenames'], image['features']))
         audio = torch.load(root + feature_fname)
         self.audio = dict(zip(audio['filenames'], audio['features']))
-
-    def caption2tensor(self, capt):
-        le = self.get_label_encoder()
-        capt = [c if c in le.classes_ else self.unk for c in capt]
-        capt = [self.sos] + capt + [self.eos]
-        return torch.Tensor(le.transform(capt))
 
     def __getitem__(self, index):
         sd = self.split_data[index]
@@ -122,7 +123,6 @@ def batch_audio(audios, max_frames=2048):
 def batch_text(texts):
     """Merge captions (from tuple of 1D tensor to 2D tensor). Pad with
     pad token."""
-    # FIXME this needs to be done properly, eventually
     char_lengths = [len(cap) for cap in texts]
     chars = torch.Tensor(len(texts), max(char_lengths)).long()
     chars.fill_(Flickr8KData.get_token_id(Flickr8KData.pad))

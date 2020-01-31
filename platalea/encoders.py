@@ -26,6 +26,61 @@ class ImageEncoder(nn.Module):
             return x
 
 
+class TextEncoder(nn.Module):
+    def __init__(self, config):
+        super(TextEncoder, self).__init__()
+        emb = config['emb']
+        rnn = config['rnn']
+        att = config.get('att', None)
+        self.Embed = nn.Embedding(**emb)
+        rnn_layer_type = config.get('rnn_layer_type', nn.GRU)
+        self.RNN = rnn_layer_type(batch_first=True, **rnn)
+        if att is not None:
+            self.att = Attention(**att)
+        else:
+            self.att = None
+
+    def forward(self, text, length):
+        x = self.Embed(text)
+        # create a packed_sequence object. The padding will be excluded from
+        # the update step thereby training on the original sequence length only
+        x = nn.utils.rnn.pack_padded_sequence(x, length, batch_first=True,
+                                              enforce_sorted=False)
+        x, _ = self.RNN(x)
+        # unpack again as at the moment only rnn layers except packed_sequence
+        # objects
+        x, _ = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
+        if self.att is not None:
+            x = nn.functional.normalize(self.att(x), p=2, dim=1)
+        return x
+
+    def introspect(self, input, length):
+        if not hasattr(self, 'IntrospectRNN'):
+            logging.info("Creating IntrospectRNN wrapper")
+            self.IntrospectRNN = platalea.introspect.IntrospectRNN(self.RNN)
+        result = {}
+
+        # Computing convolutional activations
+        embed = self.Embed(text)
+        result['embed'] = [embed[i, :length[i], :] for i in range(len(embed))]
+
+        # Computing full stack of RNN states
+        embed_padded = nn.utils.rnn.pack_padded_sequence(
+            embed, length, batch_first=True, enforce_sorted=False)
+        rnn = self.IntrospectRNN.introspect(embed_padded)
+        for l in range(self.RNN.num_layers):
+            name = 'rnn{}'.format(l)
+            result[name] = [rnn[i, l, :length[i], :] for i in range(len(rnn))]
+
+        # Computing aggregated and normalized encoding
+        x, _ = self.RNN(embed_padded)
+        x, _lens = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
+        if self.att is not None:
+            x = nn.functional.normalize(self.att(x), p=2, dim=1)
+            result['att'] = list(x)
+        return result
+
+
 class SpeechEncoder(nn.Module):
     def __init__(self, config):
         super(SpeechEncoder, self).__init__()
