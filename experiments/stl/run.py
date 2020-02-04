@@ -28,7 +28,8 @@ fd.init_vocabulary(data['train'].dataset)
 
 # Saving config
 pickle.dump(dict(feature_fname=feature_fname,
-                 label_encoder=fd.get_label_encoder()),
+                 label_encoder=fd.get_label_encoder(),
+                 language='jp'),
             open('config.pkl', 'wb'))
 
 config = dict(

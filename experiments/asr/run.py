@@ -27,14 +27,15 @@ fd.init_vocabulary(data['train'].dataset)
 
 # Saving config
 pickle.dump(dict(feature_fname=feature_fname,
-                 label_encoder=fd.get_label_encoder()),
+                 label_encoder=fd.get_label_encoder(),
+                 language='en'),
             open('config.pkl', 'wb'))
 
 config = dict(
     SpeechEncoder=dict(
         conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,
                   padding=0, bias=False),
-        rnn=dict(input_size=64, hidden_size=hidden_size, num_layers=4,
+        rnn=dict(input_size=64, hidden_size=hidden_size, num_layers=5,
                  bidirectional=True, dropout=dropout),
         rnn_layer_type=nn.GRU),
     TextDecoder=dict(
