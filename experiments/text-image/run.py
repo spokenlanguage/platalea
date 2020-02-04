@@ -30,20 +30,8 @@ pickle.dump(dict(feature_fname=feature_fname,
                  language='en'),
             open('config.pkl', 'wb'))
 
-config = dict(
-    TextEncoder=dict(
-        emb=dict(num_embeddings=fd.vocabulary_size(),
-                 embedding_dim=128),
-        rnn=dict(input_size=128, hidden_size=hidden_size, num_layers=2,
-                 bidirectional=True, dropout=0),
-        att=dict(in_size=hidden_size * 2, hidden_size=128)),
-    ImageEncoder=dict(
-        linear=dict(in_size=hidden_size * 2, out_size=hidden_size * 2),
-        norm=True),
-    margin_size=0.2)
-
 logging.info('Building model')
-net = M.TextImage(config)
+net = M.TextImage(M.get_defaul_config())
 run_config = dict(max_lr=2 * 1e-4, epochs=32)
 
 logging.info('Training')

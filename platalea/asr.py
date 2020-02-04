@@ -144,3 +144,30 @@ def experiment(net, data, config):
     if 'epsilon_decay' in config.keys():
         # Save full model for inference
         torch.save(net, 'net.best.pt')
+
+
+def get_default_config():
+    fd = D.Flickr8KData
+    return dict(
+        SpeechEncoder=dict(
+            conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,
+                      padding=0, bias=False),
+            rnn=dict(input_size=64, hidden_size=1024, num_layers=4,
+                     bidirectional=True, dropout=0.0),
+            rnn_layer_type=nn.GRU),
+        TextDecoder=dict(
+            emb=dict(num_embeddings=fd.vocabulary_size(),
+                     embedding_dim=1024),
+            drop=dict(p=0.0),
+            att=dict(in_size_enc=1024 * 2, in_size_state=1024,
+                     hidden_size=1024),
+            rnn=dict(input_size=1024 * 3, hidden_size=1024,
+                     num_layers=1, dropout=0.0),
+            out=dict(in_features=1024 * 3,
+                     out_features=fd.vocabulary_size()),
+            rnn_layer_type=nn.GRU,
+            max_output_length=400,  # max length for flickr annotations is 199
+            sos_id=fd.get_token_id(fd.sos),
+            eos_id=fd.get_token_id(fd.eos),
+            pad_id=fd.get_token_id(fd.pad)),
+        inverse_transform_fn=fd.get_label_encoder().inverse_transform)

@@ -95,3 +95,17 @@ def experiment(net, data, config):
             print(result, file=out, flush=True)
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
+
+
+def get_default_config():
+    return dict(
+        TextEncoder=dict(
+            emb=dict(num_embeddings=D.Flickr8KData.vocabulary_size(),
+                     embedding_dim=128),
+            rnn=dict(input_size=128, hidden_size=1024, num_layers=2,
+                     bidirectional=True, dropout=0),
+            att=dict(in_size=1024 * 2, hidden_size=128)),
+        ImageEncoder=dict(
+            linear=dict(in_size=1024 * 2, out_size=1024 * 2),
+            norm=True),
+        margin_size=0.2)
