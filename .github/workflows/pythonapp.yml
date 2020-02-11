@@ -41,4 +41,4 @@ jobs:
         CONDA_PREFIX: /usr/share/miniconda
       run: |
         pip install sklearn python-Levenshtein
-        python experiments/basic-stack/run.python
+        python experiments/basic-stack/run.py
