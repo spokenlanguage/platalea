@@ -9,7 +9,7 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
 
     steps:
-    - uses: actions/checkout@trafo
+    - uses: actions/checkout@master
     - name: Setup conda
       uses: s-weigand/setup-conda@master
       with:
