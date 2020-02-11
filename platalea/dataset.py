@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.utils.data
 import json
@@ -95,7 +97,8 @@ def collate_fn(data, max_frames=2048):
     return dict(image=images, audio=mfcc, text=chars, audio_len=mfcc_lengths, text_len=char_lengths)
 
 def flickr8k_loader(split='train', batch_size=32, shuffle=False, max_frames=2048):
-    return torch.utils.data.DataLoader(dataset=Flickr8KData(root='/roaming/gchrupal/datasets/flickr8k/', split=split), 
+    data_root = os.environ["PLATALEA_DATA_ROOT"] + '/'
+    return torch.utils.data.DataLoader(dataset=Flickr8KData(root=data_root, split=split), 
                                        batch_size=batch_size,
                                        shuffle=shuffle,
                                        num_workers=0,
