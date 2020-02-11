@@ -41,7 +41,7 @@ class Flickr8KData(torch.utils.data.Dataset):
         capt = [cls.sos] + capt + [cls.eos]
         return torch.Tensor(le.transform(capt))
 
-    def __init__(self, root, feature_fname, split='train', language='en'):
+    def __init__(self, root, feature_fname, meta_fname='dataset.json', split='train', language='en'):
         if language == 'en':
             self.text_key = 'raw'
         elif language == 'jp':
@@ -50,7 +50,7 @@ class Flickr8KData(torch.utils.data.Dataset):
             raise ValueError('Language {} not supported.'.format(language))
         self.root = root
         self.split = split
-        fmeta = open(root + 'dataset_multilingual.json')
+        fmeta = open(root + '/' + meta_fname)
         self.metadata = json.load(fmeta)['images']
         # mapping from image id to list of caption id
         self.image_captions = {}
@@ -137,7 +137,7 @@ def batch_image(images):
 
 
 def collate_fn(data, max_frames=2048):
-    #data.sort(key=lambda x: len(x[1]), reverse=True)
+    # data.sort(key=lambda x: len(x[1]), reverse=True)
     images, texts, audios = zip(* [(datum['image'],
                                     datum['text'],
                                     datum['audio']) for datum in data])
@@ -151,12 +151,13 @@ def collate_fn(data, max_frames=2048):
 
 def flickr8k_loader(split='train', batch_size=32, shuffle=False,
                     max_frames=2048, feature_fname='mfcc_delta_features.pt',
-                    language='en'):
+                    language='en', meta_fname='dataset_multilingual.json'):
     return torch.utils.data.DataLoader(
         dataset=Flickr8KData(root=CONFIG['flickr8k_root'],
                              feature_fname=feature_fname,
                              split=split,
-                             language=language),
+                             language=language,
+                             meta_fname=meta_fname),
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=0,

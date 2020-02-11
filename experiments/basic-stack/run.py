@@ -7,8 +7,8 @@ import platalea.dataset as D
 logging.basicConfig(level=logging.INFO)
 
 logging.info('Loading data')
-data = dict(train=D.flickr8k_loader(split='train', batch_size=32, shuffle=True),
-            val=D.flickr8k_loader(split='val', batch_size=32, shuffle=False))
+data = dict(train=D.flickr8k_loader(split='train', batch_size=32, shuffle=True, meta_fname='dataset.json'),
+            val=D.flickr8k_loader(split='val', batch_size=32, shuffle=False, meta_fname='dataset.json'))
 D.Flickr8KData.init_vocabulary(data['train'].dataset)
 
 config = dict(SpeechEncoder=dict(conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0, bias=False),
