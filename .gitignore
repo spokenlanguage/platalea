@@ -1,5 +1,8 @@
 # from https://github.com/github/gitignore/blob/master/Python.gitignore
 
+# ignore the local config.py file
+config.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
