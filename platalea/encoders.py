@@ -54,7 +54,7 @@ class TextEncoder(nn.Module):
             x = nn.functional.normalize(self.att(x), p=2, dim=1)
         return x
 
-    def introspect(self, input, length):
+    def introspect(self, text, length):  # TODO: PLEASE REVIEW input -> text RENAME!
         if not hasattr(self, 'IntrospectRNN'):
             logging.info("Creating IntrospectRNN wrapper")
             self.IntrospectRNN = platalea.introspect.IntrospectRNN(self.RNN)
