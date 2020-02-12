@@ -9,6 +9,11 @@ import logging
 from torch.optim import lr_scheduler
 import platalea.dataset as D
 import platalea.score
+import platalea.config
+
+
+_device = platalea.config.device()
+
 
 class SpeechImage(nn.Module):
 
@@ -30,7 +35,7 @@ class SpeechImage(nn.Module):
         image = torch.utils.data.DataLoader(dataset=images, batch_size=32, shuffle=False, collate_fn=D.batch_image)
         image_e = []
         for i in image:
-            image_e.append(self.ImageEncoder(i.cuda()).detach().cpu().numpy())
+            image_e.append(self.ImageEncoder(i.to(_device)).detach().cpu().numpy())
         image_e = np.concatenate(image_e)
         return image_e
 
@@ -38,7 +43,7 @@ class SpeechImage(nn.Module):
         audio = torch.utils.data.DataLoader(dataset=audios, batch_size=32, shuffle=False, collate_fn=D.batch_audio)
         audio_e = []
         for a, l in audio:
-            audio_e.append(self.SpeechEncoder(a.cuda(), l.cuda()).detach().cpu().numpy())
+            audio_e.append(self.SpeechEncoder(a.to(_device), l.to(_device)).detach().cpu().numpy())
         audio_e = np.concatenate(audio_e)
         return audio_e
 
@@ -58,12 +63,12 @@ def experiment(net, data, config):
         net.eval()
         result = []
         for item in data['val']:
-            item = {key: value.cuda() for key, value in item.items()}
+            item = {key: value.to(_device) for key, value in item.items()}
             result.append(net.cost(item).item())
         net.train()
         return torch.tensor(result).mean()
     
-    net.cuda()
+    net.to(_device)
     net.train()
     optimizer = optim.Adam(net.parameters(), lr=1)
     scheduler = cyclic_scheduler(optimizer, len(data['train']), max_lr = config['max_lr'], min_lr = 1e-6)
@@ -73,7 +78,7 @@ def experiment(net, data, config):
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
             for j, item in enumerate(data['train'], start=1): # check reshuffling
-                item = {key: value.cuda() for key, value in item.items()}
+                item = {key: value.to(_device) for key, value in item.items()}
                 loss = net.cost(item)
                 optimizer.zero_grad()
                 loss.backward()

@@ -8,6 +8,10 @@ import logging
 from scipy.io.wavfile import read
 import os
 import numpy
+import platalea.config
+
+
+_device = platalea.config.device()
 
 
 def flickr8k_features():
@@ -41,8 +45,7 @@ def image_features(paths, config):
     elif config['model'] == 'vgg19':
         model = models.vgg19_bn(pretrained = True)
         model.classifier = nn.Sequential(*list(model.classifier.children())[:-1])
-    if torch.cuda.is_available():
-        model.cuda()
+    model.to(_device)
     for p in model.parameters():
     	p.requires_grad = False
     model.eval()
