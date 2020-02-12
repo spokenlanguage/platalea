@@ -20,7 +20,6 @@ parser.add_argument('-b', help='Use beam decoding', dest='use_beam_decoding',
                     action='store_true', default=False)
 args = parser.parse_args()
 
-
 # Loading config
 conf = pickle.load(open('config.pkl', 'rb'))
 
