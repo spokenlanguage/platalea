@@ -8,6 +8,7 @@ import logging
 from scipy.io.wavfile import read
 import numpy
 import platalea.config
+import pathlib
 
 
 _device = platalea.config.device()
@@ -16,30 +17,30 @@ _device = platalea.config.device()
 def flickr8k_features(dataset_path='/roaming/gchrupal/datasets/flickr8k/',
                       audio_subdir='flickr_audio/wavs/',
                       images_subdir='Flickr8k_Dataset/Flicker8k_Dataset/'):
-    audio_config = dict(dataset_path=dataset_path, audio_subdir=audio_subdir, type='mfcc',
+    audio_config = dict(dataset_path=pathlib.Path(dataset_path), audio_subdir=audio_subdir, type='mfcc',
                         delta=True, alpha=0.97, n_filters=40, window_size=0.025,
                         frame_shift=0.010)
-    images_config = dict(dataset_path=dataset_path, images_subdir=images_subdir, model='resnet')
+    images_config = dict(dataset_path=pathlib.Path(dataset_path), images_subdir=images_subdir, model='resnet')
     flickr8k_audio_features(audio_config)
     flickr8k_image_features(images_config)
 
 
 def flickr8k_audio_features(config):
-    directory = config['dataset_path'] + '/' + config['audio_subdir']
-    files = [ line.split()[0] for line in open(config['dataset_path'] + '/' + 'wav2capt.txt') ]
-    paths = [ directory + file for file in files ]
+    directory = config['dataset_path'] / config['audio_subdir']
+    files = [line.split()[0] for line in open(config['dataset_path'] / 'wav2capt.txt')]
+    paths = [directory / fn for fn in files]
     features = audio_features(paths, config)
-    torch.save(dict(features=features, filenames=files), config['dataset_path'] + '/' + 'mfcc_features.pt')
+    torch.save(dict(features=features, filenames=files), config['dataset_path'] / 'mfcc_features.pt')
 
 
 def flickr8k_image_features(config):
-    directory = config['dataset_path'] + '/' + config['images_subdir']
-    data = json.load(open(config['dataset_path'] + '/' + 'dataset.json'))
-    files =  [ image['filename'] for image in data['images'] ]
-    paths = [ directory + file for file in files ]
+    directory = config['dataset_path'] / config['images_subdir']
+    data = json.load(open(config['dataset_path'] / 'dataset.json'))
+    files = [image['filename'] for image in data['images']]
+    paths = [directory / fn for fn in files]
 
     features = image_features(paths, config).cpu()
-    torch.save(dict(features=features, filenames=files), config['dataset_path'] + '/' + 'resnet_features.pt')
+    torch.save(dict(features=features, filenames=files), config['dataset_path'] / 'resnet_features.pt')
 
 
 def image_features(paths, config):
