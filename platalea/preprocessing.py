@@ -6,7 +6,6 @@ import PIL.Image
 import json
 import logging
 from scipy.io.wavfile import read
-import os
 import numpy
 import platalea.config
 
@@ -14,29 +13,34 @@ import platalea.config
 _device = platalea.config.device()
 
 
-def flickr8k_features():
-    config = dict(audio=dict(dir='/roaming/gchrupal/datasets/flickr8k/', type='mfcc', delta=True, alpha=0.97, n_filters=40, window_size=0.025, frame_shift=0.010),
-                  image=dict(dir='/roaming/gchrupal/datasets/flickr8k/', model='resnet'))
-    flickr8k_audio_features(config['audio'])
-    flickr8k_image_features(config['image'])
-                  
+def flickr8k_features(dataset_path='/roaming/gchrupal/datasets/flickr8k/',
+                      audio_subdir='flickr_audio/wavs/',
+                      images_subdir='Flickr8k_Dataset/Flicker8k_Dataset/'):
+    audio_config = dict(dataset_path=dataset_path, audio_subdir=audio_subdir, type='mfcc',
+                        delta=True, alpha=0.97, n_filters=40, window_size=0.025,
+                        frame_shift=0.010)
+    images_config = dict(dataset_path=dataset_path, images_subdir=images_subdir, model='resnet')
+    flickr8k_audio_features(audio_config)
+    flickr8k_image_features(images_config)
+
+
 def flickr8k_audio_features(config):
-    directory = config['dir'] + 'flickr_audio/wavs/'
-    files = [ line.split()[0] for line in open(config['dir'] + 'wav2capt.txt') ]
+    directory = config['dataset_path'] + '/' + config['audio_subdir']
+    files = [ line.split()[0] for line in open(config['dataset_path'] + '/' + 'wav2capt.txt') ]
     paths = [ directory + file for file in files ]
     features = audio_features(paths, config)
-    torch.save(dict(features=features, filenames=files), config['dir'] + 'mfcc_features.pt')
-    
-    
+    torch.save(dict(features=features, filenames=files), config['dataset_path'] + '/' + 'mfcc_features.pt')
+
+
 def flickr8k_image_features(config):
-    directory = config['dir'] + 'Flickr8k_Dataset/Flicker8k_Dataset/'
-    data = json.load(open(config['dir'] + 'dataset.json'))
+    directory = config['dataset_path'] + '/' + config['images_subdir']
+    data = json.load(open(config['dataset_path'] + '/' + 'dataset.json'))
     files =  [ image['filename'] for image in data['images'] ]
     paths = [ directory + file for file in files ]
 
     features = image_features(paths, config).cpu()
-    torch.save(dict(features=features, filenames=files), config['dir'] + 'resnet_features.pt')
-    
+    torch.save(dict(features=features, filenames=files), config['dataset_path'] + '/' + 'resnet_features.pt')
+
 
 def image_features(paths, config):
     if config['model'] == 'resnet':
@@ -56,7 +60,6 @@ def image_features(paths, config):
         return prep_tencrop(im, model, device)
 
     return torch.stack([one(path) for path in paths])
-    
 
 
 def prep_tencrop(im, model, device):
@@ -68,7 +71,7 @@ def prep_tencrop(im, model, device):
     normalise = transforms.Normalize(mean = [0.485,0.456,0.406], 
                                      std = [0.229, 0.224, 0.225])
     resize = transforms.Resize(256, PIL.Image.ANTIALIAS)
-    
+
     im = tencrop(resize(im))
     im = torch.cat([normalise(tens(x)).unsqueeze(0) for x in im])
     im = im.to(device)
@@ -79,6 +82,7 @@ def prep_tencrop(im, model, device):
     activations = model(im)
     return activations.mean(0).squeeze()
 
+
 def fix_wav(path):
     import wave
     logging.warning("Trying to fix {}".format(path))
@@ -86,7 +90,7 @@ def fix_wav(path):
     #number of frames indicated in the header, causing it to be unreadable by pythons
     #wav read function. This opens the file with the wave package, extracts the correct
     #number of frames and saves a copy of the file with a correct header
-    
+
     file = wave.open(path, 'r')
     # derive the correct number of frames from the file
     frames = file.readframes(file.getnframes())
@@ -99,7 +103,8 @@ def fix_wav(path):
     out_file.writeframes(frames)
     out_file.close()
     return path + '.fix'
-    
+
+
 def audio_features(paths, config):
     # Adapted from https://github.com/gchrupala/speech2image/blob/master/preprocessing/audio_features.py#L45
     from platalea.audio.features import get_fbanks, get_freqspectrum, get_mfcc, delta, raw_frames
@@ -119,12 +124,12 @@ def audio_features(paths, config):
         # get window and frameshift size in samples
         window_size = int(fs*config['window_size'])
         frame_shift = int(fs*config['frame_shift'])
-        
+
         [frames, energy] = raw_frames(input_data, frame_shift, window_size)
         freq_spectrum = get_freqspectrum(frames, config['alpha'], fs, window_size)
         fbanks = get_fbanks(freq_spectrum, config['n_filters'], fs)
         features = get_mfcc(fbanks)
-            
+
         #  add the frame energy
         features = numpy.concatenate([energy[:,None], features], 1)
         # optionally add the deltas and double deltas
