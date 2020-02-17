@@ -61,7 +61,7 @@ else:
     run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32, opt='adam')
     logging.info('Training ASR')
     M1.experiment(net, data, run_config)
-    for i in range(32):
+    for i in range(1, 33):
         copyfile('net.{}.pt'.format(i), 'asr.{}.pt'.format(i))
 
 logging.info('Extracting ASR transcriptions')
@@ -82,11 +82,11 @@ if args.text_image_model_dir:
     net = torch.load(os.path.join(args.text_image_model_dir, 'net.best.pt'))
 else:
     logging.info('Building model text-image')
-    net = M2.TextImage(M2.DEFAULT_CONFIG)
+    net = M2.TextImage(M2.get_default_config())
     run_config = dict(max_lr=2 * 1e-4, epochs=32)
     logging.info('Training text-image')
     M2.experiment(net, data, run_config)
-    for i in range(32):
+    for i in range(1, 33):
         copyfile('net.{}.pt'.format(i), 'text-image.{}.pt'.format(i))
 
 logging.info('Evaluating text-image with ASR\'s output')

@@ -35,7 +35,7 @@ config = dict(
     SpeechEncoder=dict(
         conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,
                   padding=0, bias=False),
-        rnn=dict(input_size=64, hidden_size=hidden_size, num_layers=5,
+        rnn=dict(input_size=64, hidden_size=hidden_size, num_layers=6,
                  bidirectional=True, dropout=dropout),
         rnn_layer_type=nn.GRU),
     TextDecoder=dict(

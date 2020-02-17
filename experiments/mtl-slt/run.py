@@ -79,7 +79,7 @@ for n in [(5, 1, 1), (4, 2, 2)]:
         lmbd=0.5)
 
     logging.info('Building model (n={})'.format(n))
-    net = M.MTLNet(config)
+    net = M.MTLNetASR(config)
     run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32, opt='adam')
 
     tasks = [dict(name='SI', net=net.SpeechImage, data=data, eval=score),

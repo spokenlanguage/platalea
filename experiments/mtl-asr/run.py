@@ -34,7 +34,7 @@ config = dict(
     SharedEncoder=dict(
         conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,
                   padding=0, bias=False),
-        rnn=dict(input_size=64, hidden_size=hidden_size, num_layers=3,
+        rnn=dict(input_size=64, hidden_size=hidden_size, num_layers=4,
                  bidirectional=True, dropout=dropout),
         rnn_layer_type=nn.GRU),
     SpeechEncoderTopSI=dict(
@@ -69,7 +69,7 @@ config = dict(
     lmbd=0.5)
 
 logging.info('Building model')
-net = M.MTLNet(config)
+net = M.MTLNetASR(config)
 run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32, opt='adam')
 
 tasks = [dict(name='SI', net=net.SpeechImage, data=data, eval=score),

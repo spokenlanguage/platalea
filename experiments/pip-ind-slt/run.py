@@ -1,5 +1,6 @@
 import argparse
 import logging
+import numpy as np
 import pickle
 import os
 from shutil import copyfile
@@ -7,6 +8,7 @@ import torch
 
 import platalea.asr as M1
 import platalea.dataset as D
+import platalea.rank_eval as E
 import platalea.text_image as M2
 from utils.extract_transcriptions import extract_trn
 
@@ -24,14 +26,19 @@ parser.add_argument(
     '--asr_model_dir',
     help='Path to the directory where the pretrained ASR model is stored',
     dest='asr_model_dir', type=str, action='store')
+parser.add_argument(
+    '--text_image_model_dir',
+    help='Path to the directory where the pretrained text-image model is \
+    stored',
+    dest='text_image_model_dir', type=str, action='store')
 args = parser.parse_args()
 
 logging.info('Loading data')
 data = dict(
     train=D.flickr8k_loader(split='train', batch_size=batch_size, shuffle=True,
-                            feature_fname=feature_fname),
+                            feature_fname=feature_fname, language='jp'),
     val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False,
-                          feature_fname=feature_fname))
+                          feature_fname=feature_fname, language='jp'))
 fd = D.Flickr8KData
 if args.asr_model_dir:
     config_fpath = os.path.join(args.asr_model_dir, 'config.pkl')
@@ -42,7 +49,7 @@ else:
     # Saving config
     pickle.dump(dict(feature_fname=feature_fname,
                      label_encoder=fd.get_label_encoder(),
-                     language='en'),
+                     language='jp'),
                 open('config.pkl', 'wb'))
 
 if args.asr_model_dir:
@@ -54,36 +61,41 @@ else:
     run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32, opt='adam')
     logging.info('Training ASR')
     M1.experiment(net, data, run_config)
-    for i in range(32):
+    for i in range(1, 33):
         copyfile('net.{}.pt'.format(i), 'asr.{}.pt'.format(i))
 
 logging.info('Extracting ASR transcriptions')
-for set_name in ['train', 'val']:
-    ds = data[set_name].dataset
-    hyp_asr, ref_asr = extract_trn(net, ds, use_beam_decoding=True)
-    # Replacing original transcriptions with ASR's output
-    for i in range(len(hyp_asr)):
-        item = ds.split_data[i]
-        if item[2] == ref_asr[i]:
-            ds.split_data[i] = (item[0], item[1], hyp_asr[i])
-        else:
-            msg = 'Extracted reference #{} ({}) doesn\'t match dataset\'s \
-                    one ({}) for {} set.'
-            msg = msg.format(i, ref_asr[i], ds.split_data[i][3], set_name)
-            logging.warning(msg)
+hyp_asr, _ = extract_trn(net, data['val'].dataset, use_beam_decoding=True)
 
-if args.asr_model_dir:
+if args.text_image_model_dir:
+    config_fpath = os.path.join(args.text_image_model_dir, 'config.pkl')
+    config = pickle.load(open(config_fpath, 'rb'))
+    fd.le = config['label_encoder']
+elif args.asr_model_dir:
     # Saving config for text-image model
     pickle.dump(dict(feature_fname=feature_fname,
                      label_encoder=fd.get_label_encoder(),
                      language='en'),
                 open('config.pkl', 'wb'))
 
-logging.info('Building model text-image')
-net = M2.TextImage(M2.get_default_config())
-run_config = dict(max_lr=2 * 1e-4, epochs=32)
+if args.text_image_model_dir:
+    net = torch.load(os.path.join(args.text_image_model_dir, 'net.best.pt'))
+else:
+    logging.info('Building model text-image')
+    net = M2.TextImage(M2.get_default_config())
+    run_config = dict(max_lr=2 * 1e-4, epochs=32)
+    logging.info('Training text-image')
+    M2.experiment(net, data, run_config)
+    for i in range(1, 33):
+        copyfile('net.{}.pt'.format(i), 'text-image.{}.pt'.format(i))
 
-logging.info('Training text-image')
-M2.experiment(net, data, run_config)
-for i in range(32):
-    copyfile('net.{}.pt'.format(i), 'text-image.{}.pt'.format(i))
+logging.info('Evaluating text-image with ASR\'s output')
+data = data['val'].dataset.evaluation()
+correct = data['correct'].cpu().numpy()
+image_e = net.embed_image(data['image'])
+text_e = net.embed_text(hyp_asr)
+result = E.ranking(image_e, text_e, correct)
+print(dict(medr=np.median(result['ranks']),
+           recall={1: np.mean(result['recall'][1]),
+                   5: np.mean(result['recall'][5]),
+                   10: np.mean(result['recall'][10])}))

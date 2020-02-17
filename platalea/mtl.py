@@ -7,14 +7,15 @@ import torch.optim as optim
 from platalea.basic import cyclic_scheduler
 from platalea.encoders import SpeechEncoderBottom, SpeechEncoderSplit
 from platalea.basic import SpeechImage
+from platalea.speech_text import SpeechText
 from platalea.asr import SpeechTranscriber
 import platalea.loss
 import platalea.score
 
 
-class MTLNet(nn.Module):
+class MTLNetASR(nn.Module):
     def __init__(self, config):
-        super(MTLNet, self).__init__()
+        super(MTLNetASR, self).__init__()
         self.config = config
         SharedEncoder = SpeechEncoderBottom(config['SharedEncoder'])
         SpeechEncoderSplitSI = SpeechEncoderSplit(dict(
@@ -37,7 +38,36 @@ class MTLNet(nn.Module):
         loss_si = self.SpeechImage.cost(item)
         loss_asr = self.SpeechTranscriber.cost(item)
         loss = self.lmbd * loss_si + (1 - self.lmbd) * loss_asr
-        return loss, {'asr': loss_asr.item(), 'si': loss_si.item()}
+        return loss, {'asr': loss_asr.item(), 'speech-image': loss_si.item()}
+
+
+class MTLNetSpeechText(nn.Module):
+    def __init__(self, config):
+        super(MTLNetSpeechText, self).__init__()
+        self.config = config
+        SharedEncoder = SpeechEncoderBottom(config['SharedEncoder'])
+        SpeechEncoderSplitSI = SpeechEncoderSplit(dict(
+            SpeechEncoderBottom=SharedEncoder,
+            SpeechEncoderTop=config['SpeechEncoderTopSI']))
+        SpeechEncoderSplitST = SpeechEncoderSplit(dict(
+            SpeechEncoderBottom=SharedEncoder,
+            SpeechEncoderTop=config['SpeechEncoderTopST']))
+        self.SpeechImage = SpeechImage(dict(
+            SpeechEncoder=SpeechEncoderSplitSI,
+            ImageEncoder=config['ImageEncoder'],
+            margin_size=config['margin_size']))
+        self.SpeechText = SpeechText(dict(
+            SpeechEncoder=SpeechEncoderSplitST,
+            TextEncoder=config['TextEncoder'],
+            margin_size=config['margin_size']))
+        self.lmbd = config.get('lmbd', 0.5)
+
+    def cost(self, item):
+        loss_si = self.SpeechImage.cost(item)
+        loss_st = self.SpeechText.cost(item)
+        loss = self.lmbd * loss_si + (1 - self.lmbd) * loss_st
+        return loss, {'speech-text': loss_st.item(),
+                      'speech-image': loss_si.item()}
 
 
 def experiment_parallel(net, data, config):
