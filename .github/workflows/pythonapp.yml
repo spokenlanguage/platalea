@@ -9,7 +9,13 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
 
     steps:
-    - uses: actions/checkout@master
+    - name: checkout
+      uses: actions/checkout@v2
+    - name: checkout flickr1d dataset
+      uses: actions/checkout@v2
+      with:
+        repository: spokenlanguage/flickr1d
+        path: data
     - name: Setup conda
       uses: s-weigand/setup-conda@master
       with:
@@ -39,6 +45,7 @@ jobs:
     - name: Run basic stack
       env:
         CONDA_PREFIX: /usr/share/miniconda
+        PLATALEA_DATA_ROOT: ${{ github.repository }}/data/flickr1d
       run: |
         pip install sklearn python-Levenshtein
         python experiments/basic-stack/run.py
