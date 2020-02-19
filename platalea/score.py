@@ -29,6 +29,18 @@ def score_text_image(net, dataset):
                        10: np.mean(result['recall'][10])})
 
 
+def score_speech_text(net, dataset):
+    data = dataset.evaluation()
+    audio_e = net.embed_audio(data['audio'])
+    text_e = net.embed_text(data['text'])
+    correct = torch.eye(len(data['audio'])).type(torch.bool)
+    result = E.ranking(audio_e, text_e, correct)
+    return dict(medr=np.median(result['ranks']),
+                recall={1: np.mean(result['recall'][1]),
+                        5: np.mean(result['recall'][5]),
+                       10: np.mean(result['recall'][10])})
+
+
 def score_asr(net, dataset, beam_size=None):
     data = dataset.evaluation()
     trn = net.transcribe(data['audio'], beam_size=beam_size)

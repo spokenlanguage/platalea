@@ -31,7 +31,7 @@ pickle.dump(dict(feature_fname=feature_fname,
             open('config.pkl', 'wb'))
 
 logging.info('Building model')
-net = M.TextImage(M.get_defaul_config())
+net = M.TextImage(M.get_default_config())
 run_config = dict(max_lr=2 * 1e-4, epochs=32)
 
 logging.info('Training')

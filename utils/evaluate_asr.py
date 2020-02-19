@@ -31,7 +31,7 @@ fd = D.Flickr8KData
 fd.le = conf['label_encoder']
 
 logging.info('Loading model')
-net = torch.load(path)
+net = torch.load(args.path)
 logging.info('Evaluating')
 with torch.no_grad():
     net.eval()
