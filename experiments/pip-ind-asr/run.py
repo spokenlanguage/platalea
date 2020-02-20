@@ -10,6 +10,7 @@ import platalea.asr as M1
 import platalea.dataset as D
 import platalea.rank_eval as E
 import platalea.text_image as M2
+from utils.copy_best import copy_best
 from utils.extract_transcriptions import extract_trn
 
 torch.manual_seed(123)
@@ -61,8 +62,10 @@ else:
     run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32, opt='adam')
     logging.info('Training ASR')
     M1.experiment(net, data, run_config)
-    for i in range(1, 33):
-        copyfile('net.{}.pt'.format(i), 'asr.{}.pt'.format(i))
+    copyfile('result.json', 'result_asr.json')
+    copy_best('result_asr.json', 'asr.best.pt',
+              metric_accessor=get_metric_accessor('asr'))
+    net = torch.load('asr.best.pt')
 
 logging.info('Extracting ASR transcriptions')
 hyp_asr, _ = extract_trn(net, data['val'].dataset, use_beam_decoding=True)
@@ -86,8 +89,10 @@ else:
     run_config = dict(max_lr=2 * 1e-4, epochs=32)
     logging.info('Training text-image')
     M2.experiment(net, data, run_config)
-    for i in range(1, 33):
-        copyfile('net.{}.pt'.format(i), 'text-image.{}.pt'.format(i))
+    copyfile('result.json', 'result_text_image.json')
+    copy_best('result_text_image.json', 'ti.best.pt',
+              metric_accessor=get_metric_accessor('retrieval'))
+    net = torch.load('ti.best.pt')
 
 logging.info('Evaluating text-image with ASR\'s output')
 data = data['val'].dataset.evaluation()

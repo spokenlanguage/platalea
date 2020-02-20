@@ -125,7 +125,8 @@ def experiment(net, data, config):
                 result = platalea.score.score_asr(net, data['val'].dataset)
                 net.train()
             result['epoch'] = epoch
-            print(result, file=out, flush=True)
+            json.dump(result, out)
+            print('', file=out, flush=True)
             if 'epsilon_decay' in config.keys():
                 wer = result['wer']['WER']
                 if best_wer is None or wer < best_wer:

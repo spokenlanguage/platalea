@@ -1,12 +1,14 @@
+from collections import Counter
+import logging
+import json
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim import lr_scheduler
+
 from platalea.encoders import SpeechEncoder, ImageEncoder
 import platalea.loss
-from collections import Counter
-import logging
-from torch.optim import lr_scheduler
 import platalea.dataset as D
 import platalea.score
 
@@ -96,7 +98,8 @@ def experiment(net, data, config):
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
             result = platalea.score.score(net, data['val'].dataset)
             result['epoch'] = epoch
-            print(result, file=out, flush=True)
+            json.dump(result, out)
+            print('', file=out, flush=True)
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
 
