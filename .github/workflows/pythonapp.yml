@@ -48,4 +48,4 @@ jobs:
         PLATALEA_DATA_ROOT: ${{ github.workspace }}/data/flickr1d
       run: |
         pip install sklearn python-Levenshtein
-        python experiments/basic-stack/run.py
+        python experiments/basic-stack/run.py --epochs=1
