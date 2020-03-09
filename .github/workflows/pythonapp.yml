@@ -42,10 +42,16 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-    - name: Run basic stack
+    - name: Run basic stack, including coverage
       env:
         CONDA_PREFIX: /usr/share/miniconda
         PLATALEA_DATA_ROOT: ${{ github.workspace }}/data/flickr1d
       run: |
-        pip install sklearn python-Levenshtein
-        python experiments/basic-stack/run.py --epochs=1
+        pip install sklearn python-Levenshtein coverage
+        coverage run experiments/basic-stack/run.py --epochs=1
+
+    - name: Upload coverage to Codecov  
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true
