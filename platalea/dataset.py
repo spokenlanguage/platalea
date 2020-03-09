@@ -4,6 +4,7 @@ import torch
 import torch.utils.data
 import json
 
+
 class Flickr8KData(torch.utils.data.Dataset):
 
     def __init__(self, root, split='train'):
