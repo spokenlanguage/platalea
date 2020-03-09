@@ -1,4 +1,5 @@
 from collections import Counter
+import json
 import logging
 import torch
 import torch.nn as nn
@@ -120,7 +121,8 @@ def experiment_parallel(net, data, config):
                                                        data['val'].dataset))
                 net.train()
             result['epoch'] = epoch
-            print(result, file=out, flush=True)
+            json.dump(result, out)
+            print('', file=out, flush=True)
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
 

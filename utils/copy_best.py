@@ -9,33 +9,22 @@ network to net.best.pt.
 
 
 import argparse
-import json
 import numpy as np
 from shutil import copyfile
 
-
-def read_results(fpath="result.json"):
-    res = []
-    content = open(fpath).readlines()
-    for line in content:
-        res.append(json.loads(line))
-    return res
-
-
-def get_metric_accessor(experiment_type):
-    if experiment_type == 'retrieval':
-        return lambda x: x['recall']['10']
-    elif experiment_type == 'asr':
-        return lambda x: x['wer']['WER']
-    elif experiment_type == 'mtl':
-        return lambda x: x['SI']['recall']['10']
+from utils.get_best_score import read_results, get_metric_accessor
 
 
 def copy_best(result_fpath='result.json', save_fpath='net.best.pt',
-              metric_accessor=get_metric_accessor('retrieval')):
+              experiment_type='retrieval'):
     res = read_results(result_fpath)
-    ibest = np.argmax([metric_accessor(r) for r in res]) + 1
-    copyfile('net.{}.pt'.format(ibest), 'net.best.pt')
+    metric_accessor = get_metric_accessor(experiment_type)
+    if experiment_type == 'asr':
+        best = np.argmin([metric_accessor(r) for r in res]) + 1
+    else:
+        best = np.argmax([metric_accessor(r) for r in res]) + 1
+    return best
+    copyfile('net.{}.pt'.format(ibest), save_fpath)
 
 
 if __name__ == '__main__':
@@ -57,5 +46,4 @@ if __name__ == '__main__':
         default='retrieval')
     args = parser.parse_args()
 
-    metric_accessor = get_metric_accessor(args.experiment_type)
-    copy_best(args.result, args.save, metric_accessor)
+    copy_best(args.result, args.save, args.experiment_type)
