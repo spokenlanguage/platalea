@@ -1,5 +1,6 @@
 # result files
 result.json
+net.*.pt
 
 # vscode
 .vscode
