@@ -1,0 +1,58 @@
+name: install and run in conda env
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+    - name: checkout flickr1d dataset
+      uses: actions/checkout@v2
+      with:
+        repository: spokenlanguage/flickr1d
+        path: data
+    - name: Setup conda
+      uses: s-weigand/setup-conda@master
+      with:
+        update-conda: true
+        python-version: 3.7
+        conda-channels: anaconda, conda-forge
+    - run: conda --version
+    - run: which python
+    - run: conda install pytorch -c pytorch
+    - run: pip install torchvision
+
+    - name: Install the package
+      run: pip install -e .
+      env:
+        CONDA_PREFIX: /usr/share/miniconda
+
+    - name: Lint with flake8
+      env:
+        CONDA_PREFIX: /usr/share/miniconda
+      run: |
+        pip install flake8
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Run basic stack, including coverage
+      env:
+        CONDA_PREFIX: /usr/share/miniconda
+        PLATALEA_DATA_ROOT: ${{ github.workspace }}/data/flickr1d
+      run: |
+        pip install sklearn python-Levenshtein coverage
+        coverage run experiments/basic-stack/run.py --epochs=1
+        coverage xml
+
+    - name: Upload coverage to Codecov  
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true

@@ -7,6 +7,7 @@ import torch
 import torch.utils.data
 
 
+
 class Flickr8KData(torch.utils.data.Dataset):
     le = None
     sos = '<sos>'

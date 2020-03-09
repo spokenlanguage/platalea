@@ -6,17 +6,22 @@ from config import CONFIG
 import platalea.basic as basic
 import platalea.encoders as encoders
 import platalea.dataset as dataset
+import platalea.config
 import json
 import os
+
+
+_device = platalea.config.device()
+
 
 def prepare():
     logging.getLogger().setLevel('INFO')
     logging.info("Loading pytorch models")
-    net_rand = basic.SpeechImage(basic.DEFAULT_CONFIG).cuda()
+    net_rand = basic.SpeechImage(basic.DEFAULT_CONFIG).to(_device)
     net_rand.eval()
     net_train = basic.SpeechImage(basic.DEFAULT_CONFIG)
     net_train.load_state_dict(torch.load("net.20.pt").state_dict())
-    net_train.cuda()
+    net_train.to(_device)
     net_train.eval()
     nets = [('trained', net_train), ('random', net_rand)]
     with torch.no_grad():
@@ -284,7 +289,7 @@ def collect_activations(net, audio, batch_size=32):
                                        collate_fn=dataset.batch_audio)
     out = {}
     for au, l in data:
-        act = net.SpeechEncoder.introspect(au.cuda(), l.cuda())
+        act = net.SpeechEncoder.introspect(au.to(_device), l.to(_device))
         for k in act:
             if k not in out:
                 out[k] = []
