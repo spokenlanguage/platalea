@@ -35,3 +35,4 @@ traitlets==4.3.2
 wcwidth==0.1.7
 git+https://github.com/gchrupala/ursa#egg=ursa
 python-Levenshtein==0.12.0
+configargparse>=1.0
