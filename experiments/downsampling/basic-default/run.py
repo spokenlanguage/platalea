@@ -1,0 +1,44 @@
+import logging
+from shutil import copyfile
+import torch
+
+import platalea.basic as M
+import platalea.dataset as D
+from utils.copy_best import copy_best, get_metric_accessor
+
+
+torch.manual_seed(123)
+
+logging.basicConfig(level=logging.INFO)
+
+factors = [3, 9, 27, 81, 243]
+lz = len(str(abs(factors[-1])))
+for ds_factor in factors:
+    logging.info('Loading data')
+    data = dict(
+        train=D.flickr8k_loader(split='train', batch_size=32, shuffle=True,
+                                downsampling_factor=ds_factor),
+        val=D.flickr8k_loader(split='val', batch_size=32, shuffle=False))
+    D.Flickr8KData.init_vocabulary(data['train'].dataset)
+
+    config = dict(
+        SpeechEncoder=dict(
+            conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,
+                      padding=0, bias=False),
+            rnn=dict(input_size=64, hidden_size=1024, num_layers=4,
+                     bidirectional=True, dropout=0),
+            att=dict(in_size=2048, hidden_size=128)),
+        ImageEncoder=dict(linear=dict(in_size=2048, out_size=2*1024),
+                          norm=True),
+        margin_size=0.2)
+
+    logging.info('Building model')
+    net = M.SpeechImage(config)
+    run_config = dict(max_lr=2 * 1e-4, epochs=32)
+
+    logging.info('Training')
+    M.experiment(net, data, run_config)
+    res_fname = 'result_{}.json'.format(ds_factor)
+    copyfile('result.json', res_fname)
+    copy_best(res_fname, 'net_{}.best.pt'.format(str(ds_factor).zfill(lz)),
+              metric_accessor=get_metric_accessor('retrieval'))

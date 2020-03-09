@@ -1,6 +1,7 @@
 from config import CONFIG
 import json
 import os
+import random
 from sklearn.preprocessing import LabelEncoder
 import torch
 import torch.utils.data
@@ -41,7 +42,8 @@ class Flickr8KData(torch.utils.data.Dataset):
         capt = [cls.sos] + capt + [cls.eos]
         return torch.Tensor(le.transform(capt))
 
-    def __init__(self, root, feature_fname, split='train', language='en'):
+    def __init__(self, root, feature_fname, split='train', language='en',
+                 downsampling_factor=None):
         if language == 'en':
             self.text_key = 'raw'
         elif language == 'jp':
@@ -52,6 +54,9 @@ class Flickr8KData(torch.utils.data.Dataset):
         self.split = split
         fmeta = open(root + 'dataset_multilingual.json')
         self.metadata = json.load(fmeta)['images']
+        if downsampling_factor is not None:
+            num_examples = len(self.metadata) // downsampling_factor
+            self.metadata = random.sample(self.metadata, num_examples)
         # mapping from image id to list of caption id
         self.image_captions = {}
         for line in open(os.path.join(root + 'flickr_audio/wav2capt.txt')):
@@ -94,7 +99,7 @@ class Flickr8KData(torch.utils.data.Dataset):
         """Returns image features, caption features, and a boolean array
         specifying whether a caption goes with an image."""
         audio = []
-        text  = []
+        text = []
         image = []
         matches = []
         for img in self.metadata:
@@ -151,12 +156,13 @@ def collate_fn(data, max_frames=2048):
 
 def flickr8k_loader(split='train', batch_size=32, shuffle=False,
                     max_frames=2048, feature_fname='mfcc_delta_features.pt',
-                    language='en'):
+                    language='en', downsampling_factor=None):
     return torch.utils.data.DataLoader(
         dataset=Flickr8KData(root=CONFIG['flickr8k_root'],
                              feature_fname=feature_fname,
                              split=split,
-                             language=language),
+                             language=language,
+                             downsampling_factor=downsampling_factor),
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=0,

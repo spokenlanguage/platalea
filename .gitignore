@@ -1,0 +1,6 @@
+*.pt
+*.json
+*.pkl
+*.txt
+*.log
+platalea.egg-info
