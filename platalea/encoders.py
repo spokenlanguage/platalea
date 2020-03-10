@@ -6,7 +6,8 @@ import torch.nn.functional as F
 import platalea.introspect
 from platalea.attention import Attention
 
-# Includes code adapted from  https://github.com/gchrupala/speech2image/blob/master/PyTorch/functions/encoders.py
+# Includes code adapted from
+# https://github.com/gchrupala/speech2image/blob/master/PyTorch/functions/encoders.py
 
 
 class ImageEncoder(nn.Module):
@@ -54,7 +55,7 @@ class TextEncoder(nn.Module):
             x = nn.functional.normalize(self.att(x), p=2, dim=1)
         return x
 
-    def introspect(self, input, length):
+    def introspect(self, text, length):
         if not hasattr(self, 'IntrospectRNN'):
             logging.info("Creating IntrospectRNN wrapper")
             self.IntrospectRNN = platalea.introspect.IntrospectRNN(self.RNN)
