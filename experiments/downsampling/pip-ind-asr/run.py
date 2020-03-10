@@ -70,7 +70,7 @@ for ds_factor in factors:
         suffix = str(ds_factor).zfill(lz)
         res_fname = 'result_asr_{}.json'.format(suffix)
         copyfile('result.json', res_fname)
-        net_fname = 'asr_{}.best.pt'.format(suffix)
+        net_fname = 'asr_{}.best.pt'.format(ds_factor)
         copy_best(res_fname, net_fname, experiment_type='asr')
         net = torch.load(net_fname)
 
@@ -100,7 +100,7 @@ for ds_factor in factors:
         suffix = str(ds_factor).zfill(lz)
         res_fname = 'result_text_image{}.json'.format(suffix)
         copyfile('result.json', res_fname)
-        net_fname = 'ti_{}.best.pt'.format(suffix)
+        net_fname = 'ti_{}.best.pt'.format(ds_factor)
         copy_best(res_fname, net_fname)
         net = torch.load(net_fname)
 
