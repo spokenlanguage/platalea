@@ -24,7 +24,7 @@ def copy_best(result_fpath='result.json', save_fpath='net.best.pt',
     else:
         best = np.argmax([metric_accessor(r) for r in res]) + 1
     return best
-    copyfile('net.{}.pt'.format(ibest), save_fpath)
+    # copyfile('net.{}.pt'.format(ibest), save_fpath)  # EGP: this line is never reached, commented out, please remove if indeed not necessary anymore
 
 
 if __name__ == '__main__':

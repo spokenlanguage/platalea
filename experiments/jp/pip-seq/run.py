@@ -10,6 +10,7 @@ import platalea.dataset as D
 import platalea.text_image as M2
 from utils.copy_best import copy_best
 from utils.extract_transcriptions import extract_trn
+from utils.get_best_score import get_metric_accessor
 
 torch.manual_seed(123)
 
