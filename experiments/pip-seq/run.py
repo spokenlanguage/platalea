@@ -56,8 +56,7 @@ else:
     logging.info('Training ASR')
     M1.experiment(net, data, run_config)
     copyfile('result.json', 'result_asr.json')
-    copy_best('result_asr.json', 'asr.best.pt',
-              metric_accessor=get_metric_accessor('asr'))
+    copy_best('result_asr.json', 'asr.best.pt', metric_accessor='asr')
     net = torch.load('asr.best.pt')
 
 logging.info('Extracting ASR transcriptions')
@@ -89,5 +88,4 @@ run_config = dict(max_lr=2 * 1e-4, epochs=32)
 logging.info('Training text-image')
 M2.experiment(net, data, run_config)
 copyfile('result.json', 'result_text_image.json')
-copy_best('result_text_image.json', 'ti.best.pt',
-          metric_accessor=get_metric_accessor('retrieval'))
+copy_best('result_text_image.json', 'ti.best.pt')

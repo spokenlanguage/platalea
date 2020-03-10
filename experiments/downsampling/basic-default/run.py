@@ -4,7 +4,7 @@ import torch
 
 import platalea.basic as M
 import platalea.dataset as D
-from utils.copy_best import copy_best, get_metric_accessor
+from utils.copy_best import copy_best
 
 
 torch.manual_seed(123)
@@ -40,5 +40,4 @@ for ds_factor in factors:
     M.experiment(net, data, run_config)
     res_fname = 'result_{}.json'.format(ds_factor)
     copyfile('result.json', res_fname)
-    copy_best(res_fname, 'net_{}.best.pt'.format(str(ds_factor).zfill(lz)),
-              metric_accessor=get_metric_accessor('retrieval'))
+    copy_best(res_fname, 'net_{}.best.pt'.format(str(ds_factor).zfill(lz)))

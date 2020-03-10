@@ -10,7 +10,7 @@ import platalea.asr as M1
 import platalea.dataset as D
 import platalea.rank_eval as E
 import platalea.text_image as M2
-from utils.copy_best import copy_best, get_metric_accessor
+from utils.copy_best import copy_best
 from utils.extract_transcriptions import extract_trn
 
 torch.manual_seed(123)
@@ -70,8 +70,7 @@ for ds_factor in factors:
         res_fname = 'result_asr_{}.json'.format(ds_factor)
         copyfile('result.json', res_fname)
         net_fname = 'asr_{}.best.pt'.format(str(ds_factor).zfill(lz))
-        copy_best(res_fname, net_fname,
-                  metric_accessor=get_metric_accessor('asr'))
+        copy_best(res_fname, net_fname, metric_accessor='asr')
         net = torch.load(net_fname)
 
     logging.info('Extracting ASR transcriptions')
