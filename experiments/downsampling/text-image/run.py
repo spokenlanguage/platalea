@@ -42,6 +42,7 @@ for ds_factor in factors:
 
     logging.info('Training')
     M.experiment(net, data, run_config)
-    res_fname = 'result_{}.json'.format(ds_factor)
+    suffix = str(ds_factor).zfill(lz)
+    res_fname = 'result_{}.json'.format(suffix)
     copyfile('result.json', res_fname)
-    copy_best(res_fname, 'net_{}.best.pt'.format(str(ds_factor).zfill(lz)))
+    copy_best(res_fname, 'net_{}.best.pt'.format(suffix))
