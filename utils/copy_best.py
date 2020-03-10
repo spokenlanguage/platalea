@@ -20,10 +20,9 @@ def copy_best(result_fpath='result.json', save_fpath='net.best.pt',
     res = read_results(result_fpath)
     metric_accessor = get_metric_accessor(experiment_type)
     if experiment_type == 'asr':
-        best = np.argmin([metric_accessor(r) for r in res]) + 1
+        ibest = np.argmin([metric_accessor(r) for r in res]) + 1
     else:
-        best = np.argmax([metric_accessor(r) for r in res]) + 1
-    return best
+        ibest = np.argmax([metric_accessor(r) for r in res]) + 1
     copyfile('net.{}.pt'.format(ibest), save_fpath)
 
 
@@ -42,7 +41,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--experiment-type', dest='experiment_type',
         help='Type of experiment. Determines which metric is used.',
-        type=str, action='store', choices=['retrieval', 'asr', 'mtl'],
+        type=str, action='store', choices=['retrieval', 'asr', 'mtl', 'slt'],
         default='retrieval')
     args = parser.parse_args()
 

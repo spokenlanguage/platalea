@@ -26,6 +26,8 @@ def get_metric_accessor(experiment_type):
         return lambda x: x['recall']['10']
     elif experiment_type == 'asr':
         return lambda x: x['wer']['WER']
+    elif experiment_type == 'slt':
+        return lambda x: x['cer']['CER']
     elif experiment_type == 'mtl':
         return lambda x: x['SI']['recall']['10']
 
@@ -56,7 +58,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--experiment-type', dest='experiment_type',
         help='Type of experiment. Determines which metric is used.',
-        type=str, action='store', choices=['retrieval', 'asr', 'mtl'],
+        type=str, action='store', choices=['retrieval', 'asr', 'mtl', 'slt'],
         default='retrieval')
     args = parser.parse_args()
 
