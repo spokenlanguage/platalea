@@ -1,4 +1,3 @@
-from config import CONFIG
 import json
 import os
 import random
@@ -6,6 +5,7 @@ from sklearn.preprocessing import LabelEncoder
 import torch
 import torch.utils.data
 
+import platalea.config
 
 
 class Flickr8KData(torch.utils.data.Dataset):
@@ -53,7 +53,7 @@ class Flickr8KData(torch.utils.data.Dataset):
             raise ValueError('Language {} not supported.'.format(language))
         self.root = root
         self.split = split
-        fmeta = open(root + 'dataset_multilingual.json')
+        fmeta = open(root + platalea.config.args.meta)
         self.metadata = json.load(fmeta)['images']
         if downsampling_factor is not None:
             num_examples = len(self.metadata) // downsampling_factor
@@ -156,10 +156,10 @@ def collate_fn(data, max_frames=2048):
 
 
 def flickr8k_loader(split='train', batch_size=32, shuffle=False,
-                    max_frames=2048, feature_fname='mfcc_delta_features.pt',
+                    max_frames=2048, feature_fname=platalea.config.args.audio_features_fn,
                     language='en', downsampling_factor=None):
     return torch.utils.data.DataLoader(
-        dataset=Flickr8KData(root=CONFIG['flickr8k_root'],
+        dataset=Flickr8KData(root=platalea.config.args.data_root,
                              feature_fname=feature_fname,
                              split=split,
                              language=language,

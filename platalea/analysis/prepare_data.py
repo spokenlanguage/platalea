@@ -2,13 +2,18 @@ import torch
 import numpy as np
 import pickle
 import logging
-from config import CONFIG
 import platalea.basic as basic
 import platalea.encoders as encoders
 import platalea.dataset as dataset
 import platalea.config
 import json
 import os
+
+import configargparse
+
+parser = configargparse.get_argument_parser('platalea')
+
+config_args, unknown_args = parser.parse_known_args()
 
 
 _device = platalea.config.device()
@@ -85,7 +90,7 @@ def save_global_data(nets,  directory='.', batch_size=32):
     logging.info("Loading alignments")
     data = load_alignment("{}/fa.json".format(directory))
     logging.info("Loading audio features")
-    val = dataset.Flickr8KData(root=CONFIG['flickr8k_root'], split='val')
+    val = dataset.Flickr8KData(root=config_args.data_root, split='val')
     # 
     alignments = [ data[sent['audio_id']] for sent in val ]
     # Only consider cases where alignement does not fail

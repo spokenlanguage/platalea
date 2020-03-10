@@ -1,4 +1,3 @@
-from config import CONFIG
 import torch
 import torchvision.models as models
 import torchvision.transforms as transforms
@@ -15,9 +14,9 @@ import pathlib
 _device = platalea.config.device()
 
 
-def flickr8k_features(dataset_path='/roaming/gchrupal/datasets/flickr8k/',
-                      audio_subdir='flickr_audio/wavs/',
-                      images_subdir='Flickr8k_Dataset/Flicker8k_Dataset/'):
+def flickr8k_features(dataset_path=platalea.config.args.data_root,
+                      audio_subdir=platalea.config.args.audio_subdir,
+                      images_subdir=platalea.config.args.image_subdir):
     audio_config = dict(dataset_path=pathlib.Path(dataset_path), audio_subdir=audio_subdir, type='mfcc',
                         delta=True, alpha=0.97, n_filters=40, window_size=0.025,
                         frame_shift=0.010)
