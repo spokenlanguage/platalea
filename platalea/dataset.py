@@ -61,7 +61,7 @@ class Flickr8KData(torch.utils.data.Dataset):
             self.metadata = random.sample(self.metadata, num_examples)
         # mapping from image id to list of caption id
         self.image_captions = {}
-        with open(root_path / 'wav2capt.txt') as fwav2capt:
+        with open(root_path / 'flickr_audio' / 'wav2capt.txt') as fwav2capt:
             for line in fwav2capt:
                 audio_id, image_id, text_id = line.split()
                 text_id = int(text_id[1:])
