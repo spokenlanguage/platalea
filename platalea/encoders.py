@@ -5,14 +5,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint
 
-import platalea.introspect
 from platalea.attention import Attention
-
 import platalea.hardware
+import platalea.introspect
+from platalea.vq import VQEmbeddingEMA, Jitter
 
 # Includes code adapted from
 # https://github.com/gchrupala/speech2image/blob/master/PyTorch/functions/encoders.py
-
 
 
 class ImageEncoder(nn.Module):
@@ -481,6 +480,17 @@ class SpeechEncoderSplit(nn.Module):
         result.update(self.Top(x))
         return result
 
+
+class SpeechEncoderVQ(nn.Module):
+    def __init__(self, config):
+        super(SpeechEncoderVQ, self).__init__()
+        self.Bottom = SpeechEncoderBottom(config['SpeechEncoderBottom'])
+        self.Codebook = VQEmbeddingEMA(config['VQEmbedding']['num_codebook_embeddings'], config['VQEmbedding']['embedding_dim'], jitter=config['VQEmbedding']['jitter'])
+        self.Top =  SpeechEncoderTop(config['SpeechEncoderTop'])
+
+
+    def forward(self, input, length):
+        return self.Top(self.Codebook(self.Bottom(input, length))[0])
 
 def inout(layer, L):
     """Mapping from size of input to the size of the output of a 1D
