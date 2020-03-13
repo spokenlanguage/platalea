@@ -140,6 +140,66 @@ class SpeechEncoder(nn.Module):
         return result
 
 
+class SpeechEncoderTransformer(nn.Module):
+    def __init__(self, config):
+        super(SpeechEncoderTransformer, self).__init__()
+        conv = config['conv']
+        trafo = config['trafo']
+        att = config.get('att', None)
+        self.Conv = nn.Conv1d(**conv)
+        trafo_layer_type = config.get('trafo_layer_type', nn.Transformer)
+        self.Transformer = trafo_layer_type(batch_first=True, **trafo)
+        if att is not None:
+            self.att = Attention(**att)
+        else:
+            self.att = None
+
+    def forward(self, input, length):
+        x = self.Conv(input)
+        # update the lengths to compensate for the convolution subsampling
+        length = inout(self.Conv, length)
+        # create a packed_sequence object. The padding will be excluded from
+        # the update step thereby training on the original sequence length only
+        x = nn.utils.rnn.pack_padded_sequence(
+            x.transpose(2, 1), length, batch_first=True, enforce_sorted=False)
+        x, _ = self.Transformer(x)
+        # unpack again as at the moment only rnn layers except packed_sequence
+        # objects
+        x, _ = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
+        if self.att is not None:
+            x = nn.functional.normalize(self.att(x), p=2, dim=1)
+        return x
+
+    # EGP TODO: not sure how to handle introspect, discuss; what should it do and how does that translate to the trafo?
+    def introspect(self, input, length):
+        pass
+        # if not hasattr(self, 'IntrospectTransformer'):
+        #     logging.info("Creating IntrospectTransformer wrapper")
+        #     self.IntrospectTransformer = platalea.introspect.IntrospectTransformer(self.Transformer)
+        # result = {}
+
+        # # Computing convolutional activations
+        # conv = self.Conv(input).permute(0, 2, 1)
+        # length = inout(self.Conv, length)
+        # result['conv'] = [conv[i, :length[i], :] for i in range(len(conv))]
+
+        # # Computing full stack of RNN states
+        # conv_padded = nn.utils.rnn.pack_padded_sequence(
+        #     conv, length, batch_first=True, enforce_sorted=False)
+        # rnn = self.IntrospectRNN.introspect(conv_padded)
+        # for l in range(self.RNN.num_layers):
+        #     name = 'rnn{}'.format(l)
+        #     result[name] = [rnn[i, l, :length[i], :] for i in range(len(rnn))]
+
+        # # Computing aggregated and normalized encoding
+        # x, _ = self.RNN(conv_padded)
+        # x, _lens = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
+        # if self.att is not None:
+        #     x = nn.functional.normalize(self.att(x), p=2, dim=1)
+        #     result['att'] = list(x)
+        # return result
+
+
 class SpeechEncoderMultiConv(nn.Module):
     def __init__(self, config):
         super(SpeechEncoderMultiConv, self).__init__()
