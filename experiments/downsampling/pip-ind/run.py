@@ -98,7 +98,7 @@ for ds_factor in factors:
         logging.info('Training text-image')
         M2.experiment(net, data, run_config)
         suffix = str(ds_factor).zfill(lz)
-        res_fname = 'result_text_image{}.json'.format(suffix)
+        res_fname = 'result_text_image_{}.json'.format(suffix)
         copyfile('result.json', res_fname)
         net_fname = 'ti_{}.best.pt'.format(ds_factor)
         copy_best(res_fname, net_fname)
