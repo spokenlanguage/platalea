@@ -27,7 +27,7 @@ def flickr8k_features(dataset_path=platalea.config.args.data_root,
 
 def flickr8k_audio_features(config):
     directory = config['dataset_path'] / config['audio_subdir']
-    files = [line.split()[0] for line in open(config['dataset_path'] / 'wav2capt.txt')]
+    files = [line.split()[0] for line in open(config['dataset_path'] / 'flickr_audio' / 'wav2capt.txt')]
     paths = [directory / fn for fn in files]
     features = audio_features(paths, config)
     torch.save(dict(features=features, filenames=files), config['dataset_path'] / 'mfcc_features.pt')
