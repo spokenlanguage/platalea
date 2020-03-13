@@ -3,6 +3,8 @@
 *.pkl
 *.txt
 *.log
+config.yml
+config.ini
 
 # vscode
 .vscode

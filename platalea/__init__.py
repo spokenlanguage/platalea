@@ -1,6 +1,13 @@
 import configargparse
+import os
 
-configargparse.init_argument_parser(name='platalea', default_config_files=['config.ini', 'config.yml'])
+# Looking at the root of the repository, then at current folder
+root = os.path.dirname(__file__).rsplit('/', maxsplit=1)[0]
+dflt_conf_files = [os.path.join(root, 'config.ini'),
+                   os.path.join(root, 'config.yml'),
+                   'config.ini',
+                   'config.yml']
+configargparse.init_argument_parser(name='platalea', default_config_files=dflt_conf_files)
 parser = configargparse.get_argument_parser(name='platalea')
 parser.add_argument('--data_root', env_var='PLATALEA_DATA_ROOT',
                     action='store', default='/roaming/gchrupal/datasets/flickr8k/',
