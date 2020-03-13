@@ -6,6 +6,7 @@ import torch.nn as nn
 import platalea.basic as basic
 import platalea.encoders as encoders
 import platalea.attention
+import platalea.config
 import os.path
 import logging
 import json
@@ -17,9 +18,9 @@ import ursa.util as U
 import pickle
 
 
+_device = platalea.config.device(0)
 
-
-## Models            
+## Models
 ### Local
 
 def local_diagnostic(config):
@@ -30,7 +31,7 @@ def local_diagnostic(config):
     #for mode in ['trained', 'random']:
     for mode in ['random', 'trained']:
             logging.info("Fitting local classifier for mfcc")
-            result  = local_classifier(data_mfcc['features'], data_mfcc['labels'], epochs=config['epochs'], device='cuda:0', hidden=config['hidden'])
+            result  = local_classifier(data_mfcc['features'], data_mfcc['labels'], epochs=config['epochs'], device=_device, hidden=config['hidden'])
             logging.info("Result for {}, {} = {}".format(mode, 'mfcc', result['acc']))
             result['model'] = mode
             result['layer'] = 'mfcc'
@@ -38,7 +39,7 @@ def local_diagnostic(config):
             for layer in config['layers']:
                 data = pickle.load(open('{}/local_{}_{}.pkl'.format(directory, mode, layer), 'rb'))
                 logging.info("Fitting local classifier for {}, {}".format(mode, layer))
-                result = local_classifier(data[layer]['features'], data[layer]['labels'], epochs=config['epochs'], device='cuda:0', hidden=config['hidden'])
+                result = local_classifier(data[layer]['features'], data[layer]['labels'], epochs=config['epochs'], device=_device, hidden=config['hidden'])
                 logging.info("Result for {}, {} = {}".format(mode, layer, result['acc']))
                 result['model'] = mode
                 result['layer'] = layer

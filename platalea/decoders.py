@@ -170,6 +170,7 @@ class TextDecoder(nn.Module):
                 # Filter ended sequences
                 ended = (new_hyps[:, -1] == self.eos_id).nonzero()[0]
                 best_ended_idx = None
+                best_ended_score = -np.inf
                 if len(ended) > 0:
                     if best_ended_hyp is None or new_scores[ended[0]] > best_ended_score:
                         best_ended_hyp = new_hyps[ended[0]]

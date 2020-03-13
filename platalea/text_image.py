@@ -11,6 +11,9 @@ import platalea.dataset as D
 from platalea.encoders import TextEncoder, ImageEncoder
 import platalea.loss
 import platalea.score
+import platalea.config
+
+_device = platalea.config.device()
 
 
 class TextImage(nn.Module):
@@ -41,7 +44,7 @@ class TextImage(nn.Module):
                                             collate_fn=D.batch_image)
         image_e = []
         for i in image:
-            image_e.append(self.ImageEncoder(i.cuda()).detach().cpu().numpy())
+            image_e.append(self.ImageEncoder(i.to(_device)).detach().cpu().numpy())
         image_e = np.concatenate(image_e)
         return image_e
 
@@ -52,8 +55,8 @@ class TextImage(nn.Module):
                                            collate_fn=D.batch_text)
         text_e = []
         for t, l in text:
-            text_e.append(self.TextEncoder(t.cuda(),
-                                           l.cuda()).detach().cpu().numpy())
+            text_e.append(self.TextEncoder(t.to(_device),
+                                           l.to(_device)).detach().cpu().numpy())
         text_e = np.concatenate(text_e)
         return text_e
 
@@ -63,12 +66,12 @@ def experiment(net, data, config):
         net.eval()
         result = []
         for item in data['val']:
-            item = {key: value.cuda() for key, value in item.items()}
+            item = {key: value.to(_device) for key, value in item.items()}
             result.append(net.cost(item).item())
         net.train()
         return torch.tensor(result).mean()
 
-    net.cuda()
+    net.to(_device)
     net.train()
     optimizer = optim.Adam(net.parameters(), lr=1)
     scheduler = cyclic_scheduler(optimizer, len(data['train']),
@@ -79,7 +82,7 @@ def experiment(net, data, config):
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
             for j, item in enumerate(data['train'], start=1):
-                item = {key: value.cuda() for key, value in item.items()}
+                item = {key: value.to(_device) for key, value in item.items()}
                 loss = net.cost(item)
                 optimizer.zero_grad()
                 loss.backward()

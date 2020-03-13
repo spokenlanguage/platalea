@@ -1,10 +1,11 @@
-from config import CONFIG
 import json
-import os
 import random
 from sklearn.preprocessing import LabelEncoder
 import torch
 import torch.utils.data
+import pathlib
+
+import platalea.config
 
 
 class Flickr8KData(torch.utils.data.Dataset):
@@ -52,17 +53,19 @@ class Flickr8KData(torch.utils.data.Dataset):
             raise ValueError('Language {} not supported.'.format(language))
         self.root = root
         self.split = split
-        fmeta = open(root + 'dataset_multilingual.json')
-        self.metadata = json.load(fmeta)['images']
+        root_path = pathlib.Path(root)
+        with open(root_path / platalea.config.args.meta) as fmeta:
+            self.metadata = json.load(fmeta)['images']
         if downsampling_factor is not None:
             num_examples = len(self.metadata) // downsampling_factor
             self.metadata = random.sample(self.metadata, num_examples)
         # mapping from image id to list of caption id
         self.image_captions = {}
-        for line in open(os.path.join(root + 'flickr_audio/wav2capt.txt')):
-            audio_id, image_id, text_id = line.split()
-            text_id = int(text_id[1:])
-            self.image_captions[image_id] = self.image_captions.get(image_id, []) + [(text_id, audio_id)]
+        with open(root_path / 'flickr_audio' / 'wav2capt.txt') as fwav2capt:
+            for line in fwav2capt:
+                audio_id, image_id, text_id = line.split()
+                text_id = int(text_id[1:])
+                self.image_captions[image_id] = self.image_captions.get(image_id, []) + [(text_id, audio_id)]
 
         # image, caption pairs
         self.split_data = []
@@ -75,9 +78,9 @@ class Flickr8KData(torch.utils.data.Dataset):
                         image['sentences'][text_id][self.text_key]))
 
         # image and audio feature data
-        image = torch.load(root + 'resnet_features.pt')
+        image = torch.load(root_path / 'resnet_features.pt')
         self.image = dict(zip(image['filenames'], image['features']))
-        audio = torch.load(root + feature_fname)
+        audio = torch.load(root_path / feature_fname)
         self.audio = dict(zip(audio['filenames'], audio['features']))
 
     def __getitem__(self, index):
@@ -142,7 +145,6 @@ def batch_image(images):
 
 
 def collate_fn(data, max_frames=2048):
-    #data.sort(key=lambda x: len(x[1]), reverse=True)
     images, texts, audios = zip(* [(datum['image'],
                                     datum['text'],
                                     datum['audio']) for datum in data])
@@ -155,10 +157,10 @@ def collate_fn(data, max_frames=2048):
 
 
 def flickr8k_loader(split='train', batch_size=32, shuffle=False,
-                    max_frames=2048, feature_fname='mfcc_delta_features.pt',
+                    max_frames=2048, feature_fname=platalea.config.args.audio_features_fn,
                     language='en', downsampling_factor=None):
     return torch.utils.data.DataLoader(
-        dataset=Flickr8KData(root=CONFIG['flickr8k_root'],
+        dataset=Flickr8KData(root=platalea.config.args.data_root,
                              feature_fname=feature_fname,
                              split=split,
                              language=language,
