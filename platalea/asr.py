@@ -13,6 +13,9 @@ from platalea.decoders import TextDecoder
 from platalea.encoders import SpeechEncoder
 import platalea.loss
 import platalea.score
+import platalea.config
+
+_device = platalea.config.device()
 
 
 class SpeechTranscriber(nn.Module):
@@ -42,10 +45,10 @@ class SpeechTranscriber(nn.Module):
         trn = []
         for a, l in audio:
             if beam_size is None:
-                preds, _ = self.forward(a.cuda(), l.cuda())
+                preds, _ = self.forward(a.to(_device), l.to(_device))
                 preds = preds.argmax(dim=2).detach().cpu().numpy().astype(int)
             else:
-                enc_out = self.SpeechEncoder(a.cuda(), l.cuda())
+                enc_out = self.SpeechEncoder(a.to(_device), l.to(_device))
                 preds = self.TextDecoder.beam_search(enc_out, beam_size)
             trn.append(self.pred2trn(preds))
         trn = np.concatenate(trn)
@@ -83,12 +86,12 @@ def experiment(net, data, config):
             net.eval()
             result = []
             for item in data['val']:
-                item = {key: value.cuda() for key, value in item.items()}
+                item = {key: value.to(_device) for key, value in item.items()}
                 result.append(net.cost(item).item())
             net.train()
         return torch.tensor(result).mean()
 
-    net.cuda()
+    net.to(_device)
     net.train()
     if 'lr' in config.keys():
         lr = config['lr']
@@ -107,7 +110,7 @@ def experiment(net, data, config):
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
             for j, item in enumerate(data['train'], start=1):
-                item = {key: value.cuda() for key, value in item.items()}
+                item = {key: value.to(_device) for key, value in item.items()}
                 loss = net.cost(item)
                 optimizer.zero_grad()
                 loss.backward()

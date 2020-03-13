@@ -12,6 +12,9 @@ from platalea.speech_text import SpeechText
 from platalea.asr import SpeechTranscriber
 import platalea.loss
 import platalea.score
+import platalea.config
+
+_device = platalea.config.device()
 
 
 class MTLNetASR(nn.Module):
@@ -77,12 +80,12 @@ def experiment_parallel(net, data, config):
             net.eval()
             result = []
             for item in data['val']:
-                item = {key: value.cuda() for key, value in item.items()}
+                item = {key: value.to(_device) for key, value in item.items()}
                 result.append(net.cost(item)[0].item())
             net.train()
         return torch.tensor(result).mean()
 
-    net.cuda()
+    net.to(_device)
     net.train()
     # Preparing optimizer
     if 'lr' in config.keys():
@@ -98,7 +101,7 @@ def experiment_parallel(net, data, config):
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
             for j, item in enumerate(data['train'], start=1):
-                item = {key: value.cuda() for key, value in item.items()}
+                item = {key: value.to(_device) for key, value in item.items()}
                 loss, loss_details = net.cost(item)
                 optimizer.zero_grad()
                 loss.backward()
@@ -132,7 +135,7 @@ def val_loss(net, data):
         net.eval()
         result = []
         for item in data['val']:
-            item = {key: value.cuda() for key, value in item.items()}
+            item = {key: value.to(_device) for key, value in item.items()}
             result.append(net.cost(item).item())
         net.train()
     return torch.tensor(result).mean()
@@ -141,7 +144,7 @@ def val_loss(net, data):
 def experiment(net, tasks, config):
     for t in tasks:
         # Preparing nets
-        t['net'].cuda()
+        t['net'].to(_device)
         t['net'].train()
         # Preparing optimizer
         if 'lr' in config.keys():
@@ -161,7 +164,7 @@ def experiment(net, tasks, config):
             for j, items in enumerate(zip(*[t['data']['train'] for t in tasks]),
                                       start=1):
                 for i_t, t in enumerate(tasks):
-                    item = {key: value.cuda() for key, value in items[i_t].items()}
+                    item = {key: value.to(_device) for key, value in items[i_t].items()}
                     loss = t['net'].cost(item)
                     t['optimizer'].zero_grad()
                     loss.backward()
