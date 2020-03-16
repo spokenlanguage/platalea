@@ -24,7 +24,7 @@ parser.add_argument(
     '--slt_model_dir',
     help='Path to the directory where the pretrained SLT model is stored',
     dest='slt_model_dir', type=str, action='store')
-args = parser.parse_args()
+args, _ = parser.parse_known_args()
 
 logging.info('Loading data')
 data = dict(
