@@ -1,4 +1,4 @@
-import argparse
+import configargparse
 import json
 import logging
 import pickle
@@ -26,11 +26,12 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
 
     # Parse command line parameters
-    parser = argparse.ArgumentParser()
+    parser = configargparse.get_argument_parser('platalea')
     parser.add_argument('path', metavar='path', help='Model\'s path')
-    parser.add_argument('-b', help='Use beam decoding', dest='use_beam_decoding',
-                        action='store_true', default=False)
-    args = parser.parse_args()
+    parser.add_argument('-b', help='Use beam decoding',
+                        dest='use_beam_decoding', action='store_true',
+                        default=False)
+    args, unknown_args = parser.parse_known_args()
 
     # Loading config
     conf = pickle.load(open('config.pkl', 'rb'))
@@ -38,9 +39,11 @@ if __name__ == '__main__':
     logging.info('Loading data')
     data = dict(
         train=D.flickr8k_loader(split='train', batch_size=batch_size,
-                                shuffle=False, feature_fname=conf['feature_fname'],
+                                shuffle=False,
+                                feature_fname=conf['feature_fname'],
                                 language=conf['language']),
-        val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False,
+        val=D.flickr8k_loader(split='val', batch_size=batch_size,
+                              shuffle=False,
                               feature_fname=conf['feature_fname'],
                               language=conf['language']))
     fd = D.Flickr8KData
@@ -48,14 +51,12 @@ if __name__ == '__main__':
 
     net = torch.load(args.path)
 
-
-
-
     trn = {}
     logging.info('Extracting transcriptions')
     for set_id, set_name in [('train', 'Training'), ('val', 'Validation')]:
         logging.info("{} set".format(set_name))
         d = data[set_id].dataset.evaluation()
-        hyp, ref = extract_trn(net, data[set_id].dataset, args.use_beam_decoding)
+        hyp, ref = extract_trn(net, data[set_id].dataset,
+                               args.use_beam_decoding)
         trn[set_id] = dict(hyp=hyp, ref=ref)
     json.dump(trn, open('trn.json', 'w'))
