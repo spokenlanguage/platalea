@@ -1,10 +1,11 @@
 import configargparse
 import os
+from pathlib import Path
 
 # Looking at the root of the repository, then at current folder
-root = os.path.dirname(__file__).rsplit('/', maxsplit=1)[0]
-dflt_conf_files = [os.path.join(root, 'config.ini'),
-                   os.path.join(root, 'config.yml'),
+home = Path.home()
+dflt_conf_files = [home / '.platalea/config.ini',
+                   home / '.platalea/config.yml',
                    'config.ini',
                    'config.yml']
 configargparse.init_argument_parser(name='platalea', default_config_files=dflt_conf_files)
