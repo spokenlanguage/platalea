@@ -36,11 +36,6 @@ def preprocess(dataset_name):
         dataset_root = platalea.config.args.librispeech_root
         dataset_path = pathlib.Path(dataset_root)
         librispeech_audio_features(dataset_path, audio_feat_config)
-    elif dataset_name == 'places':
-        dataset_root = platalea.config.args.places_root
-        dataset_path = pathlib.Path(dataset_root)
-        places_audio_features(dataset_path, audio_feat_config)
-        places_image_features(dataset_path, images_feat_config)
     else:
         raise NotImplementedError
 
@@ -96,22 +91,6 @@ def librispeech_audio_features(dataset_path, feat_config):
         m['audio_end'] = end[i]
     with open(dataset_path / 'metadata.json', 'w') as f:
         json.dump(metadata, f)
-
-
-def save_audio_features_to_memmap(data, fname):
-    num_lines = np.sum([d.shape[0] for d in data])
-    fp = np.memmap(fname, dtype='float64', mode='w+', shape=(num_lines, 39))
-    start = 0
-    end = None
-    S = []
-    E = []
-    for d in data:
-        end = start + d.shape[0]
-        fp[start:end, :] = d
-        S.append(start)
-        E.append(end)
-        start = end
-    return S, E
 
 
 def save_audio_features_to_memmap(data, fname):

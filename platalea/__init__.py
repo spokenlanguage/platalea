@@ -40,6 +40,9 @@ parser.add_argument(
     default='Flickr8k_Dataset/Flicker8k_Dataset/',
     help='directory containing the flickr8k image files, relative to the \
     dataset location')
+parser.add_argument(
+    '--language', env_var='PLATALEA_LANGUAGE', default='en',
+    help='language to use for the transcriptions/translations')
 
 # Librispeech specific parameters
 parser.add_argument(
@@ -51,9 +54,3 @@ parser.add_argument(
     default='metadata.json', dest='librispeech_meta',
     help='filename of the metadata file (metadata.json or similar) relative to \
     the dataset location')
-
-# Places specific parameters
-parser.add_argument(
-    '--places_root', env_var='PLACES_ROOT',
-    default='/home/bjrhigy/corpora/places',
-    help='location of the places dataset')
