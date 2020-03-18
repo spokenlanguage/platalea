@@ -49,7 +49,7 @@ jobs:
       run: |
         pip install sklearn python-Levenshtein coverage nltk
         coverage run experiments/flickr8k/basic-default/run.py --epochs=1 --flickr8k_meta=dataset.json --audio_features_fn=mfcc_features.pt
-        coverage run experiments/flickr8k/basic-stack-trafo/run.py --epochs=1 --flickr8k_meta=dataset.json --audio_features_fn=mfcc_features.pt
+        coverage run experiments/flickr8k/basic-default-trafo/run.py --epochs=1 --flickr8k_meta=dataset.json --audio_features_fn=mfcc_features.pt
         coverage xml
 
     - name: Upload coverage to Codecov
