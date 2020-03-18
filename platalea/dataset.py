@@ -192,7 +192,7 @@ def flickr8k_loader(split='train', batch_size=32, shuffle=False,
                     language=platalea.config.args.language,
                     downsampling_factor=None):
     return torch.utils.data.DataLoader(
-        dataset=Flickr8KData(root=platalea.config.args.data_root,
+        dataset=Flickr8KData(root=platalea.config.args.flickr8k_data_root,
                              feature_fname=feature_fname,
                              split=split,
                              language=language,
