@@ -41,7 +41,7 @@ parser.add_argument(
     help='directory containing the flickr8k image files, relative to the \
     dataset location')
 parser.add_argument(
-    '--language', env_var='PLATALEA_LANGUAGE', default='en',
+    '--flickr8k_language', env_var='FLICKR8K_LANGUAGE', default='en',
     help='language to use for the transcriptions/translations')
 
 # Librispeech specific parameters
