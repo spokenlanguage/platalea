@@ -87,7 +87,7 @@ def librispeech_audio_features(dataset_path, feat_config):
     features = audio_features(paths, feat_config)
     torch.save(dict(features=features, filenames=files),
                dataset_path / 'features.pt')
-    with open(dataset_path / 'metadata.json') as f:
+    with open(dataset_path / 'metadata.json', 'w') as f:
         json.dump(metadata, f)
 
 
@@ -202,8 +202,7 @@ def audio_features(paths, config):
             single_delta = delta(features, 2)
             double_delta = delta(single_delta, 2)
             features = numpy.concatenate([features, single_delta, double_delta], 1)
-        # TODO: profile changing to from_numpy()
-        output.append(torch.tensor(features))
+        output.append(torch.from_numpy(features))
     return output
 
 
