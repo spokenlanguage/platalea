@@ -36,6 +36,10 @@ def preprocess(dataset_name):
         dataset_root = platalea.config.args.librispeech_root
         dataset_path = pathlib.Path(dataset_root)
         librispeech_audio_features(dataset_path, audio_feat_config)
+    elif dataset_name == 'places':
+        dataset_root = platalea.config.args.places_root
+        dataset_path = pathlib.Path(dataset_root)
+        places_audio_features(dataset_path, audio_feat_config)
     else:
         raise NotImplementedError
 
@@ -117,6 +121,10 @@ def librispeech_load_trn(path):
         s = l.split(maxsplit=1)
         transcriptions[s[0]] = s[1]
     return transcriptions
+
+
+def places_audio_features(dataset_path, feat_config):
+    raise NotImplementedError
 
 
 def image_features(paths, config):

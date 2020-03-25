@@ -87,11 +87,6 @@ class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
             if image['split'] == self.split:
                 fname = image['filename']
                 for text_id, audio_id in self.image_captions[fname]:
-                    if self.text_key in image['sentences'][text_id]:
-                        self.split_data.append((
-                            fname,
-                            audio_id,
-                            image['sentences'][text_id][self.text_key]))
         # Downsampling
         if downsampling_factor is not None:
             num_examples = int(len(self.split_data) // downsampling_factor)
@@ -263,7 +258,7 @@ def collate_fn_speech(data, max_frames=2048):
 def flickr8k_loader(split='train', batch_size=32, shuffle=False,
                     max_frames=2048,
                     feature_fname=platalea.config.args.audio_features_fn,
-                    language=platalea.config.args.language,
+                    language=platalea.config.args.flickr8k_language,
                     downsampling_factor=None):
     return torch.utils.data.DataLoader(
         dataset=Flickr8KData(root=platalea.config.args.flickr8k_root,
