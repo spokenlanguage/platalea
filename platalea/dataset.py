@@ -8,7 +8,7 @@ import pathlib
 import platalea.config
 
 
-class Flickr8KData(torch.utils.data.Dataset):
+class TranscribedDataset():
     le = None
     sos = '<sos>'
     eos = '<eos>'
@@ -16,10 +16,10 @@ class Flickr8KData(torch.utils.data.Dataset):
     unk = '<unk>'
 
     @classmethod
-    def init_vocabulary(cls, dataset):
+    def init_vocabulary(cls, captions):
         cls.le = LabelEncoder()
         tokens = [cls.sos, cls.eos, cls.unk, cls.pad] + \
-                 [c for d in dataset.split_data for c in d[2]]
+                 [c for c in captions]
         cls.le.fit(tokens)
 
     @classmethod
@@ -43,6 +43,13 @@ class Flickr8KData(torch.utils.data.Dataset):
         capt = [cls.sos] + capt + [cls.eos]
         return torch.Tensor(le.transform(capt))
 
+
+class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
+    @classmethod
+    def init_vocabulary(cls, dataset):
+        transcriptions = [sd[2] for sd in dataset.split_data]
+        TranscribedDataset.init_vocabulary(transcriptions)
+
     def __init__(self, root, feature_fname, split='train', language='en',
                  downsampling_factor=None):
         self.root = root
@@ -57,7 +64,7 @@ class Flickr8KData(torch.utils.data.Dataset):
             raise ValueError('Language {} not supported.'.format(language))
         root_path = pathlib.Path(root)
         # Loading metadata
-        with open(root_path / platalea.config.args.meta) as fmeta:
+        with open(root_path / platalea.config.args.flickr8k_meta) as fmeta:
             metadata = json.load(fmeta)['images']
         # Loading mapping from image id to list of caption id
         self.image_captions = {}
@@ -72,11 +79,6 @@ class Flickr8KData(torch.utils.data.Dataset):
             if image['split'] == self.split:
                 fname = image['filename']
                 for text_id, audio_id in self.image_captions[fname]:
-                    if self.text_key in image['sentences'][text_id]:
-                        self.split_data.append((
-                            fname,
-                            audio_id,
-                            image['sentences'][text_id][self.text_key]))
         # Downsampling
         if downsampling_factor is not None:
             num_examples = int(len(self.split_data) // downsampling_factor)
@@ -109,8 +111,8 @@ class Flickr8KData(torch.utils.data.Dataset):
                     language=self.language)
 
     def evaluation(self):
-        """Returns image features, caption features, and a boolean array
-        specifying whether a caption goes with an image."""
+        """Returns image features, audio features, caption features, and a
+        boolean array specifying whether a caption goes with an image."""
         audio = []
         text = []
         image = []
@@ -138,6 +140,58 @@ class Flickr8KData(torch.utils.data.Dataset):
             return sentences
         else:
             return [s.split() for s in sentences]
+
+
+class LibriSpeechData(torch.utils.data.Dataset, TranscribedDataset):
+    @classmethod
+    def init_vocabulary(cls, dataset):
+        transcriptions = [m['trn'] for m in dataset.metadata]
+        TranscribedDataset.init_vocabulary(transcriptions)
+
+    def __init__(self, root, feature_fname, split='train',
+                 downsampling_factor=None):
+        if split == 'val':
+            split = 'dev'
+        self.root = root
+        self.split = split
+        self.feature_fname = feature_fname
+        root_path = pathlib.Path(root)
+        with open(root_path / platalea.config.args.librispeech_meta) as fmeta:
+            self.metadata = json.load(fmeta)
+        if downsampling_factor is not None:
+            num_examples = len(self.metadata) // downsampling_factor
+            self.metadata = random.sample(self.metadata, num_examples)
+        # filter examples based on split
+        meta = []
+        for ex in self.metadata:
+            if ex['split'] == self.split:
+                meta.append(ex)
+        self.metadata = meta
+        # load audio features
+        audio = torch.load(root_path / feature_fname)
+        self.audio = dict(zip(audio['filenames'], audio['features']))
+
+    def __getitem__(self, index):
+        sd = self.metadata[index]
+        audio = self.audio[sd['fileid']]
+        text = self.caption2tensor(sd['trn'])
+        return dict(audio_id=sd['fileid'], text=text, audio=audio)
+
+    def __len__(self):
+        return len(self.metadata)
+
+    def get_config(self):
+        return dict(feature_fname=self.feature_fname,
+                    label_encoder=self.get_label_encoder())
+
+    def evaluation(self):
+        """Returns audio features with corresponding caption"""
+        audio = []
+        text = []
+        for ex in self.metadata:
+            text.append(ex['trn'])
+            audio.append(self.audio[ex['fileid']])
+        return dict(audio=audio, text=text)
 
 
 def batch_audio(audios, max_frames=2048):
@@ -178,6 +232,15 @@ def collate_fn(data, max_frames=2048):
                 text_len=char_lengths)
 
 
+def collate_fn_speech(data, max_frames=2048):
+    texts, audios = zip(* [(datum['text'],
+                            datum['audio']) for datum in data])
+    mfcc, mfcc_lengths = batch_audio(audios, max_frames=max_frames)
+    chars, char_lengths = batch_text(texts)
+    return dict(audio=mfcc, text=chars, audio_len=mfcc_lengths,
+                text_len=char_lengths)
+
+
 def flickr8k_loader(split='train', batch_size=32, shuffle=False,
                     max_frames=2048,
                     feature_fname=platalea.config.args.audio_features_fn,
@@ -192,3 +255,18 @@ def flickr8k_loader(split='train', batch_size=32, shuffle=False,
         shuffle=shuffle,
         num_workers=0,
         collate_fn=lambda x: collate_fn(x, max_frames=max_frames))
+
+
+def librispeech_loader(split='train', batch_size=32, shuffle=False,
+                       max_frames=2048,
+                       feature_fname=platalea.config.args.audio_features_fn,
+                       downsampling_factor=None):
+    return torch.utils.data.DataLoader(
+        dataset=LibriSpeechData(root=platalea.config.args.librispeech_root,
+                                feature_fname=feature_fname,
+                                split=split,
+                                downsampling_factor=downsampling_factor),
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=0,
+        collate_fn=lambda x: collate_fn_speech(x, max_frames=max_frames))

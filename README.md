@@ -32,7 +32,7 @@ export FLICKR8K_METADATA_JSON=dataset.json
 export PLATALEA_AUDIO_FEATURES_FN=mfcc_features.pt
 ```
 
-You could also specify these options on the command line directly when running (the respective options would be `--flickr8k_root=...`, `--meta=...` and `--audio_features_fn=...`) or via a configuration file (using the names of the command line options without leading `--`).
+You could also specify these options on the command line directly when running (the respective options would be `--flickr8k_root=...`, `--flickr8k_meta=...` and `--audio_features_fn=...`) or via a configuration file (using the names of the command line options without leading `--`).
 
 ### Experiment dependencies
 Different experiments may have different additional dependencies.
