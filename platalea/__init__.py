@@ -27,7 +27,7 @@ parser.add_argument(
     help='location of the flickr8k dataset')
 parser.add_argument(
     '--flickr8k_meta', env_var='FLICKR8K_METADATA_JSON',
-    default='dataset_multilingual.json', dest='meta',
+    default='dataset_multilingual.json', dest='flickr8k_meta',
     help='filename of the metadata file (dataset.json or similar) relative to \
     the dataset location')
 parser.add_argument(
@@ -49,3 +49,14 @@ parser.add_argument(
     '--librispeech_root', env_var='LIBRISPEECH_ROOT',
     default='/home/bjrhigy/corpora/LibriSpeech',
     help='location of the librispeech dataset')
+parser.add_argument(
+    '--librispeech_meta', env_var='librispeech_METADATA_JSON',
+    default='metadata.json', dest='librispeech_meta',
+    help='filename of the metadata file (metadata.json or similar) relative to \
+    the dataset location')
+
+# Places specific parameters
+parser.add_argument(
+    '--places_root', env_var='PLACES_ROOT',
+    default='/home/bjrhigy/corpora/places',
+    help='location of the places dataset')
