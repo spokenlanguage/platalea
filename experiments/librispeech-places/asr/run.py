@@ -10,7 +10,11 @@ torch.manual_seed(123)
 
 
 batch_size = 8
+<<<<<<< HEAD
 hidden_size = 1024 * 3 // 4
+=======
+hidden_size = 1024
+>>>>>>> Using np.memmap files for librispeech instead of pytorch
 dropout = 0.0
 
 logging.basicConfig(level=logging.INFO)
@@ -18,7 +22,11 @@ logging.basicConfig(level=logging.INFO)
 logging.info('Loading data')
 data = dict(
     train=D.librispeech_loader(split='train', batch_size=batch_size,
+<<<<<<< HEAD
                                 shuffle=True, downsampling_factor=10),
+=======
+                               shuffle=True),
+>>>>>>> Using np.memmap files for librispeech instead of pytorch
     val=D.librispeech_loader(split='val', batch_size=batch_size))
 fd = D.LibriSpeechData
 fd.init_vocabulary(data['train'].dataset)
@@ -31,7 +39,11 @@ config = dict(
     SpeechEncoder=dict(
         conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,
                   padding=0, bias=False),
+<<<<<<< HEAD
         rnn=dict(input_size=64, hidden_size=hidden_size, num_layers=5,
+=======
+        rnn=dict(input_size=64, hidden_size=hidden_size, num_layers=6,
+>>>>>>> Using np.memmap files for librispeech instead of pytorch
                  bidirectional=True, dropout=dropout),
         rnn_layer_type=nn.GRU),
     TextDecoder=dict(
