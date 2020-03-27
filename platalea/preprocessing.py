@@ -7,7 +7,7 @@ Preprocesses datasets
 import configargparse
 import json
 import logging
-import numpy
+import numpy as np
 import pathlib
 import PIL.Image
 import platalea.config
@@ -63,7 +63,6 @@ def flickr8k_image_features(dataset_path, images_subdir, feat_config):
 
 def librispeech_audio_features(dataset_path, feat_config):
     metadata = []
-    files = []
     paths = []
     set_dirs = [d for d in dataset_path.iterdir() if d.is_dir()]
     for d1 in set_dirs:
@@ -82,17 +81,35 @@ def librispeech_audio_features(dataset_path, feat_config):
                 for f in d3.glob('*.flac'):
                     fid = f.stem
                     sentid = fid.split('-')[2]
-                    files.append(fid)
                     metadata.append(dict(
                         split=split, quality=quality, set_id=set_id,
                         spkrid=reader_id, chptid=chapter_id, sentid=sentid,
                         fileid=fid, fpath=str(f), trn=transcriptions[fid]))
                     paths.append(f)
     features = audio_features(paths, feat_config)
-    torch.save(dict(features=features, filenames=files),
-               dataset_path / 'features.pt')
+    # Saving features in memmap format
+    start, end = save_memmap(features, dataset_path / 'features.memmap')
+    for i, m in enumerate(metadata):
+        m['audio_start'] = start[i]
+        m['audio_end'] = end[i]
     with open(dataset_path / 'metadata.json', 'w') as f:
         json.dump(metadata, f)
+
+
+def save_memmap(data, fname):
+    num_lines = np.sum([d.shape[0] for d in data])
+    fp = np.memmap(fname, dtype='float64', mode='w+', shape=(num_lines, 39))
+    start = 0
+    end = None
+    S = []
+    E = []
+    for d in data:
+        end = start + d.shape[0]
+        fp[start:end, :] = d
+        S.append(start)
+        E.append(end)
+        start = end
+    return S, E
 
 
 def librispeech_load_trn(path):
@@ -203,13 +220,13 @@ def audio_features(paths, config):
         else:
             features = get_mfcc(fbanks)
             #  add the frame energy
-            features = numpy.concatenate([energy[:, None], features], 1)
+            features = np.concatenate([energy[:, None], features], 1)
 
         # optionally add the deltas and double deltas
         if config['delta']:
             single_delta = delta(features, 2)
             double_delta = delta(single_delta, 2)
-            features = numpy.concatenate([features, single_delta, double_delta], 1)
+            features = np.concatenate([features, single_delta, double_delta], 1)
         output.append(torch.from_numpy(features))
     return output
 
