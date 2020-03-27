@@ -1,9 +1,10 @@
 import json
+import numpy as np
+import pathlib
 import random
 from sklearn.preprocessing import LabelEncoder
 import torch
 import torch.utils.data
-import pathlib
 
 import platalea.config
 
@@ -16,10 +17,10 @@ class TranscribedDataset():
     unk = '<unk>'
 
     @classmethod
-    def init_vocabulary(cls, captions):
+    def init_vocabulary(cls, transcriptions):
         cls.le = LabelEncoder()
         tokens = [cls.sos, cls.eos, cls.unk, cls.pad] + \
-                 [c for c in captions]
+                 [c for t in transcriptions for c in t]
         cls.le.fit(tokens)
 
     @classmethod
@@ -150,6 +151,7 @@ class LibriSpeechData(torch.utils.data.Dataset, TranscribedDataset):
 
     def __init__(self, root, feature_fname, split='train',
                  downsampling_factor=None):
+        # 'val' set in flickr8k corresponds to 'dev' in librispeech
         if split == 'val':
             split = 'dev'
         self.root = root
@@ -158,6 +160,7 @@ class LibriSpeechData(torch.utils.data.Dataset, TranscribedDataset):
         root_path = pathlib.Path(root)
         with open(root_path / platalea.config.args.librispeech_meta) as fmeta:
             self.metadata = json.load(fmeta)
+            self.num_lines = self.metadata[-1]['audio_end']
         if downsampling_factor is not None:
             num_examples = len(self.metadata) // downsampling_factor
             self.metadata = random.sample(self.metadata, num_examples)
@@ -168,12 +171,12 @@ class LibriSpeechData(torch.utils.data.Dataset, TranscribedDataset):
                 meta.append(ex)
         self.metadata = meta
         # load audio features
-        audio = torch.load(root_path / feature_fname)
-        self.audio = dict(zip(audio['filenames'], audio['features']))
+        self.audio = np.memmap(root_path / feature_fname, dtype='float64',
+                               mode='r', shape=(self.num_lines, 39))
 
     def __getitem__(self, index):
         sd = self.metadata[index]
-        audio = self.audio[sd['fileid']]
+        audio = torch.from_numpy(self.audio[sd['audio_start']:sd['audio_end']])
         text = self.caption2tensor(sd['trn'])
         return dict(audio_id=sd['fileid'], text=text, audio=audio)
 
@@ -190,7 +193,8 @@ class LibriSpeechData(torch.utils.data.Dataset, TranscribedDataset):
         text = []
         for ex in self.metadata:
             text.append(ex['trn'])
-            audio.append(self.audio[ex['fileid']])
+            a = torch.from_numpy(self.audio[ex['audio_start']:ex['audio_end']])
+            audio.append(a)
         return dict(audio=audio, text=text)
 
 

@@ -30,6 +30,7 @@ factors = [3, 9, 27, 81, 243]
 lz = len(str(abs(factors[-1])))
 for ds_factor in factors:
     logging.info('Loading data')
+    suffix = str(ds_factor).zfill(lz)
     data = dict(
         train=D.flickr8k_loader(split='train', batch_size=batch_size,
                                 shuffle=True, downsampling_factor=ds_factor),
@@ -47,7 +48,8 @@ for ds_factor in factors:
                     open('config.pkl', 'wb'))
 
     if args.asr_model_dir:
-        net = torch.load(os.path.join(args.asr_model_dir, 'net.best.pt'))
+        net_fname = 'net_{}.best.pt'.format(ds_factor)
+        net = torch.load(os.path.join(args.asr_model_dir, net_fname))
     else:
         logging.info('Building ASR model')
         config = M1.get_default_config()
@@ -55,7 +57,6 @@ for ds_factor in factors:
         run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32, opt='adam')
         logging.info('Training ASR')
         M1.experiment(net, data, run_config)
-        suffix = str(ds_factor).zfill(lz)
         res_fname = 'result_asr_{}.json'.format(suffix)
         copyfile('result.json', res_fname)
         net_fname = 'asr_{}.best.pt'.format(ds_factor)
@@ -88,7 +89,6 @@ for ds_factor in factors:
 
     logging.info('Training text-image')
     M2.experiment(net, data, run_config)
-    suffix = str(ds_factor).zfill(lz)
     res_fname = 'result_text_image_{}.json'.format(suffix)
     copyfile('result.json', res_fname)
     net_fname = 'ti_{}.best.pt'.format(ds_factor)
