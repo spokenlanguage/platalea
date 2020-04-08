@@ -185,7 +185,8 @@ class SpeechEncoderTransformer(nn.Module):
         # update the lengths to compensate for the convolution subsampling
         lengths = inout(self.Conv, lengths)
 
-        # source sequence dimension must be first (but is last in input), batch dimension in the middle (was first in input), feature dimension last
+        # source sequence dimension must be first (but is last in input),
+        # batch dimension in the middle (was first in input), feature dimension last
         x = x.permute(2, 0, 1)
 
         x = self.scale_conv_to_trafo(x)
