@@ -1,8 +1,17 @@
+import torch
+torch.manual_seed(123)
 import logging
 import platalea.basic as M
 import platalea.encoders
 import platalea.dataset as D
-import platalea.config
+import configargparse
+
+parser = configargparse.get_argument_parser('platalea')
+parser.add_argument('--epochs', action='store', default=32, dest='epochs', type=int,
+                   help='number of epochs after which to stop training (default: 32)')
+
+config_args, unknown_args = parser.parse_known_args()
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -28,7 +37,7 @@ config = dict(SpeechEncoder=speech_encoder,
 
 logging.info('Building model')
 net = M.SpeechImage(config)
-run_config = dict(max_lr=2 * 1e-4, epochs=platalea.config.args.epochs)
+run_config = dict(max_lr=2 * 1e-4, epochs=config_args.epochs)
 
 logging.info('Training')
 M.experiment(net, data, run_config)
