@@ -22,8 +22,3 @@ parser.add_argument('--image_subdir', env_var='PLATALEA_IMAGE_SUBDIR',
                     action='store', default='Flickr8k_Dataset/Flicker8k_Dataset/',
                     dest='image_subdir',
                     help='directory containing the flickr8k image files, relative to the dataset location')
-
-experiment_arguments = parser.add_argument_group('experiment arguments',
-                                                 "Some experiment run scripts use the following optional parameters.")
-experiment_arguments.add_argument('--epochs', action='store', default=32, dest='epochs', type=int,
-                                  help='number of epochs after which to stop training')
