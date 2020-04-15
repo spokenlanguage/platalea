@@ -40,6 +40,7 @@ def preprocess(dataset_name):
         dataset_root = platalea.config.args.places_root
         dataset_path = pathlib.Path(dataset_root)
         places_audio_features(dataset_path, audio_feat_config)
+        places_image_features(dataset_path, images_feat_config)
     else:
         raise NotImplementedError
 
@@ -57,7 +58,7 @@ def flickr8k_image_features(dataset_path, images_subdir, feat_config):
     data = json.load(open(dataset_path / 'dataset.json'))
     files = [image['filename'] for image in data['images']]
     paths = [directory / fn for fn in files]
-    features = image_features(paths, feat_config).cpu()
+    features = torch.stack(image_features(paths, feat_config)).cpu()
     torch.save(dict(features=features, filenames=files), dataset_path / 'resnet_features.pt')
 
 
@@ -88,7 +89,8 @@ def librispeech_audio_features(dataset_path, feat_config):
                     paths.append(f)
     features = audio_features(paths, feat_config)
     # Saving features in memmap format
-    start, end = save_memmap(features, dataset_path / 'features.memmap')
+    memmap_fname = dataset_path / 'audio_features.memmap'
+    start, end = save_audio_features_to_memmap(features, memmap_fname)
     for i, m in enumerate(metadata):
         m['audio_start'] = start[i]
         m['audio_end'] = end[i]
@@ -96,7 +98,23 @@ def librispeech_audio_features(dataset_path, feat_config):
         json.dump(metadata, f)
 
 
-def save_memmap(data, fname):
+def save_audio_features_to_memmap(data, fname):
+    num_lines = np.sum([d.shape[0] for d in data])
+    fp = np.memmap(fname, dtype='float64', mode='w+', shape=(num_lines, 39))
+    start = 0
+    end = None
+    S = []
+    E = []
+    for d in data:
+        end = start + d.shape[0]
+        fp[start:end, :] = d
+        S.append(start)
+        E.append(end)
+        start = end
+    return S, E
+
+
+def save_audio_features_to_memmap(data, fname):
     num_lines = np.sum([d.shape[0] for d in data])
     fp = np.memmap(fname, dtype='float64', mode='w+', shape=(num_lines, 39))
     start = 0
@@ -123,7 +141,47 @@ def librispeech_load_trn(path):
 
 
 def places_audio_features(dataset_path, feat_config):
-    raise NotImplementedError
+    # Loading metadata - original training set is split into training and
+    # val/dev sets while original validation set is used for testing
+    metadata = []
+    audio_path = dataset_path / 'PlacesAudio_400k_distro'
+    meta_dir = audio_path / 'metadata'
+    for meta_fname, split in [('tr.json', 'train'),
+                              ('dt.json', 'dev'),
+                              ('et.json', 'test')]:
+        meta = json.load(open(meta_dir / meta_fname))['data']
+        for m in meta:
+            m['split'] = split
+        metadata.extend(meta)
+    paths = [audio_path / m['wav'] for m in metadata]
+    features = audio_features(paths, feat_config)
+    # Saving features in memmap format
+    memmap_fname = dataset_path / 'audio_features.memmap'
+    start, end = save_audio_features_to_memmap(features, memmap_fname)
+    for i, m in enumerate(metadata):
+        m['audio_start'] = start[i]
+        m['audio_end'] = end[i]
+    with open(dataset_path / 'metadata.json', 'w') as f:
+        json.dump(metadata, f)
+
+
+def places_image_features(dataset_path, feat_config):
+    image_dir = dataset_path / 'data/vision/torralba/deeplearning/images256'
+    metadata = json.load(open(dataset_path / 'metadata.json'))
+    files = [ex['image'] for ex in metadata]
+    paths = [image_dir / f for f in files]
+    features = image_features(paths, feat_config)
+    # Saving to memmap
+    memmap_fname = dataset_path / 'visual_features.memmap'
+    num_lines = len(metadata)
+    fp = np.memmap(memmap_fname, dtype='float64', mode='w+', shape=(num_lines, 2048))
+    for i, f in enumerate(features):
+        fp[i, :] = f.cpu()
+    # Saving index of each image's features
+    for i, m in enumerate(metadata):
+        m['image_index'] = i
+    with open(dataset_path / 'metadata.json', 'w') as f:
+        json.dump(metadata, f)
 
 
 def image_features(paths, config):
@@ -144,7 +202,7 @@ def image_features(paths, config):
         im = PIL.Image.open(path)
         return prep_tencrop(im, model, device)
 
-    return torch.stack([one(path) for path in paths])
+    return [one(path) for path in paths]
 
 
 def prep_tencrop(im, model, device):
@@ -158,13 +216,13 @@ def prep_tencrop(im, model, device):
                                      std=[0.229, 0.224, 0.225])
     resize = transforms.Resize(256, PIL.Image.ANTIALIAS)
 
+    # there are some grayscale images in mscoco and places that the vgg and
+    # resnet networks wont take
+    if im.mode != 'RGB':
+        im = im.convert('RGB')
     im = tencrop(resize(im))
     im = torch.cat([normalise(tens(x)).unsqueeze(0) for x in im])
     im = im.to(device)
-    # there are some grayscale images in mscoco that the vgg and resnet
-    # networks wont take
-    if not im.size()[1] == 3:
-        im = im.expand(im.size()[0], 3, im.size()[2], im.size()[3])
     activations = model(im)
     return activations.mean(0).squeeze()
 
@@ -238,7 +296,7 @@ if __name__ == '__main__':
     parser.description = doc[0]
     parser.add_argument(
         'dataset_name', help='Name of the dataset to preprocess.',
-        type=str, choices=['flickr8k', 'librispeech'])
+        type=str, choices=['flickr8k', 'librispeech', 'places'])
     args, unknown_args = parser.parse_known_args()
 
     preprocess(args.dataset_name)
