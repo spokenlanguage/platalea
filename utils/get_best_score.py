@@ -27,7 +27,7 @@ def get_metric_accessor(experiment_type):
     elif experiment_type == 'asr':
         return lambda x: x['wer']['WER']
     elif experiment_type == 'slt':
-        return lambda x: x['cer']['CER']
+        return lambda x: x['bleu']
     elif experiment_type == 'mtl':
         return lambda x: x['SI']['recall']['10']
 

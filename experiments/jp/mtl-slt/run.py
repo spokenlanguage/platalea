@@ -6,7 +6,7 @@ import torch.nn as nn
 
 import platalea.dataset as D
 import platalea.mtl as M
-from platalea.score import score, score_asr
+from platalea.score import score, score_slt
 
 torch.manual_seed(123)
 
@@ -84,7 +84,7 @@ for n in [(5, 1, 1), (4, 2, 2)]:
 
     tasks = [dict(name='SI', net=net.SpeechImage, data=data, eval=score),
              dict(name='ASR', net=net.SpeechTranscriber, data=data,
-                  eval=score_asr)]
+                  eval=score_slt)]
     logging.info('Training')
     M.experiment(net, tasks, run_config)
     suffix = '_'.join([str(i) for i in n])

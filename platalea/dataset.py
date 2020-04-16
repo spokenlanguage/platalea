@@ -77,7 +77,7 @@ class Flickr8KData(torch.utils.data.Dataset):
                             image['sentences'][text_id][self.text_key]))
         # Downsampling
         if downsampling_factor is not None:
-            num_examples = len(self.split_data) // downsampling_factor
+            num_examples = int(len(self.split_data) // downsampling_factor)
             self.split_data = random.sample(self.split_data, num_examples)
 
         # image and audio feature data
