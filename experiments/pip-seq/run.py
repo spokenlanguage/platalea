@@ -22,9 +22,9 @@ logging.basicConfig(level=logging.INFO)
 # Parse command line parameters
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    '--slt_model_dir',
-    help='Path to the directory where the pretrained SLT model is stored',
-    dest='slt_model_dir', type=str, action='store')
+    '--asr_model_dir',
+    help='Path to the directory where the pretrained ASR model is stored',
+    dest='asr_model_dir', type=str, action='store')
 args, _ = parser.parse_known_args()
 
 logging.info('Loading data')
@@ -34,8 +34,8 @@ data = dict(
     val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False,
                           feature_fname=feature_fname))
 fd = D.Flickr8KData
-if args.slt_model_dir:
-    config_fpath = os.path.join(args.slt_model_dir, 'config.pkl')
+if args.asr_model_dir:
+    config_fpath = os.path.join(args.asr_model_dir, 'config.pkl')
     config = pickle.load(open(config_fpath, 'rb'))
     fd.le = config['label_encoder']
 else:
@@ -46,35 +46,35 @@ else:
                      language='en'),
                 open('config.pkl', 'wb'))
 
-if args.slt_model_dir:
-    net = torch.load(os.path.join(args.slt_model_dir, 'net.best.pt'))
+if args.asr_model_dir:
+    net = torch.load(os.path.join(args.asr_model_dir, 'net.best.pt'))
 else:
-    logging.info('Building SLT model')
+    logging.info('Building ASR model')
     config = M1.get_default_config()
     net = M1.SpeechTranscriber(config)
     run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32, opt='adam')
-    logging.info('Training SLT')
+    logging.info('Training ASR')
     M1.experiment(net, data, run_config)
-    copyfile('result.json', 'result_slt.json')
-    copy_best('result_slt.json', 'slt.best.pt', experiment_type='slt')
-    net = torch.load('slt.best.pt')
+    copyfile('result.json', 'result_asr.json')
+    copy_best('result_asr.json', 'asr.best.pt', experiment_type='asr')
+    net = torch.load('asr.best.pt')
 
-logging.info('Extracting SLT transcriptions')
+logging.info('Extracting ASR transcriptions')
 for set_name in ['train', 'val']:
     ds = data[set_name].dataset
-    hyp_slt, ref_slt = extract_trn(net, ds, use_beam_decoding=True)
-    # Replacing original transcriptions with SLT's output
-    for i in range(len(hyp_slt)):
+    hyp_asr, ref_asr = extract_trn(net, ds, use_beam_decoding=True)
+    # Replacing original transcriptions with ASR's output
+    for i in range(len(hyp_asr)):
         item = ds.split_data[i]
-        if item[2] == ref_slt[i]:
-            ds.split_data[i] = (item[0], item[1], hyp_slt[i])
+        if item[2] == ref_asr[i]:
+            ds.split_data[i] = (item[0], item[1], hyp_asr[i])
         else:
             msg = 'Extracted reference #{} ({}) doesn\'t match dataset\'s \
                     one ({}) for {} set.'
-            msg = msg.format(i, ref_slt[i], ds.split_data[i][3], set_name)
+            msg = msg.format(i, ref_asr[i], ds.split_data[i][3], set_name)
             logging.warning(msg)
 
-if args.slt_model_dir:
+if args.asr_model_dir:
     # Saving config for text-image model
     pickle.dump(dict(feature_fname=feature_fname,
                      label_encoder=fd.get_label_encoder(),
