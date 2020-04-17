@@ -6,7 +6,7 @@ import torch.nn as nn
 
 import platalea.dataset as D
 import platalea.mtl as M
-from platalea.score import score, score_asr
+from platalea.score import score, score_slt
 
 torch.manual_seed(123)
 
@@ -54,7 +54,7 @@ for n in [(5, 1, 1), (4, 2, 2)]:
                      dropout=dropout),
             rnn_layer_type=nn.GRU),
         ImageEncoder=dict(
-            linear=dict(in_size=hidden_size * 2, out_size=hidden_size * 2),
+            linear=dict(in_size=2048, out_size=hidden_size * 2),
             norm=True),
         TextDecoder=dict(
             emb=dict(num_embeddings=fd.vocabulary_size(),
@@ -81,7 +81,7 @@ for n in [(5, 1, 1), (4, 2, 2)]:
 
     tasks = [dict(name='SI', net=net.SpeechImage, data=data, eval=score),
              dict(name='ASR', net=net.SpeechTranscriber, data=data,
-                  eval=score_asr)]
+                  eval=score_slt)]
     logging.info('Training')
     M.experiment(net, tasks, run_config)
     suffix = '_'.join([str(i) for i in n])

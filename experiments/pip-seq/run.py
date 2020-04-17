@@ -24,7 +24,7 @@ parser.add_argument(
     '--asr_model_dir',
     help='Path to the directory where the pretrained ASR model is stored',
     dest='asr_model_dir', type=str, action='store')
-args, unknown_args = parser.parse_known_args()
+args, _ = parser.parse_known_args()
 
 logging.info('Loading data')
 data = dict(
