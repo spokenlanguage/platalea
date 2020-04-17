@@ -1,4 +1,5 @@
-import argparse
+import configargparse
+import json
 import logging
 import numpy as np
 import pickle
@@ -17,12 +18,11 @@ torch.manual_seed(123)
 
 
 batch_size = 8
-feature_fname = 'mfcc_delta_features.pt'
 
 logging.basicConfig(level=logging.INFO)
 
 # Parse command line parameters
-parser = argparse.ArgumentParser()
+parser = configargparse.get_argument_parser('platalea')
 parser.add_argument(
     '--slt_model_dir',
     help='Path to the directory where the pretrained SLT model is stored',
@@ -32,14 +32,14 @@ parser.add_argument(
     help='Path to the directory where the pretrained text-image model is \
     stored',
     dest='text_image_model_dir', type=str, action='store')
-args = parser.parse_args()
+args, unknown_args = parser.parse_known_args()
 
 logging.info('Loading data')
 data = dict(
     train=D.flickr8k_loader(split='train', batch_size=batch_size, shuffle=True,
-                            feature_fname=feature_fname, language='jp'),
+                            language='jp'),
     val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False,
-                          feature_fname=feature_fname, language='jp'))
+                          language='jp'))
 fd = D.Flickr8KData
 if args.slt_model_dir:
     config_fpath = os.path.join(args.slt_model_dir, 'config.pkl')
@@ -48,9 +48,7 @@ if args.slt_model_dir:
 else:
     fd.init_vocabulary(data['train'].dataset)
     # Saving config
-    pickle.dump(dict(feature_fname=feature_fname,
-                     label_encoder=fd.get_label_encoder(),
-                     language='jp'),
+    pickle.dump(data['train'].dataset.get_config(),
                 open('config.pkl', 'wb'))
 
 if args.slt_model_dir:
@@ -75,9 +73,7 @@ if args.text_image_model_dir:
     fd.le = config['label_encoder']
 elif args.slt_model_dir:
     # Saving config for text-image model
-    pickle.dump(dict(feature_fname=feature_fname,
-                     label_encoder=fd.get_label_encoder(),
-                     language='en'),
+    pickle.dump(data['train'].dataset.get_config(),
                 open('config.pkl', 'wb'))
 
 if args.text_image_model_dir:
@@ -98,7 +94,8 @@ correct = data['correct'].cpu().numpy()
 image_e = net.embed_image(data['image'])
 text_e = net.embed_text(hyp_slt)
 result = E.ranking(image_e, text_e, correct)
-print(dict(medr=np.median(result['ranks']),
-           recall={1: np.mean(result['recall'][1]),
-                   5: np.mean(result['recall'][5]),
-                   10: np.mean(result['recall'][10])}))
+res_out = dict(medr=np.median(result['ranks']),
+               recall={1: np.mean(result['recall'][1]),
+                       5: np.mean(result['recall'][5]),
+                       10: np.mean(result['recall'][10])})
+json.dump(res_out, open('result.json', 'w'))

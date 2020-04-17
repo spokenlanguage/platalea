@@ -1,4 +1,4 @@
-import argparse
+import configargparse
 import logging
 import pickle
 import os
@@ -15,12 +15,11 @@ torch.manual_seed(123)
 
 
 batch_size = 8
-feature_fname = 'mfcc_delta_features.pt'
 
 logging.basicConfig(level=logging.INFO)
 
 # Parse command line parameters
-parser = argparse.ArgumentParser()
+parser = configargparse.get_argument_parser('platalea')
 parser.add_argument(
     '--slt_model_dir',
     help='Path to the directory where the pretrained SLT model is stored',
@@ -30,9 +29,9 @@ args = parser.parse_args()
 logging.info('Loading data')
 data = dict(
     train=D.flickr8k_loader(split='train', batch_size=batch_size, shuffle=True,
-                            feature_fname=feature_fname, language='jp'),
+                            language='jp'),
     val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False,
-                          feature_fname=feature_fname, language='jp'))
+                          language='jp'))
 fd = D.Flickr8KData
 if args.slt_model_dir:
     config_fpath = os.path.join(args.slt_model_dir, 'config.pkl')
@@ -41,9 +40,7 @@ if args.slt_model_dir:
 else:
     fd.init_vocabulary(data['train'].dataset)
     # Saving config
-    pickle.dump(dict(feature_fname=feature_fname,
-                     label_encoder=fd.get_label_encoder(),
-                     language='jp'),
+    pickle.dump(data['train'].dataset.get_config(),
                 open('config.pkl', 'wb'))
 
 if args.slt_model_dir:
@@ -76,9 +73,7 @@ for set_name in ['train', 'val']:
 
 if args.slt_model_dir:
     # Saving config for text-image model
-    pickle.dump(dict(feature_fname=feature_fname,
-                     label_encoder=fd.get_label_encoder(),
-                     language='en'),
+    pickle.dump(data['train'].dataset.get_config(),
                 open('config.pkl', 'wb'))
 
 logging.info('Building model text-image')
