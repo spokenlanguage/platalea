@@ -36,7 +36,7 @@ config = dict(
     SpeechEncoder=dict(
         conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,
                   padding=0, bias=False),
-        rnn=dict(input_size=64, hidden_size=hidden_size, num_layers=4,
+        rnn=dict(input_size=64, hidden_size=hidden_size, num_layers=5,
                  bidirectional=True, dropout=dropout),
         rnn_layer_type=nn.GRU),
     TextDecoder=dict(
@@ -61,4 +61,4 @@ net = M.SpeechTranscriber(config)
 run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32, opt='adam')
 
 logging.info('Training')
-M.experiment(net, data, run_config)
+M.experiment(net, data, run_config, slt=True)
