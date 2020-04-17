@@ -10,6 +10,7 @@ dflt_conf_files = [home / '.platalea/config.ini',
                    'config.yml']
 configargparse.init_argument_parser(name='platalea', default_config_files=dflt_conf_files)
 parser = configargparse.get_argument_parser(name='platalea')
+parser.add_argument('-c', '--config', is_config_file=True, help='config file path')
 parser.add_argument('--data_root', env_var='PLATALEA_DATA_ROOT',
                     action='store', default='/roaming/gchrupal/datasets/flickr8k/',
                     dest='data_root',

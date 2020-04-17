@@ -45,14 +45,16 @@ class Flickr8KData(torch.utils.data.Dataset):
 
     def __init__(self, root, feature_fname, split='train', language='en',
                  downsampling_factor=None):
+        self.root = root
+        self.split = split
+        self.feature_fname = feature_fname
+        self.language = language
         if language == 'en':
             self.text_key = 'raw'
         elif language == 'jp':
             self.text_key = 'raw_jp'
         else:
             raise ValueError('Language {} not supported.'.format(language))
-        self.root = root
-        self.split = split
         root_path = pathlib.Path(root)
         with open(root_path / platalea.config.args.meta) as fmeta:
             self.metadata = json.load(fmeta)['images']
@@ -97,6 +99,11 @@ class Flickr8KData(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.split_data)
+
+    def get_config(self):
+        return dict(feature_fname=self.feature_fname,
+                    label_encoder=self.get_label_encoder(),
+                    language=self.language)
 
     def evaluation(self):
         """Returns image features, caption features, and a boolean array
@@ -157,7 +164,8 @@ def collate_fn(data, max_frames=2048):
 
 
 def flickr8k_loader(split='train', batch_size=32, shuffle=False,
-                    max_frames=2048, feature_fname=platalea.config.args.audio_features_fn,
+                    max_frames=2048,
+                    feature_fname=platalea.config.args.audio_features_fn,
                     language='en', downsampling_factor=None):
     return torch.utils.data.DataLoader(
         dataset=Flickr8KData(root=platalea.config.args.data_root,
