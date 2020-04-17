@@ -87,6 +87,11 @@ class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
             if image['split'] == self.split:
                 fname = image['filename']
                 for text_id, audio_id in self.image_captions[fname]:
+                    if self.text_key in image['sentences'][text_id]:
+                        self.split_data.append((
+                            fname,
+                            audio_id,
+                            image['sentences'][text_id][self.text_key]))
         # Downsampling
         if downsampling_factor is not None:
             num_examples = int(len(self.split_data) // downsampling_factor)
