@@ -57,7 +57,7 @@ for n in [(5, 1, 1), (4, 2, 2)]:
                      dropout=dropout),
             rnn_layer_type=nn.GRU),
         ImageEncoder=dict(
-            linear=dict(in_size=hidden_size * 2, out_size=hidden_size * 2),
+            linear=dict(in_size=2048, out_size=hidden_size * 2),
             norm=True),
         TextDecoder=dict(
             emb=dict(num_embeddings=fd.vocabulary_size(),
