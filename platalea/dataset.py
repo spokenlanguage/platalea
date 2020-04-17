@@ -126,6 +126,12 @@ class Flickr8KData(torch.utils.data.Dataset):
             correct[i, j] = True
         return dict(image=image, audio=audio, text=text, correct=correct)
 
+    def split_sentences(self, sentences):
+        if self.language == 'jp':
+            return sentences
+        else:
+            return [s.split() for s in sentences]
+
 
 def batch_audio(audios, max_frames=2048):
     """Merge audio captions. Truncate to max_frames. Pad with 0s."""

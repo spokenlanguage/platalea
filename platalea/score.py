@@ -54,7 +54,7 @@ def score_asr(net, dataset, beam_size=None):
 def bleu_score(references, hypotheses):
     bleu = np.zeros(len(references))
     for i in range(len(references)):
-        bleu[i] = sentence_bleu(references[i], hypotheses[i])
+        bleu[i] = sentence_bleu([references[i]], hypotheses[i])
     return bleu.mean()
 
 def score_slt(net, dataset, beam_size=None):
@@ -62,5 +62,7 @@ def score_slt(net, dataset, beam_size=None):
     trn = net.transcribe(data['audio'], beam_size=beam_size)
     ref = data['text']
     cer = xer.cer(trn, ref)
+    trn = dataset.split_sentences(trn)
+    ref = dataset.split_sentences(ref)
     bleu = bleu_score(ref, trn)
     return dict(bleu=bleu, cer=cer)
