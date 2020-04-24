@@ -490,7 +490,7 @@ class SpeechEncoderVQ(nn.Module):
 
 
     def forward(self, input, length):
-        return self.Top(self.Codebook(self.Bottom(input, length))[0])
+        return self.Top(self.Codebook(self.Bottom(input, length))['quantized'])
 
 def inout(layer, L):
     """Mapping from size of input to the size of the output of a 1D

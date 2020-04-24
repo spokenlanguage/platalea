@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from platalea.encoders import SpeechEncoderVQ, ImageEncoder
+from platalea.encoders import SpeechEncoderVQ, ImageEncoder, inout
 import platalea.loss
 from collections import Counter
 import logging
@@ -45,7 +45,19 @@ class SpeechImage(nn.Module):
             audio_e.append(self.SpeechEncoder(a.cuda(), l.cuda()).detach().cpu().numpy())
         audio_e = np.concatenate(audio_e)
         return audio_e
-
+    
+    def code_audio(self, audios): #FIXME messed up sized ETC
+        audio = torch.utils.data.DataLoader(dataset=audios, batch_size=32,
+                                            shuffle=False,
+                                            collate_fn=D.batch_audio)
+        audio_e = []
+        for a, l in audio:
+            codes = self.SpeechEncoder.Codebook(self.SpeechEncoder.Bottom(a.cuda(), l.cuda()))['codes']
+            codes = codes.detach().cpu().numpy()
+            for code, L in zip(list(codes), list(l)):
+                code = code[:inout(self.SpeechEncoder.Bottom.Conv, L).item()]
+                audio_e.append(code)
+        return audio_e
 
 def cyclic_scheduler(optimizer, n_batches, max_lr, min_lr=1e-6):
     stepsize = n_batches * 4
