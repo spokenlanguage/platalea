@@ -15,7 +15,6 @@ torch.manual_seed(123)
 
 
 batch_size = 8
-feature_fname = 'mfcc_delta_features.pt'
 
 logging.basicConfig(level=logging.INFO)
 
@@ -29,10 +28,8 @@ args = parser.parse_args()
 
 logging.info('Loading data')
 data = dict(
-    train=D.flickr8k_loader(split='train', batch_size=batch_size, shuffle=True,
-                            feature_fname=feature_fname),
-    val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False,
-                          feature_fname=feature_fname))
+    train=D.flickr8k_loader(split='train', batch_size=batch_size, shuffle=True),
+    val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False))
 fd = D.Flickr8KData
 if args.asr_model_dir:
     config_fpath = os.path.join(args.asr_model_dir, 'config.pkl')
@@ -41,8 +38,7 @@ if args.asr_model_dir:
 else:
     fd.init_vocabulary(data['train'].dataset)
     # Saving config
-    pickle.dump(dict(feature_fname=feature_fname,
-                     label_encoder=fd.get_label_encoder(),
+    pickle.dump(dict(label_encoder=fd.get_label_encoder(),
                      language='en'),
                 open('config.pkl', 'wb'))
 
@@ -76,8 +72,7 @@ for set_name in ['train', 'val']:
 
 if args.asr_model_dir:
     # Saving config for text-image model
-    pickle.dump(dict(feature_fname=feature_fname,
-                     label_encoder=fd.get_label_encoder(),
+    pickle.dump(dict(label_encoder=fd.get_label_encoder(),
                      language='en'),
                 open('config.pkl', 'wb'))
 

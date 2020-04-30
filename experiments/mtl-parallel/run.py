@@ -10,16 +10,13 @@ torch.manual_seed(123)
 batch_size = 8
 hidden_size = 1024
 dropout = 0.0
-feature_fname = 'mfcc_delta_features.pt'
 
 logging.basicConfig(level=logging.INFO)
 
 logging.info('Loading data')
 data = dict(
-    train=D.flickr8k_loader(split='train', batch_size=batch_size,
-                            shuffle=True, feature_fname=feature_fname),
-    val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False,
-                          feature_fname=feature_fname))
+    train=D.flickr8k_loader(split='train', batch_size=batch_size, shuffle=True),
+    val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False)
 fd = D.Flickr8KData
 fd.init_vocabulary(data['train'].dataset)
 

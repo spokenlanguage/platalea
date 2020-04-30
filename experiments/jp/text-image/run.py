@@ -11,22 +11,20 @@ torch.manual_seed(123)
 batch_size = 32
 hidden_size = 1024
 dropout = 0.0
-feature_fname = 'mfcc_delta_features.pt'
 
 logging.basicConfig(level=logging.INFO)
 
 logging.info('Loading data')
 data = dict(
     train=D.flickr8k_loader(split='train', batch_size=batch_size, shuffle=True,
-                            feature_fname=feature_fname, language='jp'),
+                            language='jp'),
     val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False,
-                          feature_fname=feature_fname, language='jp'))
+                          language='jp'))
 fd = D.Flickr8KData
 fd.init_vocabulary(data['train'].dataset)
 
 # Saving config
-pickle.dump(dict(feature_fname=feature_fname,
-                 label_encoder=fd.get_label_encoder(),
+pickle.dump(dict(label_encoder=fd.get_label_encoder(),
                  language='jp'),
             open('config.pkl', 'wb'))
 
