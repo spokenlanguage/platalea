@@ -35,16 +35,9 @@ logging.info('Loading data')
 data = dict(
     train=D.flickr8k_loader(split='train', batch_size=batch_size, shuffle=True),
     val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False))
-fd = D.Flickr8KData
-if config_args.asr_model_dir:
-    config_fpath = os.path.join(config_args.asr_model_dir, 'config.pkl')
-    config = pickle.load(open(config_fpath, 'rb'))
-    fd.le = config['label_encoder']
-else:
-    fd.init_vocabulary(data['train'].dataset)
+if not config_args.asr_model_dir:
     # Saving config
-    pickle.dump(dict(label_encoder=fd.get_label_encoder(),
-                     language='en'),
+    pickle.dump(dict(language='en'),
                 open('config.pkl', 'wb'))
 
 if config_args.asr_model_dir:
@@ -77,8 +70,7 @@ for set_name in ['train', 'val']:
 
 if config_args.asr_model_dir:
     # Saving config for text-image model
-    pickle.dump(dict(label_encoder=fd.get_label_encoder(),
-                     language='en'),
+    pickle.dump(dict(language='en'),
                 open('config.pkl', 'wb'))
 
 logging.info('Building model text-image')

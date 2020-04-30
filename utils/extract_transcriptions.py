@@ -38,18 +38,11 @@ if __name__ == '__main__':
     logging.info('Loading data')
     data = dict(
         train=D.flickr8k_loader(split='train', batch_size=batch_size,
-                                shuffle=False, feature_fname=conf['feature_fname'],
-                                language=conf['language']),
+                                shuffle=False, language=conf['language']),
         val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False,
-                              feature_fname=conf['feature_fname'],
                               language=conf['language']))
-    fd = D.Flickr8KData
-    fd.le = conf['label_encoder']
 
     net = torch.load(args.path)
-
-
-
 
     trn = {}
     logging.info('Extracting transcriptions')

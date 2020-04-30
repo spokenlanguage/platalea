@@ -1,9 +1,10 @@
 import json
+import pathlib
+import pickle
 import random
 from sklearn.preprocessing import LabelEncoder
 import torch
 import torch.utils.data
-import pathlib
 
 import platalea.config
 
@@ -54,6 +55,8 @@ class Flickr8KData(torch.utils.data.Dataset):
         self.root = root
         self.split = split
         root_path = pathlib.Path(root)
+        with open(root_path / 'label_encoders.pkl', 'rb') as f:
+            self.le = pickle.load(f)[language]
         with open(root_path / platalea.config.args.meta) as fmeta:
             self.metadata = json.load(fmeta)['images']
         if downsampling_factor is not None:

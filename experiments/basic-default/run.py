@@ -24,7 +24,6 @@ logging.basicConfig(level=logging.INFO)
 logging.info('Loading data')
 data = dict(train=D.flickr8k_loader(split='train', batch_size=32, shuffle=True),
             val=D.flickr8k_loader(split='val', batch_size=32, shuffle=False))
-D.Flickr8KData.init_vocabulary(data['train'].dataset)
 
 config = dict(
     SpeechEncoder=dict(

@@ -35,11 +35,9 @@ data = dict(
     val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False,
                           language=language))
 fd = D.Flickr8KData
-fd.init_vocabulary(data['train'].dataset)
 
 # Saving config
-pickle.dump(dict(label_encoder=fd.get_label_encoder(),
-                 language=language),
+pickle.dump(dict(language=language),
             open('config.pkl', 'wb'))
 
 for n in [(5, 1, 1), (4, 2, 2)]:

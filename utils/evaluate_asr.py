@@ -20,15 +20,9 @@ parser.add_argument('-b', help='Use beam decoding', dest='use_beam_decoding',
                     action='store_true', default=False)
 args = parser.parse_args()
 
-# Loading config
-conf = pickle.load(open('config.pkl', 'rb'))
-
 logging.info('Loading data')
 data = dict(val=D.flickr8k_loader(split='val', batch_size=batch_size,
-                                  shuffle=False,
-                                  feature_fname=conf['feature_fname']))
-fd = D.Flickr8KData
-fd.le = conf['label_encoder']
+                                  shuffle=False))
 
 logging.info('Loading model')
 net = torch.load(args.path)

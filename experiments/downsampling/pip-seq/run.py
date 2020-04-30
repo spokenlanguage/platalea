@@ -40,16 +40,9 @@ for ds_factor in factors:
                                 shuffle=True, downsampling_factor=ds_factor),
         val=D.flickr8k_loader(split='val', batch_size=batch_size,
                               shuffle=False))
-    fd = D.Flickr8KData
-    if args.asr_model_dir:
-        config_fpath = os.path.join(args.asr_model_dir, 'config.pkl')
-        config = pickle.load(open(config_fpath, 'rb'))
-        fd.le = config['label_encoder']
-    else:
-        fd.init_vocabulary(data['train'].dataset)
+    if not args.asr_model_dir:
         # Saving config
-        pickle.dump(dict(label_encoder=fd.get_label_encoder(),
-                         language='en'),
+        pickle.dump(dict(language='en'),
                     open('config.pkl', 'wb'))
 
     if args.asr_model_dir:
@@ -85,8 +78,7 @@ for ds_factor in factors:
 
     if args.asr_model_dir:
         # Saving config for text-image model
-        pickle.dump(dict(label_encoder=fd.get_label_encoder(),
-                         language='en'),
+        pickle.dump(dict(language='en'),
                     open('config.pkl', 'wb'))
 
     logging.info('Building model text-image')
