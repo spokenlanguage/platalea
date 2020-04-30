@@ -1,7 +1,8 @@
-import argparse
+import configargparse
 import logging
-import pickle
 import os
+import pickle
+import random
 from shutil import copyfile
 import torch
 
@@ -11,28 +12,32 @@ import platalea.text_image as M2
 from utils.copy_best import copy_best
 from utils.extract_transcriptions import extract_trn
 
-torch.manual_seed(123)
-
-
-batch_size = 8
-
-logging.basicConfig(level=logging.INFO)
-
-# Parse command line parameters
-parser = argparse.ArgumentParser()
+# Parsing arguments
+parser = configargparse.get_argument_parser('platalea')
+parser.add_argument(
+    '--seed', default=123, type=int,
+    help='seed for sources of randomness (default: 123)')
 parser.add_argument(
     '--asr_model_dir',
     help='Path to the directory where the pretrained ASR model is stored',
     dest='asr_model_dir', type=str, action='store')
-args = parser.parse_args()
+config_args, _ = parser.parse_known_args()
+
+# Setting general configuration
+torch.manual_seed(config_args.seed)
+random.seed(config_args.seed)
+logging.basicConfig(level=logging.INFO)
+
+
+batch_size = 8
 
 logging.info('Loading data')
 data = dict(
     train=D.flickr8k_loader(split='train', batch_size=batch_size, shuffle=True),
     val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False))
 fd = D.Flickr8KData
-if args.asr_model_dir:
-    config_fpath = os.path.join(args.asr_model_dir, 'config.pkl')
+if config_args.asr_model_dir:
+    config_fpath = os.path.join(config_args.asr_model_dir, 'config.pkl')
     config = pickle.load(open(config_fpath, 'rb'))
     fd.le = config['label_encoder']
 else:
@@ -42,13 +47,13 @@ else:
                      language='en'),
                 open('config.pkl', 'wb'))
 
-if args.asr_model_dir:
-    net = torch.load(os.path.join(args.asr_model_dir, 'net.best.pt'))
+if config_args.asr_model_dir:
+    net = torch.load(os.path.join(config_args.asr_model_dir, 'net.best.pt'))
 else:
     logging.info('Building ASR model')
     config = M1.get_default_config()
     net = M1.SpeechTranscriber(config)
-    run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32, opt='adam')
+    run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32)
     logging.info('Training ASR')
     M1.experiment(net, data, run_config)
     copyfile('result.json', 'result_asr.json')
@@ -70,7 +75,7 @@ for set_name in ['train', 'val']:
             msg = msg.format(i, ref_asr[i], ds.split_data[i][3], set_name)
             logging.warning(msg)
 
-if args.asr_model_dir:
+if config_args.asr_model_dir:
     # Saving config for text-image model
     pickle.dump(dict(label_encoder=fd.get_label_encoder(),
                      language='en'),

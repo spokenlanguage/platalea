@@ -1,15 +1,26 @@
+import configargparse
 import logging
 import pickle
+import random
 import torch
 
 import platalea.asr as M
 import platalea.dataset as D
 
-torch.manual_seed(123)
+# Parsing arguments
+parser = configargparse.get_argument_parser('platalea')
+parser.add_argument(
+    '--seed', default=123, type=int,
+    help='seed for sources of randomness (default: 123)')
+config_args, _ = parser.parse_known_args()
+
+# Setting general configuration
+torch.manual_seed(config_args.seed)
+random.seed(config_args.seed)
+logging.basicConfig(level=logging.INFO)
+
 
 batch_size = 8
-
-logging.basicConfig(level=logging.INFO)
 
 logging.info('Loading data')
 data = dict(
@@ -25,7 +36,7 @@ pickle.dump(dict(label_encoder=fd.get_label_encoder(),
 
 logging.info('Building model')
 net = M.SpeechTranscriber(M.get_default_config())
-run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32, opt='adam')
+run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32)
 
 logging.info('Training')
 M.experiment(net, data, run_config)

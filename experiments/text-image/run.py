@@ -1,18 +1,28 @@
+import configargparse
 import logging
 import pickle
+import random
 import torch
 
 import platalea.text_image as M
 import platalea.dataset as D
 
-torch.manual_seed(123)
+# Parsing arguments
+parser = configargparse.get_argument_parser('platalea')
+parser.add_argument(
+    '--seed', default=123, type=int,
+    help='seed for sources of randomness (default: 123)')
+config_args, _ = parser.parse_known_args()
+
+# Setting general configuration
+torch.manual_seed(config_args.seed)
+random.seed(config_args.seed)
+logging.basicConfig(level=logging.INFO)
 
 
 batch_size = 32
 hidden_size = 1024
 dropout = 0.0
-
-logging.basicConfig(level=logging.INFO)
 
 logging.info('Loading data')
 data = dict(
