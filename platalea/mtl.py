@@ -74,62 +74,6 @@ class MTLNetSpeechText(nn.Module):
                       'speech-image': loss_si.item()}
 
 
-def experiment_parallel(net, data, config):
-    def val_loss():
-        with torch.no_grad():
-            net.eval()
-            result = []
-            for item in data['val']:
-                item = {key: value.to(_device) for key, value in item.items()}
-                result.append(net.cost(item)[0].item())
-            net.train()
-        return torch.tensor(result).mean()
-
-    net.to(_device)
-    net.train()
-    # Preparing optimizer
-    if 'lr' in config.keys():
-        lr = config['lr']
-    else:
-        lr = 1.0
-    optimizer = optim.Adam(net.parameters(), lr=lr)
-    scheduler = cyclic_scheduler(optimizer, len(data['train']),
-                                 max_lr=config['max_lr'], min_lr=1e-6)
-    optimizer.zero_grad()
-
-    with open("result.json", "w") as out:
-        for epoch in range(1, config['epochs']+1):
-            cost = Counter()
-            for j, item in enumerate(data['train'], start=1):
-                item = {key: value.to(_device) for key, value in item.items()}
-                loss, loss_details = net.cost(item)
-                optimizer.zero_grad()
-                loss.backward()
-                nn.utils.clip_grad_norm_(net.parameters(), config['max_norm'])
-                optimizer.step()
-                scheduler.step()
-                cost += Counter({'cost': loss.item(), 'N': 1})
-                cost += Counter(loss_details)
-                if j % 100 == 0:
-                    logging.info("train {} {} {} {}".format(
-                        epoch, j, cost['cost'] / cost['N'],
-                        [cost[k] / cost['N'] for k in loss_details.keys()]))
-                if j % 400 == 0:
-                    logging.info("valid {} {} {}".format(epoch, j, val_loss()))
-            with torch.no_grad():
-                net.eval()
-                result = platalea.score.score(net.SpeechImage,
-                                              data['val'].dataset)
-                result.update(platalea.score.score_asr(net.SpeechTranscriber,
-                                                       data['val'].dataset))
-                net.train()
-            result['epoch'] = epoch
-            json.dump(result, out)
-            print('', file=out, flush=True)
-            logging.info("Saving model in net.{}.pt".format(epoch))
-            torch.save(net, "net.{}.pt".format(epoch))
-
-
 def val_loss(net, data):
     with torch.no_grad():
         net.eval()
