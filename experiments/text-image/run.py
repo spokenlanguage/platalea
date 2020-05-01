@@ -29,10 +29,6 @@ data = dict(
     train=D.flickr8k_loader(split='train', batch_size=batch_size, shuffle=True),
     val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False))
 
-# Saving config
-pickle.dump(dict(language='en'),
-            open('config.pkl', 'wb'))
-
 logging.info('Building model')
 net = M.TextImage(M.get_default_config())
 run_config = dict(max_lr=2 * 1e-4, epochs=32)

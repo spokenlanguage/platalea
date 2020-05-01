@@ -39,10 +39,6 @@ for ds_factor in factors:
                               shuffle=False))
     fd = D.Flickr8KData
 
-    # Saving config
-    pickle.dump(dict(language='en'),
-                open('config.pkl', 'wb'))
-
     config = dict(
         SharedEncoder=dict(
             conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,

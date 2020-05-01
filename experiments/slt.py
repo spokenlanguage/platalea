@@ -4,7 +4,7 @@ import pickle
 import random
 import torch
 
-import platalea.text_image as M
+import platalea.asr as M
 import platalea.dataset as D
 
 # Parsing arguments
@@ -20,9 +20,7 @@ random.seed(config_args.seed)
 logging.basicConfig(level=logging.INFO)
 
 
-batch_size = 32
-hidden_size = 1024
-dropout = 0.0
+batch_size = 8
 
 logging.info('Loading data')
 data = dict(
@@ -36,8 +34,8 @@ pickle.dump(dict(language='jp'),
             open('config.pkl', 'wb'))
 
 logging.info('Building model')
-net = M.TextImage(M.get_default_config())
-run_config = dict(max_lr=2 * 1e-4, epochs=32)
+net = M.SpeechTranscriber(M.get_default_config())
+run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32)
 
 logging.info('Training')
 M.experiment(net, data, run_config)

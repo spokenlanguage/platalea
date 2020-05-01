@@ -54,6 +54,7 @@ class Flickr8KData(torch.utils.data.Dataset):
             raise ValueError('Language {} not supported.'.format(language))
         self.root = root
         self.split = split
+        self.language = language
         root_path = pathlib.Path(root)
         with open(root_path / 'label_encoders.pkl', 'rb') as f:
             self.le = pickle.load(f)[language]
@@ -120,6 +121,9 @@ class Flickr8KData(torch.utils.data.Dataset):
             correct[i, j] = True
         return dict(image=image, audio=audio, text=text, correct=correct)
 
+    def is_slt(self):
+        return self.language == 'en'
+
 
 def batch_audio(audios, max_frames=2048):
     """Merge audio captions. Truncate to max_frames. Pad with 0s."""
@@ -160,8 +164,10 @@ def collate_fn(data, max_frames=2048):
 
 
 def flickr8k_loader(split='train', batch_size=32, shuffle=False,
-                    max_frames=2048, feature_fname=platalea.config.args.audio_features_fn,
-                    language='en', downsampling_factor=None):
+                    max_frames=2048,
+                    feature_fname=platalea.config.args.audio_features_fn,
+                    language=platalea.config.args.language,
+                    downsampling_factor=None):
     return torch.utils.data.DataLoader(
         dataset=Flickr8KData(root=platalea.config.args.data_root,
                              feature_fname=feature_fname,

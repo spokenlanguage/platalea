@@ -40,11 +40,6 @@ for ds_factor in factors:
                                 shuffle=True, downsampling_factor=ds_factor),
         val=D.flickr8k_loader(split='val', batch_size=batch_size,
                               shuffle=False))
-    if not args.asr_model_dir:
-        # Saving config
-        pickle.dump(dict(language='en'),
-                    open('config.pkl', 'wb'))
-
     if args.asr_model_dir:
         net = torch.load(os.path.join(args.asr_model_dir, 'net.best.pt'))
     else:
@@ -75,11 +70,6 @@ for ds_factor in factors:
                         one ({}) for {} set.'
                 msg = msg.format(i, ref_asr[i], ds.split_data[i][3], set_name)
                 logging.warning(msg)
-
-    if args.asr_model_dir:
-        # Saving config for text-image model
-        pickle.dump(dict(language='en'),
-                    open('config.pkl', 'wb'))
 
     logging.info('Building model text-image')
     net = M2.TextImage(M2.get_default_config())
