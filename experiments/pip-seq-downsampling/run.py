@@ -40,8 +40,8 @@ for ds_factor in factors:
                                 shuffle=True, downsampling_factor=ds_factor),
         val=D.flickr8k_loader(split='val', batch_size=batch_size,
                               shuffle=False))
-    if args.asr_model_dir:
-        net = torch.load(os.path.join(args.asr_model_dir, 'net.best.pt'))
+    if config_args.asr_model_dir:
+        net = torch.load(os.path.join(config_args.asr_model_dir, 'net.best.pt'))
     else:
         logging.info('Building ASR model')
         config = M1.get_default_config()

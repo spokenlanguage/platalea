@@ -19,18 +19,6 @@ parser = configargparse.get_argument_parser('platalea')
 parser.add_argument(
     '--seed', default=123, type=int,
     help='seed for sources of randomness (default: 123)')
-config_args, _ = parser.parse_known_args()
-
-# Setting general configuration
-torch.manual_seed(config_args.seed)
-random.seed(config_args.seed)
-logging.basicConfig(level=logging.INFO)
-
-
-batch_size = 8
-
-# Parse command line parameters
-parser = argparse.ArgumentParser()
 parser.add_argument(
     '--asr_model_dir',
     help='Path to the directory where the pretrained ASR model is stored',
@@ -40,7 +28,15 @@ parser.add_argument(
     help='Path to the directory where the pretrained text-image model is \
     stored',
     dest='text_image_model_dir', type=str, action='store')
-args = parser.parse_args()
+config_args, _ = parser.parse_known_args()
+
+# Setting general configuration
+torch.manual_seed(config_args.seed)
+random.seed(config_args.seed)
+logging.basicConfig(level=logging.INFO)
+
+
+batch_size = 8
 
 factors = [3, 9, 27, 81, 243]
 lz = len(str(abs(factors[-1])))
@@ -52,9 +48,9 @@ for ds_factor in factors:
         val=D.flickr8k_loader(split='val', batch_size=batch_size,
                               shuffle=False))
 
-    if args.asr_model_dir:
+    if config_args.asr_model_dir:
         net_fname = 'net_{}.best.pt'.format(ds_factor)
-        net = torch.load(os.path.join(args.asr_model_dir, net_fname))
+        net = torch.load(os.path.join(config_args.asr_model_dir, net_fname))
     else:
         logging.info('Building ASR model')
         config = M1.get_default_config()
@@ -72,9 +68,9 @@ for ds_factor in factors:
     logging.info('Extracting ASR transcriptions')
     hyp_asr, _ = extract_trn(net, data['val'].dataset, use_beam_decoding=True)
 
-    if args.text_image_model_dir:
+    if config_args.text_image_model_dir:
         net_fname = 'net_{}.best.pt'.format(ds_factor)
-        net = torch.load(os.path.join(args.text_image_model_dir, net_fname))
+        net = torch.load(os.path.join(config_args.text_image_model_dir, net_fname))
     else:
         logging.info('Building model text-image')
         net = M2.TextImage(M2.get_default_config())
