@@ -46,13 +46,16 @@ class SpeechImage(nn.Module):
         audio_e = np.concatenate(audio_e)
         return audio_e
     
-    def code_audio(self, audios): #FIXME messed up sized ETC
+    def code_audio(self, audios, one_hot=False): #FIXME messed up sized ETC
         audio = torch.utils.data.DataLoader(dataset=audios, batch_size=32,
                                             shuffle=False,
                                             collate_fn=D.batch_audio)
         audio_e = []
         for a, l in audio:
-            codes = self.SpeechEncoder.Codebook(self.SpeechEncoder.Bottom(a.cuda(), l.cuda()))['codes']
+            if one_hot:
+                codes = self.SpeechEncoder.Codebook(self.SpeechEncoder.Bottom(a.cuda(), l.cuda()))['one_hot']
+            else:
+                codes = self.SpeechEncoder.Codebook(self.SpeechEncoder.Bottom(a.cuda(), l.cuda()))['codes']
             codes = codes.detach().cpu().numpy()
             for code, L in zip(list(codes), list(l)):
                 code = code[:inout(self.SpeechEncoder.Bottom.Conv, L).item()]

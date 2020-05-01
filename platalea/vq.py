@@ -81,4 +81,7 @@ class VQEmbeddingEMA(nn.Module):
         if self.jitter is not None:
             quantized = self.jitter(quantized)
         quantized = nn.utils.rnn.pack_padded_sequence(quantized, l, batch_first=True, enforce_sorted=False)
-        return dict(quantized=quantized, codes=indices.reshape(x.shape[0], x.shape[1]), loss=loss, perplexity=perplexity)
+        return dict(quantized=quantized,
+                    codes=indices.reshape(x.shape[0], x.shape[1]),
+                    one_hot=encodings.reshape(x.shape[0], x.shape[1], -1),
+                    loss=loss, perplexity=perplexity)

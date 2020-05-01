@@ -1,67 +1,6 @@
-import argparse
-from pathlib import Path
-import json
-import numpy as np
-import torch
-import platalea.basicvq
-from tqdm import tqdm
-
-
-def encode_dataset(args, params):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
-    model.load_state_dict(checkpoint["model"])
-    model = torch.load(args.model).to(device)
-    model.eval()
-    out_dir = Path(args.out_dir)
-    out_dir.mkdir(exist_ok=True, parents=True)
-
-    hop_length_seconds = params["preprocessing"]["hop_length"] / params["preprocessing"]["sample_rate"]
-
-    in_dir = Path(args.in_dir)
-    for path in tqdm(in_dir.rglob("*.mel.npy")):
-        mel = torch.from_numpy(np.load(path)).unsqueeze(0).to(device)
-        with torch.no_grad():
-            x = model.encoder(mel)
-            x, _, _ = model.codebook(x)
-        codes = ((model.codebook.embedding - x.squeeze().unsqueeze(dim=1))**2).sum(dim=2).argmin(dim=1)
-        codes = torch.nn.functional.one_hot(codes, num_classes=model.codebook.embedding.shape[0]).cpu().numpy().astype(int)
-        if args.discrete:
-            output = codes
-        else:
-            output = x.squeeze().cpu().numpy()
-        time = np.linspace(0, (mel.size(-1) - 1) * hop_length_seconds, len(output))
-        relative_path = path.relative_to(in_dir).with_suffix("")
-        out_path = out_dir / relative_path
-        out_path.parent.mkdir(exist_ok=True, parents=True)
-        
-        if args.format == "npz":
-            np.savez(out_path.with_suffix(".npz"), features=output, time=time)
-        elif args.format == "txt":
-            np.savetxt(out_path.with_suffix(".txt"), output, fmt="%d" if args.discrete else "%f")
-        else:
-            raise ValueError("Unknown format string")
-
-
-# if __name__ == "__main__":
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument("--checkpoint", type=str, help="Checkpoint path to resume")
-#     parser.add_argument("--in-dir", type=str, help="Directory to encode")
-#     parser.add_argument("--out-dir", type=str, help="Output path")
-#     parser.add_argument("--format", type=str, help="Output format")
-#     parser.add_argument("--discrete", action='store_true', help="Use code IDs instead of embeddings")
-#     args = parser.parse_args()
-#     with open("config.json") as file:
-#         params = json.load(file)
-#     encode_dataset(args, params)
-
 import glob
 import torch
 from platalea.preprocessing import audio_features
-paths = glob.glob("sampleaudio/*.wav")
-config = dict(type='mfcc', delta=True, alpha=0.97, n_filters=40,  window_size=0.025, frame_shift=0.010)
-res = audio_features(paths, config)[1:]
 model = torch.load("experiments/vq-256-q1/net.32.pt")
 
 import torch
@@ -94,14 +33,22 @@ net = M.SpeechImage(config)
 net.load_state_dict(model.state_dict())
 net.cuda()
 
-codes = net.code_audio(res)
 
-print(len(res))
-for r in res:
-    print("r", r.shape)
-    print()
-for code in codes:
-    print("c", code)
+import os.path
+import numpy as np
+
+paths = glob.glob("/roaming/gchrupal/verdigris/zerospeech2020/2020/2019/english/test/*.wav")
+config = dict(type='mfcc', delta=True, alpha=0.97, n_filters=40,  window_size=0.025, frame_shift=0.010)
+res = audio_features(paths, config)
+
+
+codes = net.code_audio(res, one_hot=True)
+
+for path, code in zip(paths, codes):
+    filename = os.path.splitext(os.path.basename(path))[0]
+    out = "fufi/" + filename + ".txt"
+    logging.info("Writing {}".format(out))
+    np.savetxt(out, code.astype(int), fmt='%d')
 
 
 
