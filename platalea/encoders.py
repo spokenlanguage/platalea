@@ -177,8 +177,11 @@ class SpeechEncoderTransformer(nn.Module):
             self.scale_conv_to_trafo = nn.Linear(in_features=conv['out_channels'],
                                                  out_features=trafo['d_model'], **upsample)
 
-        att = config['att']
-        self.att = Attention(**att)
+        att = config.get('att', None)
+        if att is not None:
+            self.att = Attention(**att)
+        else:
+            self.att = None
 
     def forward(self, src, lengths):
         x = self.Conv(src)
