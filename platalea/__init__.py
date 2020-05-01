@@ -31,3 +31,7 @@ parser.add_argument('--image_subdir', env_var='PLATALEA_IMAGE_SUBDIR',
                     action='store', default='Flickr8k_Dataset/Flicker8k_Dataset/',
                     dest='image_subdir',
                     help='directory containing the flickr8k image files, relative to the dataset location')
+parser.add_argument('--language', env_var='PLATALEA_LANGUAGE',
+                    action='store', default='en',
+                    dest='language',
+                    help='language to use for the transcriptions/translations')

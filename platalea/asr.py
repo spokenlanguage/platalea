@@ -159,22 +159,23 @@ def experiment(net, data, config, slt=False):
 
 def get_default_config():
     fd = D.Flickr8KData
+    hidden_size = 1024 * 3 // 4
     return dict(
         SpeechEncoder=dict(
             conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,
                       padding=0, bias=False),
-            rnn=dict(input_size=64, hidden_size=1024, num_layers=4,
+            rnn=dict(input_size=64, hidden_size=hidden_size, num_layers=5,
                      bidirectional=True, dropout=0.0),
             rnn_layer_type=nn.GRU),
         TextDecoder=dict(
             emb=dict(num_embeddings=fd.vocabulary_size(),
-                     embedding_dim=1024),
+                     embedding_dim=hidden_size),
             drop=dict(p=0.0),
-            att=dict(in_size_enc=1024 * 2, in_size_state=1024,
-                     hidden_size=1024),
-            rnn=dict(input_size=1024 * 3, hidden_size=1024,
+            att=dict(in_size_enc=hidden_size * 2, in_size_state=hidden_size,
+                     hidden_size=hidden_size),
+            rnn=dict(input_size=hidden_size * 3, hidden_size=hidden_size,
                      num_layers=1, dropout=0.0),
-            out=dict(in_features=1024 * 3,
+            out=dict(in_features=hidden_size * 3,
                      out_features=fd.vocabulary_size()),
             rnn_layer_type=nn.GRU,
             max_output_length=400,  # max length for flickr annotations is 199

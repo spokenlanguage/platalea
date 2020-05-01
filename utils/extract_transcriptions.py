@@ -33,21 +33,12 @@ if __name__ == '__main__':
                         default=False)
     args, unknown_args = parser.parse_known_args()
 
-    # Loading config
-    conf = pickle.load(open('config.pkl', 'rb'))
-
     logging.info('Loading data')
     data = dict(
         train=D.flickr8k_loader(split='train', batch_size=batch_size,
-                                shuffle=False,
-                                feature_fname=conf['feature_fname'],
-                                language=conf['language']),
+                                shuffle=False),
         val=D.flickr8k_loader(split='val', batch_size=batch_size,
-                              shuffle=False,
-                              feature_fname=conf['feature_fname'],
-                              language=conf['language']))
-    fd = D.Flickr8KData
-    fd.le = conf['label_encoder']
+                              shuffle=False))
 
     net = torch.load(args.path)
 

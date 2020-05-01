@@ -1,9 +1,10 @@
 import json
+import pathlib
+import pickle
 import random
 from sklearn.preprocessing import LabelEncoder
 import torch
 import torch.utils.data
-import pathlib
 
 import platalea.config
 
@@ -55,8 +56,12 @@ class Flickr8KData(torch.utils.data.Dataset):
             self.text_key = 'raw_jp'
         else:
             raise ValueError('Language {} not supported.'.format(language))
+        self.root = root
+        self.split = split
+        self.language = language
         root_path = pathlib.Path(root)
-        # Loading metadata
+        with open(root_path / 'label_encoders.pkl', 'rb') as f:
+            self.__class__.le = pickle.load(f)[language]
         with open(root_path / platalea.config.args.meta) as fmeta:
             metadata = json.load(fmeta)['images']
         # Loading mapping from image id to list of caption id
@@ -133,6 +138,9 @@ class Flickr8KData(torch.utils.data.Dataset):
             correct[i, j] = True
         return dict(image=image, audio=audio, text=text, correct=correct)
 
+    def is_slt(self):
+        return self.language == 'en'
+
     def split_sentences(self, sentences):
         if self.language == 'jp':
             return sentences
@@ -181,7 +189,8 @@ def collate_fn(data, max_frames=2048):
 def flickr8k_loader(split='train', batch_size=32, shuffle=False,
                     max_frames=2048,
                     feature_fname=platalea.config.args.audio_features_fn,
-                    language='en', downsampling_factor=None):
+                    language=platalea.config.args.language,
+                    downsampling_factor=None):
     return torch.utils.data.DataLoader(
         dataset=Flickr8KData(root=platalea.config.args.data_root,
                              feature_fname=feature_fname,

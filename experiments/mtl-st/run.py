@@ -1,5 +1,7 @@
+import configargparse
 import logging
 import pickle
+import random
 import torch
 import torch.nn as nn
 
@@ -7,24 +9,27 @@ import platalea.dataset as D
 import platalea.mtl as M
 from platalea.score import score, score_speech_text
 
-torch.manual_seed(123)
+# Parsing arguments
+parser = configargparse.get_argument_parser('platalea')
+parser.add_argument(
+    '--seed', default=123, type=int,
+    help='seed for sources of randomness (default: 123)')
+config_args, _ = parser.parse_known_args()
+
+# Setting general configuration
+torch.manual_seed(config_args.seed)
+random.seed(config_args.seed)
+logging.basicConfig(level=logging.INFO)
+
 
 batch_size = 8
 hidden_size = 1024
 dropout = 0.0
 
-logging.basicConfig(level=logging.INFO)
-
 logging.info('Loading data')
 data = dict(
     train=D.flickr8k_loader(split='train', batch_size=batch_size, shuffle=True),
     val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False))
-fd = D.Flickr8KData
-fd.init_vocabulary(data['train'].dataset)
-
-# Saving config
-pickle.dump(data['train'].dataset.get_config(),
-            open('config.pkl', 'wb'))
 
 config = dict(
     SharedEncoder=dict(
@@ -54,7 +59,7 @@ config = dict(
 
 logging.info('Building model')
 net = M.MTLNetSpeechText(config)
-run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32, opt='adam')
+run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32)
 
 tasks = [dict(name='SI', net=net.SpeechImage, data=data, eval=score),
          dict(name='ST', net=net.SpeechText, data=data,

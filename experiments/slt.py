@@ -24,8 +24,14 @@ batch_size = 8
 
 logging.info('Loading data')
 data = dict(
-    train=D.flickr8k_loader(split='train', batch_size=batch_size, shuffle=True),
-    val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False))
+    train=D.flickr8k_loader(split='train', batch_size=batch_size, shuffle=True,
+                            language='jp'),
+    val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False,
+                          language='jp'))
+
+# Saving config
+pickle.dump(dict(language='jp'),
+            open('config.pkl', 'wb'))
 
 logging.info('Building model')
 net = M.SpeechTranscriber(M.get_default_config())
