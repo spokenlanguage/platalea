@@ -190,7 +190,8 @@ class SpeechEncoderTransformer(nn.Module):
         x = x.permute(2, 0, 1)
 
         x = self.scale_conv_to_trafo(x)
-        x = self.Transformer(x, src_key_padding_mask=generate_padding_mask(x.size()[1], lengths))
+        mask = generate_padding_mask(x.size()[1], lengths).to(_device)
+        x = self.Transformer(x, src_key_padding_mask=mask)
 
         x = x.transpose(1, 0)
         x = nn.functional.normalize(self.att(x), p=2, dim=1)
