@@ -1,4 +1,4 @@
-import argparse
+import configargparse
 import json
 import logging
 import pickle
@@ -14,11 +14,11 @@ batch_size = 16
 logging.basicConfig(level=logging.INFO)
 
 # Parse command line parameters
-parser = argparse.ArgumentParser()
+parser = configargparse.get_argument_parser('platalea')
 parser.add_argument('path', metavar='path', help='Model\'s path')
 parser.add_argument('-b', help='Use beam decoding', dest='use_beam_decoding',
                     action='store_true', default=False)
-args = parser.parse_args()
+args, unknown_args = parser.parse_known_args()
 
 logging.info('Loading data')
 data = dict(val=D.flickr8k_loader(split='val', batch_size=batch_size,

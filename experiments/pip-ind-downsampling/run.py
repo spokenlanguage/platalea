@@ -90,7 +90,8 @@ for ds_factor in factors:
     image_e = net.embed_image(data['image'])
     text_e = net.embed_text(hyp_asr)
     result = E.ranking(image_e, text_e, correct)
-    print(dict(medr=np.median(result['ranks']),
-               recall={1: np.mean(result['recall'][1]),
-                       5: np.mean(result['recall'][5]),
-                       10: np.mean(result['recall'][10])}))
+    res_out = dict(medr=np.median(result['ranks']),
+                   recall={1: np.mean(result['recall'][1]),
+                           5: np.mean(result['recall'][5]),
+                           10: np.mean(result['recall'][10])})
+    json.dump(res_out, open('result.json', 'w'))

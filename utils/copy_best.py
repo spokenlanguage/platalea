@@ -8,7 +8,7 @@ network to net.best.pt.
 """
 
 
-import argparse
+import configargparse
 import numpy as np
 from shutil import copyfile
 
@@ -29,9 +29,9 @@ def copy_best(result_fpath='result.json', save_fpath='net.best.pt',
 if __name__ == '__main__':
     # Parsing command line
     doc = __doc__.strip("\n").split("\n", 1)
-    parser = argparse.ArgumentParser(
-        description=doc[0], epilog=doc[1],
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = configargparse.get_argument_parser('platalea')
+    parser.description = doc[0]
+    parser.epilog = doc[1]
     parser.add_argument(
         '--result', help='Path to the JSON file containing the results.',
         type=str, action='store', default='result.json')
@@ -43,6 +43,6 @@ if __name__ == '__main__':
         help='Type of experiment. Determines which metric is used.',
         type=str, action='store', choices=['retrieval', 'asr', 'mtl', 'slt'],
         default='retrieval')
-    args = parser.parse_args()
+    args, unknown_args = parser.parse_known_args()
 
     copy_best(args.result, args.save, args.experiment_type)

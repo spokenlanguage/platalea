@@ -56,7 +56,7 @@ for ds_factor in factors:
                      num_layers=1, bidirectional=True, dropout=dropout),
             rnn_layer_type=nn.GRU),
         ImageEncoder=dict(
-            linear=dict(in_size=hidden_size * 2, out_size=hidden_size * 2),
+            linear=dict(in_size=2048, out_size=hidden_size * 2),
             norm=True),
         TextDecoder=dict(
             emb=dict(num_embeddings=fd.vocabulary_size(),

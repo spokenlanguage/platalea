@@ -46,7 +46,7 @@ config = dict(
     SpeechEncoderTopST=dict(
         att=dict(in_size=hidden_size * 2, hidden_size=128)),
     ImageEncoder=dict(
-        linear=dict(in_size=hidden_size * 2, out_size=hidden_size * 2),
+        linear=dict(in_size=2048, out_size=hidden_size * 2),
         norm=True),
     TextEncoder=dict(
         emb=dict(num_embeddings=D.Flickr8KData.vocabulary_size(),

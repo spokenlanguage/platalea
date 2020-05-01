@@ -80,7 +80,7 @@ class SpeechTranscriber(nn.Module):
         return cost
 
 
-def experiment(net, data, config):
+def experiment(net, data, config, slt=False):
     def val_loss():
         with torch.no_grad():
             net.eval()
@@ -106,7 +106,7 @@ def experiment(net, data, config):
     optimizer.zero_grad()
 
     with open("result.json", "w") as out:
-        best_wer = None
+        best_score = -np.inf
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
             for j, item in enumerate(data['train'], start=1):
@@ -126,15 +126,21 @@ def experiment(net, data, config):
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
             with torch.no_grad():
                 net.eval()
-                result = platalea.score.score_asr(net, data['val'].dataset)
+                if slt:
+                    result = platalea.score.score_slt(net, data['val'].dataset)
+                else:
+                    result = platalea.score.score_asr(net, data['val'].dataset)
                 net.train()
             result['epoch'] = epoch
             json.dump(result, out)
             print('', file=out, flush=True)
             if 'epsilon_decay' in config.keys():
-                wer = result['wer']['WER']
-                if best_wer is None or wer < best_wer:
-                    best_wer = wer
+                if slt:
+                    score = result['bleu']
+                else:
+                    score = -result['wer']['WER']
+                if score > best_score:
+                    best_score = score
                 else:
                     net.load_state_dict(torch.load('net.{}.pt'.format(epoch - 1)))
                     for p in optimizer.param_groups:

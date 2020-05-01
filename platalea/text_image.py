@@ -111,6 +111,6 @@ def get_default_config():
                      bidirectional=True, dropout=0),
             att=dict(in_size=1024 * 2, hidden_size=128)),
         ImageEncoder=dict(
-            linear=dict(in_size=1024 * 2, out_size=1024 * 2),
+            linear=dict(in_size=2048, out_size=1024 * 2),
             norm=True),
         margin_size=0.2)

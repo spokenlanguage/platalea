@@ -46,6 +46,10 @@ class Flickr8KData(torch.utils.data.Dataset):
 
     def __init__(self, root, feature_fname, split='train', language='en',
                  downsampling_factor=None):
+        self.root = root
+        self.split = split
+        self.feature_fname = feature_fname
+        self.language = language
         if language == 'en':
             self.text_key = 'raw'
         elif language == 'jp':
@@ -59,27 +63,29 @@ class Flickr8KData(torch.utils.data.Dataset):
         with open(root_path / 'label_encoders.pkl', 'rb') as f:
             self.__class__.le = pickle.load(f)[language]
         with open(root_path / platalea.config.args.meta) as fmeta:
-            self.metadata = json.load(fmeta)['images']
-        if downsampling_factor is not None:
-            num_examples = len(self.metadata) // downsampling_factor
-            self.metadata = random.sample(self.metadata, num_examples)
-        # mapping from image id to list of caption id
+            metadata = json.load(fmeta)['images']
+        # Loading mapping from image id to list of caption id
         self.image_captions = {}
         with open(root_path / 'flickr_audio' / 'wav2capt.txt') as fwav2capt:
             for line in fwav2capt:
                 audio_id, image_id, text_id = line.split()
                 text_id = int(text_id[1:])
                 self.image_captions[image_id] = self.image_captions.get(image_id, []) + [(text_id, audio_id)]
-
-        # image, caption pairs
+        # Creating image, caption pairs
         self.split_data = []
-        for image in self.metadata:
+        for image in metadata:
             if image['split'] == self.split:
-                for text_id, audio_id in self.image_captions[image['filename']]:
-                    self.split_data.append((
-                        image['filename'],
-                        audio_id,
-                        image['sentences'][text_id][self.text_key]))
+                fname = image['filename']
+                for text_id, audio_id in self.image_captions[fname]:
+                    if self.text_key in image['sentences'][text_id]:
+                        self.split_data.append((
+                            fname,
+                            audio_id,
+                            image['sentences'][text_id][self.text_key]))
+        # Downsampling
+        if downsampling_factor is not None:
+            num_examples = int(len(self.split_data) // downsampling_factor)
+            self.split_data = random.sample(self.split_data, num_examples)
 
         # image and audio feature data
         image = torch.load(root_path / 'resnet_features.pt')
@@ -102,6 +108,11 @@ class Flickr8KData(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.split_data)
 
+    def get_config(self):
+        return dict(feature_fname=self.feature_fname,
+                    label_encoder=self.get_label_encoder(),
+                    language=self.language)
+
     def evaluation(self):
         """Returns image features, caption features, and a boolean array
         specifying whether a caption goes with an image."""
@@ -109,13 +120,19 @@ class Flickr8KData(torch.utils.data.Dataset):
         text = []
         image = []
         matches = []
-        for img in self.metadata:
-            if img['split'] == self.split:
-                image.append(self.image[img['filename']])
-                for text_id, audio_id in self.image_captions[img['filename']]:
-                    text.append(img['sentences'][text_id][self.text_key])
-                    audio.append(self.audio[audio_id])
-                    matches.append((len(audio)-1, len(image)-1))
+        image2idx = {}
+        for sd in self.split_data:
+            # Add image
+            if sd[0] in image2idx:
+                image_idx = image2idx[sd[0]]
+            else:
+                image_idx = len(image)
+                image2idx[sd[0]] = image_idx
+                image.append(self.image[sd[0]])
+            # Add audio and text
+            audio.append(self.audio[sd[1]])
+            text.append(sd[2])
+            matches.append((len(audio) - 1, image_idx))
         correct = torch.zeros(len(audio), len(image)).bool()
         for i, j in matches:
             correct[i, j] = True
@@ -123,6 +140,12 @@ class Flickr8KData(torch.utils.data.Dataset):
 
     def is_slt(self):
         return self.language == 'en'
+
+    def split_sentences(self, sentences):
+        if self.language == 'jp':
+            return sentences
+        else:
+            return [s.split() for s in sentences]
 
 
 def batch_audio(audios, max_frames=2048):
