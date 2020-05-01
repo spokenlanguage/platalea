@@ -174,7 +174,8 @@ class SpeechEncoderTransformer(nn.Module):
         if trafo['d_model'] == conv['out_channels']:
             self.scale_conv_to_trafo = nn.Identity()
         else:
-            self.scale_conv_to_trafo = nn.Upsample(size=trafo['d_model'], **upsample)
+            self.scale_conv_to_trafo = nn.Linear(in_features=conv['out_channels'],
+                                                 out_features=trafo['d_model'], **upsample)
 
         att = config['att']
         self.att = Attention(**att)

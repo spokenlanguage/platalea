@@ -23,7 +23,7 @@ D.Flickr8KData.init_vocabulary(data['train'].dataset)
 trafo_d_model = 512
 speech_config = {'conv': dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0, bias=False),
                  'trafo': dict(d_model=trafo_d_model, dim_feedforward=1024, num_encoder_layers=4, dropout=0, nhead=8),
-                 'upsample': dict(mode='nearest'),
+                 'upsample': dict(bias=True),
                  'att': dict(in_size=trafo_d_model, hidden_size=128),
                  }
 speech_encoder = platalea.encoders.SpeechEncoderTransformer(speech_config)
