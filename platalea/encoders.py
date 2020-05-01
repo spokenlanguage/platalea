@@ -1,13 +1,19 @@
 from collections import OrderedDict
 import logging
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 import platalea.introspect
 from platalea.attention import Attention
 
+import platalea.config
+
 # Includes code adapted from
 # https://github.com/gchrupala/speech2image/blob/master/PyTorch/functions/encoders.py
+
+
+_device = platalea.config.device()
 
 
 class ImageEncoder(nn.Module):
@@ -138,6 +144,67 @@ class SpeechEncoder(nn.Module):
             x = nn.functional.normalize(self.att(x), p=2, dim=1)
             result['att'] = list(x)
         return result
+
+
+def generate_padding_mask(batch_size, lengths, max_len=None):
+    if max_len is None:
+        max_len = max(lengths)
+    mask = torch.ones((batch_size, max_len), dtype=bool)
+    for ix, l in enumerate(lengths):
+        mask[ix, l:] = False
+    return mask
+
+
+class SpeechEncoderTransformer(nn.Module):
+    def __init__(self, config):
+        super(SpeechEncoderTransformer, self).__init__()
+
+        conv = config['conv']
+        self.Conv = nn.Conv1d(**conv)
+
+        trafo = config['trafo']
+        num_layers = trafo.pop('num_encoder_layers', 6)
+
+        def default_transformer_layer(**config):
+            return nn.TransformerEncoder(nn.TransformerEncoderLayer(**config), num_layers)
+        trafo_layer_type = config.get('trafo_layer_type', default_transformer_layer)
+        self.Transformer = trafo_layer_type(**trafo)
+
+        upsample = config['upsample']
+        if trafo['d_model'] == conv['out_channels']:
+            self.scale_conv_to_trafo = nn.Identity()
+        else:
+            self.scale_conv_to_trafo = nn.Linear(in_features=conv['out_channels'],
+                                                 out_features=trafo['d_model'], **upsample)
+
+        att = config.get('att', None)
+        if att is not None:
+            self.att = Attention(**att)
+        else:
+            self.att = None
+
+    def forward(self, src, lengths):
+        x = self.Conv(src)
+
+        # update the lengths to compensate for the convolution subsampling
+        lengths = inout(self.Conv, lengths)
+
+        # source sequence dimension must be first (but is last in input),
+        # batch dimension in the middle (was first in input), feature dimension last
+        x = x.permute(2, 0, 1)
+
+        x = self.scale_conv_to_trafo(x)
+        mask = generate_padding_mask(x.size()[1], lengths).to(_device)
+        x = self.Transformer(x, src_key_padding_mask=mask)
+
+        x = x.transpose(1, 0)
+        x = nn.functional.normalize(self.att(x), p=2, dim=1)
+
+        return x
+
+    # EGP TODO: not sure how to handle introspect, discuss; what should it do and how does that translate to the trafo?
+    def introspect(self, input, lengths):
+        raise NotImplementedError
 
 
 class SpeechEncoderMultiConv(nn.Module):
