@@ -57,7 +57,7 @@ class Flickr8KData(torch.utils.data.Dataset):
         self.language = language
         root_path = pathlib.Path(root)
         with open(root_path / 'label_encoders.pkl', 'rb') as f:
-            self.le = pickle.load(f)[language]
+            self.__class__.le = pickle.load(f)[language]
         with open(root_path / platalea.config.args.meta) as fmeta:
             self.metadata = json.load(fmeta)['images']
         if downsampling_factor is not None:
