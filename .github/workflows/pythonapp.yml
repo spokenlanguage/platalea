@@ -45,11 +45,12 @@ jobs:
     - name: Run some experiments, including coverage
       env:
         CONDA_PREFIX: /usr/share/miniconda
-        PLATALEA_DATA_ROOT: ${{ github.workspace }}/data/flickr1d
+        FLICKR1D_DIR: ${{ github.workspace }}/data
+        PLATALEA_DATA_ROOT: $FLICKR1D_DIR/flickr1d
       run: |
         pip install sklearn python-Levenshtein coverage
-        coverage run experiments/basic-default/run.py --epochs=1 -c $PLATALEA_DATA_ROOT/config.yml
-        coverage run experiments/basic-stack-trafo/run.py --epochs=1 -c $PLATALEA_DATA_ROOT/config.yml
+        coverage run experiments/basic-default/run.py --epochs=1 -c $FLICKR1D_DIR/config.yml
+        coverage run experiments/basic-stack-trafo/run.py --epochs=1 -c $FLICKR1D_DIR/config.yml
         coverage xml
 
     - name: Upload coverage to Codecov
