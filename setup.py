@@ -14,5 +14,6 @@ setup(name='platalea',
           'torchvision>=0.4.0',
           'numpy>=1.17.2',
           'scipy>=1.3.1',
-          'configargparse>=1.0'
+          'configargparse>=1.0',
+          'nltk>=3.4.5'
       ])
