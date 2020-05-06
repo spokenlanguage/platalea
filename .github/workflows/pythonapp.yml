@@ -45,11 +45,11 @@ jobs:
     - name: Run some experiments, including coverage
       env:
         CONDA_PREFIX: /usr/share/miniconda
-        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
+        FLICKR1D_DIR: ${{ github.workspace }}/data
       run: |
         pip install sklearn python-Levenshtein coverage nltk
-        coverage run experiments/flickr8k/basic-default/run.py --epochs=1 --flickr8k_meta=dataset.json --audio_features_fn=mfcc_features.pt
-        coverage run experiments/flickr8k/basic-default-trafo/run.py --epochs=1 --flickr8k_meta=dataset.json --audio_features_fn=mfcc_features.pt
+        coverage run experiments/flickr8k/basic-default/run.py --epochs=1 -c $FLICKR1D_DIR/config.yml
+        coverage run experiments/flickr8k/basic-default-trafo/run.py --epochs=1 -c $FLICKR1D_DIR/config.yml
         coverage xml
 
     - name: Upload coverage to Codecov
