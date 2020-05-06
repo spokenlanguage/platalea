@@ -19,7 +19,7 @@ parser.add_argument(
     help='seed for sources of randomness (default: 123)')
 parser.add_argument(
     '--asr_model_dir',
-    help='Path to the directory where the pretrained ASR model is stored',
+    help='Path to the directory where the pretrained ASR/SLT model is stored',
     dest='asr_model_dir', type=str, action='store')
 config_args, _ = parser.parse_known_args()
 
@@ -43,24 +43,27 @@ for ds_factor in factors:
     if config_args.asr_model_dir:
         net = torch.load(os.path.join(config_args.asr_model_dir, 'net.best.pt'))
     else:
-        logging.info('Building ASR model')
+        logging.info('Building ASR/SLT model')
         config = M1.get_default_config()
         net = M1.SpeechTranscriber(config)
         run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32)
-        logging.info('Training ASR')
-        M1.experiment(net, data, run_config)
+        logging.info('Training ASR/SLT')
+        M1.experiment(net, data, run_config, slt=data['train'].dataset.is_slt())
         suffix = str(ds_factor).zfill(lz)
         res_fname = 'result_asr_{}.json'.format(suffix)
         copyfile('result.json', res_fname)
         net_fname = 'asr_{}.best.pt'.format(ds_factor)
-        copy_best(res_fname, net_fname, experiment_type='asr')
+        if data['train'].dataset.is_slt():
+            copy_best(res_fname, net_fname, experiment_type='slt')
+        else:
+            copy_best(res_fname, net_fname, experiment_type='asr')
         net = torch.load(net_fname)
 
-    logging.info('Extracting ASR transcriptions')
+    logging.info('Extracting ASR/SLT transcriptions')
     for set_name in ['train', 'val']:
         ds = data[set_name].dataset
         hyp_asr, ref_asr = extract_trn(net, ds, use_beam_decoding=True)
-        # Replacing original transcriptions with ASR's output
+        # Replacing original transcriptions with ASR/SLT's output
         for i in range(len(hyp_asr)):
             item = ds.split_data[i]
             if item[2] == ref_asr[i]:

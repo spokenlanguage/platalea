@@ -39,9 +39,13 @@ for ds_factor in factors:
     run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32)
 
     logging.info('Training')
-    M.experiment(net, data, run_config)
+    M.experiment(net, data, run_config, slt=data['train'].dataset.is_slt())
     suffix = str(ds_factor).zfill(lz)
     res_fname = 'result_{}.json'.format(suffix)
     copyfile('result.json', res_fname)
-    copy_best(res_fname, 'net_{}.best.pt'.format(ds_factor),
-              experiment_type='asr')
+    if data['train'].dataset.is_slt():
+        copy_best(res_fname, 'net_{}.best.pt'.format(ds_factor),
+                  experiment_type='slt')
+    else:
+        copy_best(res_fname, 'net_{}.best.pt'.format(ds_factor),
+                  experiment_type='asr')

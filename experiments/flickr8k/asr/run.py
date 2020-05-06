@@ -32,4 +32,4 @@ net = M.SpeechTranscriber(M.get_default_config())
 run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32)
 
 logging.info('Training')
-M.experiment(net, data, run_config)
+M.experiment(net, data, run_config, slt=data['train'].dataset.is_slt())
