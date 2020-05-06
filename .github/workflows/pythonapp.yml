@@ -46,6 +46,7 @@ jobs:
       env:
         CONDA_PREFIX: /usr/share/miniconda
         FLICKR1D_DIR: ${{ github.workspace }}/data
+        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
       run: |
         pip install sklearn python-Levenshtein coverage nltk
         coverage run experiments/flickr8k/basic-default/run.py --epochs=1 -c $FLICKR1D_DIR/config.yml
