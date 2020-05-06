@@ -7,7 +7,7 @@ import torch.nn as nn
 
 import platalea.dataset as D
 import platalea.mtl as M
-from platalea.score import score, score_asr
+from platalea.score import score, score_asr, score_slt
 
 # Parsing arguments
 parser = configargparse.get_argument_parser('platalea')
