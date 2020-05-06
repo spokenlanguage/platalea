@@ -36,11 +36,6 @@ def preprocess(dataset_name):
         dataset_root = platalea.config.args.librispeech_root
         dataset_path = pathlib.Path(dataset_root)
         librispeech_audio_features(dataset_path, audio_feat_config)
-    elif dataset_name == 'places':
-        dataset_root = platalea.config.args.places_root
-        dataset_path = pathlib.Path(dataset_root)
-        places_audio_features(dataset_path, audio_feat_config)
-        places_image_features(dataset_path, images_feat_config)
     else:
         raise NotImplementedError
 
@@ -114,22 +109,6 @@ def save_audio_features_to_memmap(data, fname):
     return S, E
 
 
-def save_audio_features_to_memmap(data, fname):
-    num_lines = np.sum([d.shape[0] for d in data])
-    fp = np.memmap(fname, dtype='float64', mode='w+', shape=(num_lines, 39))
-    start = 0
-    end = None
-    S = []
-    E = []
-    for d in data:
-        end = start + d.shape[0]
-        fp[start:end, :] = d
-        S.append(start)
-        E.append(end)
-        start = end
-    return S, E
-
-
 def librispeech_load_trn(path):
     with open(path) as f:
         lines = f.read().splitlines()
@@ -138,50 +117,6 @@ def librispeech_load_trn(path):
         s = l.split(maxsplit=1)
         transcriptions[s[0]] = s[1]
     return transcriptions
-
-
-def places_audio_features(dataset_path, feat_config):
-    # Loading metadata - original training set is split into training and
-    # val/dev sets while original validation set is used for testing
-    metadata = []
-    audio_path = dataset_path / 'PlacesAudio_400k_distro'
-    meta_dir = audio_path / 'metadata'
-    for meta_fname, split in [('tr.json', 'train'),
-                              ('dt.json', 'dev'),
-                              ('et.json', 'test')]:
-        meta = json.load(open(meta_dir / meta_fname))['data']
-        for m in meta:
-            m['split'] = split
-        metadata.extend(meta)
-    paths = [audio_path / m['wav'] for m in metadata]
-    features = audio_features(paths, feat_config)
-    # Saving features in memmap format
-    memmap_fname = dataset_path / 'audio_features.memmap'
-    start, end = save_audio_features_to_memmap(features, memmap_fname)
-    for i, m in enumerate(metadata):
-        m['audio_start'] = start[i]
-        m['audio_end'] = end[i]
-    with open(dataset_path / 'metadata.json', 'w') as f:
-        json.dump(metadata, f)
-
-
-def places_image_features(dataset_path, feat_config):
-    image_dir = dataset_path / 'data/vision/torralba/deeplearning/images256'
-    metadata = json.load(open(dataset_path / 'metadata.json'))
-    files = [ex['image'] for ex in metadata]
-    paths = [image_dir / f for f in files]
-    features = image_features(paths, feat_config)
-    # Saving to memmap
-    memmap_fname = dataset_path / 'visual_features.memmap'
-    num_lines = len(metadata)
-    fp = np.memmap(memmap_fname, dtype='float64', mode='w+', shape=(num_lines, 2048))
-    for i, f in enumerate(features):
-        fp[i, :] = f.cpu()
-    # Saving index of each image's features
-    for i, m in enumerate(metadata):
-        m['image_index'] = i
-    with open(dataset_path / 'metadata.json', 'w') as f:
-        json.dump(metadata, f)
 
 
 def image_features(paths, config):
