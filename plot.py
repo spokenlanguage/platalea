@@ -28,7 +28,7 @@ data = pd.read_json(json.dumps(list(scores())), orient='records')
 from plotnine import *
 
 p = ggplot(data, aes(x='recall', y='100-abx')) + \
-    geom_point(aes(size='bitrate', shape='factor(level)', color='size')) + \
+    geom_point(aes(size='bitrate', shape='factor(level)', color='factor(size)')) + \
     ylab('ABX accuracy') + \
     xlab("Image retrieval recall @ 10")
 ggsave(p, 'plot.pdf')
