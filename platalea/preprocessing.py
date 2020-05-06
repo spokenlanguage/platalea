@@ -231,7 +231,7 @@ if __name__ == '__main__':
     parser.description = doc[0]
     parser.add_argument(
         'dataset_name', help='Name of the dataset to preprocess.',
-        type=str, choices=['flickr8k', 'librispeech', 'places'])
+        type=str, choices=['flickr8k', 'librispeech'])
     args, unknown_args = parser.parse_known_args()
 
     preprocess(args.dataset_name)
