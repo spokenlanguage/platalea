@@ -147,7 +147,7 @@ class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
         return dict(image=image, audio=audio, text=text, correct=correct)
 
     def is_slt(self):
-        return self.language == 'en'
+        return self.language != 'en'
 
     def split_sentences(self, sentences):
         if self.language == 'jp':
