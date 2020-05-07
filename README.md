@@ -27,12 +27,12 @@ This means you can use either a configuration file (config.ini or config.yml), e
 For instance, to use environment variables with the Flickr1d dataset, set the PLATALEA_DATA_ROOT variable to the directory in which the Flickr1d data was downloaded, e.g. if it was cloned at `/user/data/flickr1d` do:
 
 ```sh
-export PLATALEA_DATA_ROOT=/user/data/flickr1d
-export PLATALEA_METADATA_JSON=dataset.json
+export FLICKR8K_ROOT=/user/data/flickr1d
+export FLICKR8K_METADATA_JSON=dataset.json
 export PLATALEA_AUDIO_FEATURES_FN=mfcc_features.pt
 ```
 
-You could also specify these options on the command line directly when running (the respective options would be `--data_root=...`, `--meta=...` and `--audio_features_fn=...`) or via a configuration file (using the names of the command line options without leading `--`).
+You could also specify these options on the command line directly when running (the respective options would be `--flickr8k_root=...`, `--flickr8k_meta=...` and `--audio_features_fn=...`) or via a configuration file (using the names of the command line options without leading `--`).
 
 ### Experiment dependencies
 Different experiments may have different additional dependencies.

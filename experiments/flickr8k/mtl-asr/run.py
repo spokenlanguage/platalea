@@ -7,7 +7,7 @@ import torch.nn as nn
 
 import platalea.dataset as D
 import platalea.mtl as M
-from platalea.score import score, score_asr
+from platalea.score import score, score_asr, score_slt
 
 # Parsing arguments
 parser = configargparse.get_argument_parser('platalea')
@@ -74,8 +74,12 @@ logging.info('Building model')
 net = M.MTLNetASR(config)
 run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32)
 
+if data['train'].dataset.is_slt():
+    scorer = score_slt
+else:
+    scorer = score_asr
 tasks = [dict(name='SI', net=net.SpeechImage, data=data, eval=score),
-         dict(name='ASR', net=net.SpeechTranscriber, data=data, eval=score_asr)]
+         dict(name='ASR', net=net.SpeechTranscriber, data=data, eval=scorer)]
 
 logging.info('Training')
 M.experiment(net, tasks, run_config)

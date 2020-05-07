@@ -22,7 +22,7 @@ parser.add_argument(
     help='seed for sources of randomness (default: 123)')
 parser.add_argument(
     '--asr_model_dir',
-    help='Path to the directory where the pretrained ASR model is stored',
+    help='Path to the directory where the pretrained ASR/SLT model is stored',
     dest='asr_model_dir', type=str, action='store')
 parser.add_argument(
     '--text_image_model_dir',
@@ -53,20 +53,23 @@ for ds_factor in factors:
         net_fname = 'net_{}.best.pt'.format(ds_factor)
         net = torch.load(os.path.join(config_args.asr_model_dir, net_fname))
     else:
-        logging.info('Building ASR model')
+        logging.info('Building ASR/SLT model')
         config = M1.get_default_config()
         net = M1.SpeechTranscriber(config)
         run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32)
-        logging.info('Training ASR')
-        M1.experiment(net, data, run_config)
+        logging.info('Training ASR/SLT')
+        M1.experiment(net, data, run_config, slt=data['train'].dataset.is_slt())
         suffix = str(ds_factor).zfill(lz)
         res_fname = 'result_asr_{}.json'.format(suffix)
         copyfile('result.json', res_fname)
         net_fname = 'asr_{}.best.pt'.format(ds_factor)
-        copy_best(res_fname, net_fname, experiment_type='asr')
+        if data['train'].dataset.is_slt():
+            copy_best(res_fname, res_fname, experiment_type='slt')
+        else:
+            copy_best(res_fname, res_fname, experiment_type='asr')
         net = torch.load(net_fname)
 
-    logging.info('Extracting ASR transcriptions')
+    logging.info('Extracting ASR/SLT transcriptions')
     hyp_asr, _ = extract_trn(net, data['val'].dataset, use_beam_decoding=True)
 
     if config_args.text_image_model_dir:
@@ -85,7 +88,7 @@ for ds_factor in factors:
         copy_best(res_fname, net_fname)
         net = torch.load(net_fname)
 
-    logging.info('Evaluating text-image with ASR\'s output')
+    logging.info('Evaluating text-image with ASR/SLT\'s output')
     data = data['val'].dataset.evaluation()
     correct = data['correct'].cpu().numpy()
     image_e = net.embed_image(data['image'])
