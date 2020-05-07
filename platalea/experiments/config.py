@@ -51,8 +51,12 @@ args.add_argument(
     default='mfcc_delta_features.pt',
     help='filename of the MFCC audio features file relative to the dataset \
     location')
-args.add_argument('--seed', default=123, type=int,
-                  help='seed for sources of randomness')
+args.add_argument(
+    '--seed', default=123, type=int, help='seed for sources of randomness')
+parser.add_argument(
+    '--downsampling-factor', default=None, type=int,
+    dest='downsampling_factor',
+    help='factor by which the dataset should be downsampled')
 
 # Flickr8k specific parameters
 args.add_argument(

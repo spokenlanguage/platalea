@@ -20,12 +20,15 @@ logging.basicConfig(level=logging.INFO)
 
 
 logging.info('Loading data')
-data = dict(train=D.flickr8k_loader(args.flickr8k_root, args.flickr8k_meta,
-                                    args.flickr8k_language, args.audio_features_fn,
-                                    split='train', batch_size=32, shuffle=True),
-            val=D.flickr8k_loader(args.flickr8k_root, args.flickr8k_meta,
-                                  args.flickr8k_language, args.audio_features_fn,
-                                  split='val', batch_size=32, shuffle=False))
+data = dict(
+    train=D.flickr8k_loader(
+        args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
+        args.audio_features_fn, split='train', batch_size=32, shuffle=True,
+        downsampling_factor=args.downsampling_factor),
+    val=D.flickr8k_loader(
+        args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
+        args.audio_features_fn, split='val', batch_size=32, shuffle=False
+        downsampling_factor=args.downsampling_factor))
 
 config = dict(
     SpeechEncoder=dict(

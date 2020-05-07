@@ -1,6 +1,7 @@
-import torch
-import random
 import logging
+import random
+import torch
+
 import platalea.basic as M
 import platalea.encoders
 import platalea.dataset as D
@@ -20,13 +21,15 @@ logging.basicConfig(level=logging.INFO)
 
 
 logging.info('Loading data')
-data = dict(train=D.flickr8k_loader(args.flickr8k_root, args.flickr8k_meta,
-                                    args.flickr8k_language, args.audio_features_fn,
-                                    split='train', batch_size=32, shuffle=True),
-            val=D.flickr8k_loader(args.flickr8k_root, args.flickr8k_meta,
-                                  args.flickr8k_language, args.audio_features_fn,
-                                  split='val', batch_size=32, shuffle=False))
-D.Flickr8KData.init_vocabulary(data['train'].dataset)
+data = dict(
+    train=D.flickr8k_loader(
+        args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
+        args.audio_features_fn, split='train', batch_size=32, shuffle=True,
+        downsampling_factor=args.downsampling_factor),
+    val=D.flickr8k_loader(
+        args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
+        args.audio_features_fn, split='val', batch_size=32, shuffle=False,
+        downsampling_factor=config_args.downsampling_factor))
 
 trafo_d_model = 512
 speech_config = {'conv': dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0, bias=False),
