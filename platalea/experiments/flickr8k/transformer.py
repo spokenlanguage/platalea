@@ -19,6 +19,9 @@ torch.manual_seed(args.seed)
 random.seed(args.seed)
 logging.basicConfig(level=logging.INFO)
 
+# Logging the arguments
+logging.info('Arguments: {}'.format(config_args))
+
 
 logging.info('Loading data')
 data = dict(
