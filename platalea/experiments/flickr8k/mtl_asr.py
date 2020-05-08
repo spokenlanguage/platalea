@@ -10,6 +10,10 @@ from platalea.experiments.config import args
 
 
 # Parsing arguments
+args.add_argument(
+    '--downsampling_factor_text', default=None, type=int,
+    help='factor by which the amount of available transcriptions should be \
+    downsampled (affecting ASR only)')
 args.enable_help()
 args.parse()
 
@@ -19,7 +23,7 @@ random.seed(args.seed)
 logging.basicConfig(level=logging.INFO)
 
 # Logging the arguments
-logging.info('Arguments: {}'.format(config_args))
+logging.info('Arguments: {}'.format(args))
 
 
 batch_size = 8
@@ -37,6 +41,24 @@ data = dict(
         args.audio_features_fn, split='val', batch_size=batch_size,
         shuffle=False, downsampling_factor=args.downsampling_factor))
 fd = D.Flickr8KData
+
+if args.downsampling_factor_text:
+    ds_factor_text = args.downsampling_factor_text
+    step_asr = args.downsampling_factor_text
+    # The downsampling factor for text is applied on top of the main
+    # downsampling factor that is applied to all data
+    if args.downsampling_factor:
+        ds_factor_text *= args.downsampling_factor
+    data_asr = dict(
+        train=D.flickr8k_loader(
+            split='train', batch_size=batch_size, shuffle=True,
+            downsampling_factor=ds_factor_text),
+        val=D.flickr8k_loader(
+            split='val', batch_size=batch_size,
+            downsampling_factor=ds_factor_text))
+else:
+    data_asr = data
+    step_asr = 1
 
 config = dict(
     SharedEncoder=dict(
@@ -84,8 +106,10 @@ if data['train'].dataset.is_slt():
     scorer = score_slt
 else:
     scorer = score_asr
-tasks = [dict(name='SI', net=net.SpeechImage, data=data, eval=score),
-         dict(name='ASR', net=net.SpeechTranscriber, data=data, eval=scorer)]
+tasks = [
+    dict(name='SI', net=net.SpeechImage, data=data, eval=score, step=1),
+    dict(name='ASR', net=net.SpeechTranscriber, data=data_asr, eval=scorer,
+         step=step_asr)]
 
 logging.info('Training')
 M.experiment(net, tasks, run_config)

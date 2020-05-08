@@ -20,7 +20,7 @@ random.seed(args.seed)
 logging.basicConfig(level=logging.INFO)
 
 # Logging the arguments
-logging.info('Arguments: {}'.format(config_args))
+logging.info('Arguments: {}'.format(args))
 
 
 logging.info('Loading data')
@@ -32,7 +32,7 @@ data = dict(
     val=D.flickr8k_loader(
         args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
         args.audio_features_fn, split='val', batch_size=32, shuffle=False,
-        downsampling_factor=config_args.downsampling_factor))
+        downsampling_factor=args.downsampling_factor))
 
 trafo_d_model = 512
 speech_config = {'conv': dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0, bias=False),

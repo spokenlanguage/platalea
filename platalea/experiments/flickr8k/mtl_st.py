@@ -10,6 +10,10 @@ from platalea.experiments.config import args
 
 
 # Parsing arguments
+args.add_argument(
+    '--downsampling_factor_text', default=None, type=int,
+    help='factor by which the amount of available transcriptions should be \
+    downsampled (affecting ASR only)')
 args.enable_help()
 args.parse()
 
@@ -19,7 +23,7 @@ random.seed(args.seed)
 logging.basicConfig(level=logging.INFO)
 
 # Logging the arguments
-logging.info('Arguments: {}'.format(config_args))
+logging.info('Arguments: {}'.format(args))
 
 
 batch_size = 8
@@ -36,6 +40,24 @@ data = dict(
         args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
         args.audio_features_fn, split='val', batch_size=batch_size,
         shuffle=False, downsampling_factor=args.downsampling_factor))
+
+if args.downsampling_factor_text:
+    ds_factor_text = args.downsampling_factor_text
+    step_st = args.downsampling_factor_text
+    # The downsampling factor for text is applied on top of the main
+    # downsampling factor that is applied to all data
+    if args.downsampling_factor:
+        ds_factor_text *= args.downsampling_factor
+    data_st = dict(
+        train=D.flickr8k_loader(
+            split='train', batch_size=batch_size, shuffle=True,
+            downsampling_factor=ds_factor_text),
+        val=D.flickr8k_loader(
+            split='val', batch_size=batch_size,
+            downsampling_factor=ds_factor_text))
+else:
+    data_st = data
+    step_st = 1
 
 config = dict(
     SharedEncoder=dict(
@@ -67,9 +89,10 @@ logging.info('Building model')
 net = M.MTLNetSpeechText(config)
 run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32)
 
-tasks = [dict(name='SI', net=net.SpeechImage, data=data, eval=score),
-         dict(name='ST', net=net.SpeechText, data=data,
-              eval=score_speech_text)]
+tasks = [
+    dict(name='SI', net=net.SpeechImage, data=data, eval=score, step=1),
+    dict(name='ST', net=net.SpeechText, data=data_st, eval=score_speech_text,
+         step=step_st)]
 
 logging.info('Training')
 M.experiment(net, tasks, run_config)
