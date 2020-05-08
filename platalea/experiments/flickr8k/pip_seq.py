@@ -17,6 +17,10 @@ args.add_argument(
     '--asr_model_dir',
     help='Path to the directory where the pretrained ASR/SLT model is stored',
     dest='asr_model_dir', type=str, action='store')
+args.add_argument(
+    '--downsampling_factor_text', default=None, type=int,
+    help='factor by which the amount of available transcriptions should be \
+    downsampled (affecting ASR only)')
 args.enable_help()
 args.parse()
 
@@ -42,6 +46,22 @@ data = dict(
         args.audio_features_fn, split='val', batch_size=batch_size,
         shuffle=False, downsampling_factor=args.downsampling_factor))
 
+if args.downsampling_factor_text:
+    ds_factor_text = args.downsampling_factor_text
+    # The downsampling factor for text is applied on top of the main
+    # downsampling factor that is applied to all data
+    if args.downsampling_factor:
+        ds_factor_text *= args.downsampling_factor
+    data_asr = dict(
+        train=D.flickr8k_loader(
+            split='train', batch_size=batch_size, shuffle=True,
+            downsampling_factor=ds_factor_text),
+        val=D.flickr8k_loader(
+            split='val', batch_size=batch_size,
+            downsampling_factor=ds_factor_text))
+else:
+    data_asr = data
+
 if args.asr_model_dir:
     net = torch.load(os.path.join(args.asr_model_dir, 'net.best.pt'))
 else:
@@ -50,11 +70,11 @@ else:
     net = M1.SpeechTranscriber(config)
     run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32)
     logging.info('Training ASR/SLT')
-    if data['train'].dataset.is_slt():
-        M1.experiment(net, data, run_config, slt=True)
+    if data_asr['train'].dataset.is_slt():
+        M1.experiment(net, data_asr, run_config, slt=True)
         copy_best('result.json', 'asr.best.pt', experiment_type='slt')
     else:
-        M1.experiment(net, data, run_config)
+        M1.experiment(net, data_asr, run_config)
         copy_best('result.json', 'asr.best.pt', experiment_type='asr')
     copyfile('result.json', 'result_asr.json')
     net = torch.load('asr.best.pt')

@@ -13,7 +13,7 @@ from platalea.experiments.config import args
 args.add_argument(
     '--downsampling_factor_text', default=None, type=int,
     help='factor by which the amount of available transcriptions should be \
-    downsampled (affecting ASR only)')
+    downsampled (affecting speech-text retrieval only)')
 args.enable_help()
 args.parse()
 
