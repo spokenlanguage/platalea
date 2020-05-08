@@ -10,20 +10,23 @@ network to net.best.pt.
 
 import argparse
 import numpy as np
+import pathlib
 from shutil import copyfile
 
 from platalea.utils.get_best_score import read_results, get_metric_accessor
 
 
-def copy_best(result_fpath='result.json', save_fpath='net.best.pt',
+def copy_best(exp_path='.', result_fname='result.json', save_fname='net.best.pt',
               experiment_type='retrieval'):
-    res = read_results(result_fpath)
+    root_path = pathlib.Path(exp_path)
+    res = read_results(root_path / result_fname)
     metric_accessor = get_metric_accessor(experiment_type)
     if experiment_type == 'asr':
         ibest = np.argmin([metric_accessor(r) for r in res]) + 1
     else:
         ibest = np.argmax([metric_accessor(r) for r in res]) + 1
-    copyfile('net.{}.pt'.format(ibest), save_fpath)
+    best_fname = 'net.{}.pt'.format(ibest)
+    copyfile(root_path / best_fname, root_path / save_fname)
 
 
 if __name__ == '__main__':
@@ -33,16 +36,18 @@ if __name__ == '__main__':
     parser.description = doc[0]
     parser.epilog = doc[1]
     parser.add_argument(
-        '--result', help='Path to the JSON file containing the results.',
-        type=str, action='store', default='result.json')
+        'exp_path', help='Path to the experiment', default='.', nargs='?')
     parser.add_argument(
-        '--save', help='Path where the corresponding net should be saved.',
-        type=str, action='store', default='net.best.pt')
+        '--result', help='Name of the JSON file containing the results.',
+        type=str, default='result.json')
+    parser.add_argument(
+        '--save', help='Name under which the best network should be saved.',
+        type=str, default='net.best.pt')
     parser.add_argument(
         '--experiment_type', dest='experiment_type',
         help='Type of experiment. Determines which metric is used.',
-        type=str, action='store', choices=['retrieval', 'asr', 'mtl', 'slt'],
+        type=str, choices=['retrieval', 'asr', 'mtl', 'slt'],
         default='retrieval')
     args = parser.parse_args()
 
-    copy_best(args.result, args.save, args.experiment_type)
+    copy_best(args.exp_path, args.result, args.save, args.experiment_type)
