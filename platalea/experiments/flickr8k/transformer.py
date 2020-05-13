@@ -31,8 +31,7 @@ data = dict(
         downsampling_factor=args.downsampling_factor),
     val=D.flickr8k_loader(
         args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
-        args.audio_features_fn, split='val', batch_size=32, shuffle=False,
-        downsampling_factor=args.downsampling_factor))
+        args.audio_features_fn, split='val', batch_size=32, shuffle=False))
 
 trafo_d_model = 512
 speech_config = {'conv': dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0, bias=False),

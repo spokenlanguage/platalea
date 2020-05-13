@@ -44,7 +44,7 @@ data = dict(
     val=D.flickr8k_loader(
         args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
         args.audio_features_fn, split='val', batch_size=batch_size,
-        shuffle=False, downsampling_factor=args.downsampling_factor))
+        shuffle=False)
 
 if args.downsampling_factor_text:
     ds_factor_text = args.downsampling_factor_text
@@ -56,9 +56,7 @@ if args.downsampling_factor_text:
         train=D.flickr8k_loader(
             split='train', batch_size=batch_size, shuffle=True,
             downsampling_factor=ds_factor_text),
-        val=D.flickr8k_loader(
-            split='val', batch_size=batch_size,
-            downsampling_factor=ds_factor_text))
+        val=D.flickr8k_loader(split='val', batch_size=batch_size))
 else:
     data_asr = data
 

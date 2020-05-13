@@ -54,7 +54,7 @@ if __name__ == '__main__':
         help='Separator used when several result files are given.',
         type=str, action='store', default=',')
     parser.add_argument(
-        '--experiment-type', dest='experiment_type',
+        '--experiment_type', dest='experiment_type',
         help='Type of experiment. Determines which metric is used.',
         type=str, action='store', choices=['retrieval', 'asr', 'mtl', 'slt'],
         default='retrieval')
