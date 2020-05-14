@@ -70,10 +70,10 @@ else:
     logging.info('Training ASR/SLT')
     if data_asr['train'].dataset.is_slt():
         M1.experiment(net, data_asr, run_config, slt=True)
-        copy_best('result.json', 'asr.best.pt', experiment_type='slt')
+        copy_best('.', 'result.json', 'asr.best.pt', experiment_type='slt')
     else:
         M1.experiment(net, data_asr, run_config)
-        copy_best('result.json', 'asr.best.pt', experiment_type='asr')
+        copy_best('.', 'result.json', 'asr.best.pt', experiment_type='asr')
     copyfile('result.json', 'result_asr.json')
     net = torch.load('asr.best.pt')
 
@@ -99,4 +99,4 @@ run_config = dict(max_lr=2 * 1e-4, epochs=32)
 logging.info('Training text-image')
 M2.experiment(net, data, run_config)
 copyfile('result.json', 'result_text_image.json')
-copy_best('result_text_image.json', 'ti.best.pt')
+copy_best('.', 'result_text_image.json', 'ti.best.pt')
