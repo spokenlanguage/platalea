@@ -24,7 +24,7 @@ def scores():
 
 
 data = pd.read_json(json.dumps(list(scores())), orient='records')
-
+print(data)
 from plotnine import *
 
 p = ggplot(data, aes(x='recall', y='100-abx')) + \

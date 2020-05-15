@@ -397,7 +397,6 @@ class SpeechEncoderBottom(nn.Module):
         conv = self.Conv(input).permute(0, 2, 1)
         length = inout(self.Conv, length)
         result['conv'] = [conv[i, :length[i], :] for i in range(len(conv))]
-
         # Computing full stack of RNN states
         x = nn.utils.rnn.pack_padded_sequence(
             conv, length, batch_first=True, enforce_sorted=False)
@@ -408,7 +407,7 @@ class SpeechEncoderBottom(nn.Module):
                 result[name] = [rnn[i, l, :length[i], :] for i in range(len(rnn))]
             x, _ = self.RNN(x)
 
-        return x, result
+        return result, length
 
 
 class SpeechEncoderTop(nn.Module):
@@ -442,7 +441,7 @@ class SpeechEncoderTop(nn.Module):
             logging.info("Creating IntrospectRNN wrapper")
             self.IntrospectRNN = platalea.introspect.IntrospectRNN(self.RNN)
         result = {}
-
+        
         # Computing full stack of RNN states
         if self.RNN is not None:
             rnn = self.IntrospectRNN.introspect(x)
@@ -491,6 +490,20 @@ class SpeechEncoderVQ(nn.Module):
 
     def forward(self, input, length):
         return self.Top(self.Codebook(self.Bottom(input, length))['quantized'])
+
+
+    def introspect(self, input, length):
+        
+        x = self.Bottom(input, length)
+        # get intro and updated length
+        bottom, length = self.Bottom.introspect(input, length)
+        
+        x = self.Codebook(x)
+        codebook = [ xi[:l,:] for xi,l in zip(x['one_hot'], length) ]
+        top = self.Top.introspect(x['quantized'], length)
+        result =  {**bottom, **dict(codebook=codebook), **top }
+        return result
+    
 
 def inout(layer, L):
     """Mapping from size of input to the size of the output of a 1D
