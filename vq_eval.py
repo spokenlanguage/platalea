@@ -27,7 +27,6 @@ def zerospeech():
 
 
 def prepare_rsa():
-    from lyz.methods import ed_rsa
     from analyze_flickr8k import save_data, make_factors
     for modeldir in glob.glob("experiments/vq-*/"):
         result = [ json.loads(line) for line in open(modeldir + "result.json") ]
@@ -46,3 +45,11 @@ def prepare_rsa():
         save_data([('trained', net), ('random', net_rand)], modeldir, batch_size=8)
 
 
+def rsa():
+    from lyz.methods import ed_rsa
+    for modeldir in glob.glob("experiments/vq-*/"):
+        logging.info("Processing {}".format(modeldir))
+        cor = ed_rsa(modeldir, layers=['codebook'], test_size=1/2)
+        logging.info("ed_rsa for {}: trained={}, random={}".format(modeldir, cor[0]['cor'], cor[1]['cor']))
+        json.dump(cor, open("{}/ed_rsa.json".format(modeldir), "w"))
+        
