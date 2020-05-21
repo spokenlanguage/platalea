@@ -7,6 +7,25 @@ import pathlib
 import logging
 logging.basicConfig(level=logging.INFO)
 
+def zerospeech_baseline(): 
+    for modeldir in glob.glob("experiments/vq-*/"):
+        result = [ json.loads(line) for line in open(modeldir + "/result.json") ]
+        # best = sorted(result, key=lambda x: x['recall']['10'], reverse=True)[0]['epoch']
+        best = result[0]['epoch']
+        oldnet = torch.load("{}/net.{}.pt".format(modeldir, best))
+        logging.info("Loading model from {} at epoch {}".format(modeldir, best))
+        net = M.SpeechImage(oldnet.config)
+        net.load_state_dict(oldnet.state_dict())
+        net.cuda()
+        encoded_dir = "{}/encoded-base/2019/english/test/".format(modeldir)
+        pathlib.Path(encoded_dir).mkdir(parents=True, exist_ok=True)
+        logging.info("Encoding and evaluating zerospeech data")
+        scores = evaluate_zerospeech(net, outdir=encoded_dir)
+        logging.info("Result: {}".format(scores['2019']['english']['scores']))
+        scores['epoch' ]=  best
+        scores['modelpath'] =  "{}/net.{}.pt".format(modeldir, best)
+        json.dump(scores, open("{}/vq_base_result.json".format(modeldir), "w"))
+   
 def zerospeech():
     for modeldir in glob.glob("experiments/vq-*/"):
         result = [ json.loads(line) for line in open(modeldir + "result.json") ]
@@ -50,6 +69,7 @@ def rsa():
     for modeldir in glob.glob("experiments/vq-*/"):
         logging.info("Processing {}".format(modeldir))
         cor = ed_rsa(modeldir, layers=['codebook'], test_size=1/2)
-        logging.info("ed_rsa for {}: trained={}, random={}".format(modeldir, cor[0]['cor'], cor[1]['cor']))
+        logging.info("RSA for {}: {}".format(modeldir, json.dumps(cor, indent=2)))
         json.dump(cor, open("{}/ed_rsa.json".format(modeldir), "w"))
         
+
