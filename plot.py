@@ -24,9 +24,14 @@ def scores():
             zs_base = {'2019': {'english': {'scores': {'abx': 100, 'bitrate': 1000}}}}
             
         cor  = [ x for x in json.load(open("{}/ed_rsa.json".format(d)))
-                 if x['model'] == 'trained' ][0]['cor']
+                 if x['model'] == 'trained' and x['reference'] == 'phoneme'][0]['cor']
         cor_base = [ x for x in json.load(open("{}/ed_rsa.json".format(d)))
-                     if x['model'] == 'random' ][0]['cor']
+                     if x['model'] == 'random' and x['reference'] == 'phoneme'][0]['cor']
+        cor_word  = [ x for x in json.load(open("{}/ed_rsa.json".format(d)))
+                         if x['model'] == 'trained' and x['reference'] == 'word'][0]['cor']
+        cor_word_base = [ x for x in json.load(open("{}/ed_rsa.json".format(d)))
+                          if x['model'] == 'random' and x['reference'] == 'word'][0]['cor']
+
         trained = dict(
             condition=os.path.basename(d),
             mode = 'trained',
@@ -37,10 +42,12 @@ def scores():
             abx=100-zs['2019']['english']['scores']['abx'],
             bitrate=zs['2019']['english']['scores']['bitrate'],
             ed_rsa=cor,
+            ed_rsa_word=cor_word,
             recall_diff=ret['recall']['10'] - ret_base['recall']['10'],
             abx_diff=(100-zs['2019']['english']['scores']['abx']) - (100-zs_base['2019']['english']['scores']['abx']),
             bitrate_diff=zs['2019']['english']['scores']['bitrate'] - zs_base['2019']['english']['scores']['bitrate'],
-            ed_rsa_diff=cor - cor_base )
+            ed_rsa_diff=cor - cor_base ,
+            ed_rsa_word_diff=cor_word - cor_word_base)
             
         yield trained
 
@@ -62,6 +69,20 @@ p = ggplot(data, aes(x='recall', y='ed_rsa')) + \
     ylab('RSA with phonemes') + \
     xlab("Image retrieval recall @ 10")
 ggsave(p, 'plot-recall-rsa.pdf')
+
+
+p = ggplot(data, aes(x='recall', y='ed_rsa_word')) + \
+    geom_point(aes(size='bitrate', shape='factor(level)', color='factor(size)')) + \
+    ylab('RSA with words') + \
+    xlab("Image retrieval recall @ 10")
+ggsave(p, 'plot-recall-rsa_word.pdf')
+
+
+p = ggplot(data, aes(x='ed_rsa', y='ed_rsa_word')) + \
+    geom_point(aes(size='bitrate', shape='factor(level)', color='factor(size)')) + \
+    ylab('RSA with words') + \
+    xlab("RSA wtth phonemes")
+ggsave(p, 'plot-rsa-rsa_word.pdf')
 
 p = ggplot(data, aes(x='abx', y='ed_rsa')) + \
     geom_point(aes(size='bitrate', shape='factor(level)', color='factor(size)')) + \
