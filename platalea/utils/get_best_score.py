@@ -17,7 +17,11 @@ def read_results(fpath="result.json"):
     res = []
     content = open(fpath).readlines()
     for line in content:
-        res.append(json.loads(line))
+        try:
+            res.append(json.loads(line))
+        except json.JSONDecodeError as e:
+            print('Error reading {}'.format(fpath))
+            raise e
     return res
 
 

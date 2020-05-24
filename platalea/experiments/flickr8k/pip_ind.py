@@ -58,12 +58,13 @@ else:
     net = M1.SpeechTranscriber(config)
     run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32)
     logging.info('Training ASR/SLT')
-    copyfile('result.json', 'result_asr.json')
     if data['train'].dataset.is_slt():
         M1.experiment(net, data, run_config, slt=True)
+        copyfile('result.json', 'result_asr.json')
         copy_best('.', 'result_asr.json', 'asr.best.pt', experiment_type='slt')
     else:
         M1.experiment(net, data, run_config)
+        copyfile('result.json', 'result_asr.json')
         copy_best('.', 'result_asr.json', 'asr.best.pt', experiment_type='asr')
     net = torch.load('asr.best.pt')
 
