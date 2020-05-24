@@ -18,7 +18,7 @@ args.add_argument(
     help='Path to the directory where the pretrained ASR/SLT model is stored',
     dest='asr_model_dir', type=str, action='store')
 args.add_argument(
-    '--downsampling_factor_text', default=None, type=int,
+    '--downsampling_factor_text', default=None, type=float,
     help='factor by which the amount of available transcriptions should be \
     downsampled (affecting ASR only)')
 args.enable_help()
