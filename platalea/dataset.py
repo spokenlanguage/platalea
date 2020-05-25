@@ -45,7 +45,7 @@ class Flickr8KData(torch.utils.data.Dataset):
         return torch.Tensor(le.transform(capt))
 
     def __init__(self, root, feature_fname, split='train', language='en',
-                 downsampling_factor=None):
+                 downsampling_factor=None, meta_fname=platalea.config.args.meta):
         self.root = root
         self.split = split
         self.feature_fname = feature_fname
@@ -62,7 +62,7 @@ class Flickr8KData(torch.utils.data.Dataset):
         root_path = pathlib.Path(root)
         with open(root_path / 'label_encoders.pkl', 'rb') as f:
             self.__class__.le = pickle.load(f)[language]
-        with open(root_path / platalea.config.args.meta) as fmeta:
+        with open(root_path / meta_fname) as fmeta:
             metadata = json.load(fmeta)['images']
         # Loading mapping from image id to list of caption id
         self.image_captions = {}
@@ -190,9 +190,10 @@ def flickr8k_loader(split='train', batch_size=32, shuffle=False,
                     max_frames=2048,
                     feature_fname=platalea.config.args.audio_features_fn,
                     language=platalea.config.args.language,
-                    downsampling_factor=None):
+                    downsampling_factor=None,
+                    root=platalea.config.args.data_root):
     return torch.utils.data.DataLoader(
-        dataset=Flickr8KData(root=platalea.config.args.data_root,
+        dataset=Flickr8KData(root=root,
                              feature_fname=feature_fname,
                              split=split,
                              language=language,
