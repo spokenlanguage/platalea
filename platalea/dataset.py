@@ -44,8 +44,8 @@ class Flickr8KData(torch.utils.data.Dataset):
         capt = [cls.sos] + capt + [cls.eos]
         return torch.Tensor(le.transform(capt))
 
-    def __init__(self, root, feature_fname, split='train', language='en',
-                 downsampling_factor=None, meta_fname=platalea.config.args.meta):
+    def __init__(self, root, feature_fname, meta_fname, split='train', language='en',
+                 downsampling_factor=None):
         self.root = root
         self.split = split
         self.feature_fname = feature_fname
@@ -186,15 +186,14 @@ def collate_fn(data, max_frames=2048):
                 text_len=char_lengths)
 
 
-def flickr8k_loader(split='train', batch_size=32, shuffle=False,
+def flickr8k_loader(root, meta_fname, language, feature_fname,
+                    split='train', batch_size=32, shuffle=False,
                     max_frames=2048,
-                    feature_fname=platalea.config.args.audio_features_fn,
-                    language=platalea.config.args.language,
-                    downsampling_factor=None,
-                    root=platalea.config.args.data_root):
+                    downsampling_factor=None):
     return torch.utils.data.DataLoader(
         dataset=Flickr8KData(root=root,
                              feature_fname=feature_fname,
+                             meta_fname=meta_fname,
                              split=split,
                              language=language,
                              downsampling_factor=downsampling_factor),

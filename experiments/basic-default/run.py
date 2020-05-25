@@ -1,30 +1,32 @@
-import configargparse
 import logging
 import random
 import torch
 
 import platalea.basic as M
 import platalea.dataset as D
+from platalea.config import args
 
-# Parsing arguments
-parser = configargparse.get_argument_parser('platalea')
-parser.add_argument(
+# Adding and parsing arguments
+args.add_argument(
     '--epochs', action='store', default=32, dest='epochs', type=int,
     help='number of epochs after which to stop training (default: 32)')
-parser.add_argument(
+args.add_argument(
     '--seed', default=123, type=int,
     help='seed for sources of randomness (default: 123)')
-config_args, _ = parser.parse_known_args()
+args.enable_help()
+args.parse()
 
 # Setting general configuration
-torch.manual_seed(config_args.seed)
-random.seed(config_args.seed)
+torch.manual_seed(args.seed)
+random.seed(args.seed)
 logging.basicConfig(level=logging.INFO)
 
 
 logging.info('Loading data')
-data = dict(train=D.flickr8k_loader(split='train', batch_size=32, shuffle=True),
-            val=D.flickr8k_loader(split='val', batch_size=32, shuffle=False))
+data = dict(train=D.flickr8k_loader(args.data_root, args.meta, args.language, args.audio_features_fn,
+                                    split='train', batch_size=32, shuffle=True),
+            val=D.flickr8k_loader(args.data_root, args.meta, args.language, args.audio_features_fn,
+                                  split='val', batch_size=32, shuffle=False))
 
 config = dict(
     SpeechEncoder=dict(
@@ -40,7 +42,7 @@ config = dict(
 
 logging.info('Building model')
 net = M.SpeechImage(config)
-run_config = dict(max_lr=2 * 1e-4, epochs=config_args.epochs)
+run_config = dict(max_lr=2 * 1e-4, epochs=args.epochs)
 
 logging.info('Training')
 M.experiment(net, data, run_config)
