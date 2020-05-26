@@ -9,6 +9,8 @@ setup(name='platalea',
       author_email='g.chrupala@uvt.nl',
       license='Apache',
       zip_safe=False,
+      packages=['platalea', 'platalea.audio',# 'platalea.utils',
+                'platalea.experiments.flickr8k'],#, 'platalea.experiments.librispeech_places'],
       install_requires=[
           'torch>=1.2.0',
           'torchvision>=0.4.0',
