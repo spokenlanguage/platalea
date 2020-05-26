@@ -2,8 +2,8 @@ import pathlib
 import configargparse
 
 home = pathlib.Path.home()
-default_config_files = [home / '.platalea/config.ini',
-                        home / '.platalea/config.yml',
+default_config_files = [str(home / '.platalea/config.ini'),
+                        str(home / '.platalea/config.yml'),
                         'config.ini',
                         'config.yml']
 
@@ -32,6 +32,7 @@ class PlataleaConfig:
         if "-h" in unknown or "--help" in unknown:
             if self._help:
                 self._parser.print_help()
+                exit(0)
         for arg, value in vars(parsed_args).items():
             self._args[arg] = value
 
