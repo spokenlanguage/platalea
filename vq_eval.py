@@ -4,13 +4,30 @@ import json
 import glob
 from platalea.vq_encode import evaluate_zerospeech
 import pathlib
+from pathlib import Path
 import logging
 logging.basicConfig(level=logging.INFO)
+import os.path
 
+def experiments(outfile=None):
+    dirs = glob.glob("experiments/vq-*/")
+    if outfile is None:
+        return dirs
+    else:
+        out = []
+        for d in dirs:
+            path = Path(d) / outfile
+            if os.path.isfile(path):
+                logging.info("File {} exists, skipping directory".format(path))
+            else:
+                out.append(d)
+        return out
+                
+
+          
 def zerospeech_baseline(): 
-    for modeldir in glob.glob("experiments/vq-*/"):
+    for modeldir in experiments("vq_base_result.json"):
         result = [ json.loads(line) for line in open(modeldir + "/result.json") ]
-        # best = sorted(result, key=lambda x: x['recall']['10'], reverse=True)[0]['epoch']
         best = result[0]['epoch']
         oldnet = torch.load("{}/net.{}.pt".format(modeldir, best))
         logging.info("Loading model from {} at epoch {}".format(modeldir, best))
@@ -27,7 +44,7 @@ def zerospeech_baseline():
         json.dump(scores, open("{}/vq_base_result.json".format(modeldir), "w"))
    
 def zerospeech():
-    for modeldir in glob.glob("experiments/vq-*/"):
+    for modeldir in experiments("vq_result.json"):
         result = [ json.loads(line) for line in open(modeldir + "result.json") ]
         best = sorted(result, key=lambda x: x['recall']['10'], reverse=True)[0]['epoch']
         oldnet = torch.load("{}/net.{}.pt".format(modeldir, best))
@@ -46,8 +63,8 @@ def zerospeech():
 
 
 def prepare_rsa():
-    from analyze_flickr8k import save_data, make_factors
-    for modeldir in glob.glob("experiments/vq-*/"):
+    from prepare_flickr8k import save_data, make_factors
+    for modeldir in experiments("ed_rsa.json"):
         result = [ json.loads(line) for line in open(modeldir + "result.json") ]
         best = sorted(result, key=lambda x: x['recall']['10'], reverse=True)[0]['epoch']
         oldnet = torch.load("{}/net.{}.pt".format(modeldir, best))
@@ -66,10 +83,26 @@ def prepare_rsa():
 
 def rsa():
     from lyz.methods import ed_rsa
-    for modeldir in glob.glob("experiments/vq-*/"):
+    for modeldir in experiments("ed_rsa.json"):
         logging.info("Processing {}".format(modeldir))
         cor = ed_rsa(modeldir, layers=['codebook'], test_size=1/2)
         logging.info("RSA for {}: {}".format(modeldir, json.dumps(cor, indent=2)))
         json.dump(cor, open("{}/ed_rsa.json".format(modeldir), "w"))
         
 
+
+def local_diag():
+    from lyz.methods import local_diagnostic
+    for modeldir in experiments("local/local_diagnostic.json"):
+        logging.info("Running local diagnostic on {}".format(modeldir))
+        output_dir = Path(modeldir) / 'local'
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        logging.info("Local diagnostic")
+        config = dict(directory=modeldir,
+                      output=output_dir,
+                      hidden=None,
+                      epochs=40,
+                      layers=['codebook'],
+                      runs=1)
+        local_diagnostic(config)
