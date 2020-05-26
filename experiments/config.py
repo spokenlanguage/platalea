@@ -1,5 +1,3 @@
-from typing import Optional
-import torch
 import pathlib
 import configargparse
 
@@ -13,7 +11,8 @@ default_config_files = [home / '.platalea/config.ini',
 class PlataleaConfig:
     """
     Help message is disabled by default, but can be reenabled using enable_help().
-    This makes it possible to parse multiple times, if necessary.
+    This makes it possible to parse multiple times, e.g. to add arguments from
+    multiple places without triggering help by parses in between.
     """
     def __init__(self):
         self._args = {}
@@ -45,32 +44,21 @@ args = PlataleaConfig()
 args.add_argument('-c', '--config', is_config_file=True, help='config file path')
 args.add_argument('--data_root', env_var='PLATALEA_DATA_ROOT',
                   action='store', default='/roaming/gchrupal/datasets/flickr8k/',
-                  dest='data_root',
                   help='location of the flickr8k (or similar) dataset')
 args.add_argument('--meta', env_var='PLATALEA_METADATA_JSON',
                   action='store', default='dataset_multilingual.json',
-                  dest='meta',
                   help='filename of the metadata file (dataset.json or similar) relative to the dataset location')
 args.add_argument('--audio_features_fn', env_var='PLATALEA_AUDIO_FEATURES_FN',
                   action='store', default='mfcc_delta_features.pt',
-                  dest='audio_features_fn',
                   help='filename of the MFCC audio features file relative to the dataset location')
 args.add_argument('--audio_subdir', env_var='PLATALEA_AUDIO_SUBDIR',
                   action='store', default='flickr_audio/wavs/',
-                  dest='audio_subdir',
                   help='directory containing the flickr8k wav files, relative to the dataset location')
 args.add_argument('--image_subdir', env_var='PLATALEA_IMAGE_SUBDIR',
                   action='store', default='Flickr8k_Dataset/Flicker8k_Dataset/',
-                  dest='image_subdir',
                   help='directory containing the flickr8k image files, relative to the dataset location')
 args.add_argument('--language', env_var='PLATALEA_LANGUAGE',
                   action='store', default='en',
-                  dest='language',
                   help='language to use for the transcriptions/translations')
-
-
-def device(ordinal: Optional[int] = None):
-    ordinal_str = ''
-    if ordinal is not None:
-        ordinal_str = f':{ordinal}'
-    return torch.device("cuda" + ordinal_str if torch.cuda.is_available() else "cpu")
+args.add_argument('--seed', default=123, type=int,
+                  help='seed for sources of randomness')

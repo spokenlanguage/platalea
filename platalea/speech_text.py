@@ -6,9 +6,9 @@ import platalea.dataset as D
 from platalea.encoders import TextEncoder, SpeechEncoder
 import platalea.loss
 import platalea.score
-import platalea.config
+import platalea.hardware
 
-_device = platalea.config.device()
+_device = platalea.hardware.device()
 
 
 class SpeechText(nn.Module):

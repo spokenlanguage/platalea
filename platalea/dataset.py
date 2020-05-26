@@ -6,8 +6,6 @@ from sklearn.preprocessing import LabelEncoder
 import torch
 import torch.utils.data
 
-import platalea.config
-
 
 class Flickr8KData(torch.utils.data.Dataset):
     le = None

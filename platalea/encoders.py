@@ -7,13 +7,12 @@ import torch.nn.functional as F
 import platalea.introspect
 from platalea.attention import Attention
 
-import platalea.config
+import platalea.hardware
+
+_device = platalea.hardware.device()
 
 # Includes code adapted from
 # https://github.com/gchrupala/speech2image/blob/master/PyTorch/functions/encoders.py
-
-
-_device = platalea.config.device()
 
 
 class ImageEncoder(nn.Module):

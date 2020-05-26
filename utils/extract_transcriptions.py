@@ -1,10 +1,9 @@
-import configargparse
 import json
 import logging
-import pickle
 import torch
 
 import platalea.dataset as D
+from platalea.experiments.config import args
 
 torch.manual_seed(123)
 
@@ -26,18 +25,18 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
 
     # Parse command line parameters
-    parser = configargparse.get_argument_parser('platalea')
-    parser.add_argument('path', metavar='path', help='Model\'s path')
-    parser.add_argument('-b', help='Use beam decoding',
-                        dest='use_beam_decoding', action='store_true',
-                        default=False)
-    args, unknown_args = parser.parse_known_args()
+    args.add_argument('path', metavar='path', help='Model\'s path')
+    args.add_argument('-b', help='Use beam decoding',
+                      dest='use_beam_decoding', action='store_true',
+                      default=False)
+    args.enable_help()
+    args.parse()
 
     logging.info('Loading data')
     data = dict(
-        train=D.flickr8k_loader(split='train', batch_size=batch_size,
+        train=D.flickr8k_loader(args.meta, split='train', batch_size=batch_size,
                                 shuffle=False),
-        val=D.flickr8k_loader(split='val', batch_size=batch_size,
+        val=D.flickr8k_loader(args.meta, split='val', batch_size=batch_size,
                               shuffle=False))
 
     net = torch.load(args.path)
