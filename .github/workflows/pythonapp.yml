@@ -48,8 +48,8 @@ jobs:
         PLATALEA_DATA_ROOT: ${{ github.workspace }}/data/flickr1d
       run: |
         pip install sklearn python-Levenshtein coverage
-        coverage run experiments/basic-default/run.py --epochs=1 -c $PLATALEA_DATA_ROOT/config.yml
-        coverage run experiments/basic-stack-trafo/run.py --epochs=1 -c $PLATALEA_DATA_ROOT/config.yml
+        coverage run -m platalea.experiments.basic_default --epochs=1 -c $PLATALEA_DATA_ROOT/config.yml
+        coverage run -m platalea.experiments.basic_transformer --epochs=1 -c $PLATALEA_DATA_ROOT/config.yml
         coverage xml
 
     - name: Upload coverage to Codecov
