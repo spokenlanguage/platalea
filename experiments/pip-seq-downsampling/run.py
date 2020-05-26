@@ -1,6 +1,4 @@
-import configargparse
 import logging
-import pickle
 import random
 import os
 from shutil import copyfile
@@ -9,23 +7,21 @@ import torch
 import platalea.asr as M1
 import platalea.dataset as D
 import platalea.text_image as M2
-from utils.copy_best import copy_best
-from utils.extract_transcriptions import extract_trn
+from platalea.experiments.config import args
+from platalea.utils.copy_best import copy_best
+from platalea.utils.extract_transcriptions import extract_trn
 
 # Parsing arguments
-parser = configargparse.get_argument_parser('platalea')
-parser.add_argument(
-    '--seed', default=123, type=int,
-    help='seed for sources of randomness (default: 123)')
-parser.add_argument(
+args.add_argument(
     '--asr_model_dir',
     help='Path to the directory where the pretrained ASR model is stored',
     dest='asr_model_dir', type=str, action='store')
-config_args, _ = parser.parse_known_args()
+args.enable_help()
+args.parse()
 
 # Setting general configuration
-torch.manual_seed(config_args.seed)
-random.seed(config_args.seed)
+torch.manual_seed(args.seed)
+random.seed(args.seed)
 logging.basicConfig(level=logging.INFO)
 
 
@@ -36,12 +32,12 @@ lz = len(str(abs(factors[-1])))
 for ds_factor in factors:
     logging.info('Loading data')
     data = dict(
-        train=D.flickr8k_loader(split='train', batch_size=batch_size,
+        train=D.flickr8k_loader(args.meta, split='train', batch_size=batch_size,
                                 shuffle=True, downsampling_factor=ds_factor),
-        val=D.flickr8k_loader(split='val', batch_size=batch_size,
+        val=D.flickr8k_loader(args.meta, split='val', batch_size=batch_size,
                               shuffle=False))
-    if config_args.asr_model_dir:
-        net = torch.load(os.path.join(config_args.asr_model_dir, 'net.best.pt'))
+    if args.asr_model_dir:
+        net = torch.load(os.path.join(args.asr_model_dir, 'net.best.pt'))
     else:
         logging.info('Building ASR model')
         config = M1.get_default_config()

@@ -4,15 +4,12 @@ import torch
 
 import platalea.basic as M
 import platalea.dataset as D
-from platalea.config import args
+from platalea.experiments.config import args
 
 # Adding and parsing arguments
 args.add_argument(
     '--epochs', action='store', default=32, dest='epochs', type=int,
     help='number of epochs after which to stop training (default: 32)')
-args.add_argument(
-    '--seed', default=123, type=int,
-    help='seed for sources of randomness (default: 123)')
 args.enable_help()
 args.parse()
 
