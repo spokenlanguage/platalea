@@ -2,14 +2,14 @@
 from setuptools import setup
 
 setup(name='platalea',
-      version='0.1',
+      version='0.2',
       description='Understanding visually grounded spoken language via multi-tasking',
       url='https://github.com/gchrupala/platalea',
       author='Grzegorz Chrupała',
       author_email='g.chrupala@uvt.nl',
       license='Apache',
       zip_safe=False,
-      packages=['platalea', 'platalea.audio', 'platalea.utils',
+      packages=['platalea', 'platalea.audio', 'platalea.utils', 'platalea.experiments',
                 'platalea.experiments.flickr8k', 'platalea.experiments.librispeech_places'],
       install_requires=[
           'torch>=1.2.0',

@@ -1,25 +1,37 @@
 import logging
 import pickle
+import random
 import torch
 import torch.nn as nn
 
 import platalea.asr as M
 import platalea.dataset as D
+from platalea.experiments.config import args
 
-torch.manual_seed(123)
+
+# Parsing arguments
+args.enable_help()
+args.parse()
+
+# Setting general configuration
+torch.manual_seed(args.seed)
+random.seed(args.seed)
+logging.basicConfig(level=logging.INFO)
 
 
 batch_size = 8
 hidden_size = 1024 * 3 // 4
 dropout = 0.0
 
-logging.basicConfig(level=logging.INFO)
-
 logging.info('Loading data')
 data = dict(
-    train=D.librispeech_loader(split='train', batch_size=batch_size,
-                                shuffle=True, downsampling_factor=10),
-    val=D.librispeech_loader(split='val', batch_size=batch_size))
+    train=D.librispeech_loader(args.librispeech_root, args.librispeech_meta,
+                               args.audio_features_fn,
+                               split='train', batch_size=batch_size,
+                               shuffle=True, downsampling_factor=10),
+    val=D.librispeech_loader(args.librispeech_root, args.librispeech_meta,
+                             args.audio_features_fn,
+                             split='val', batch_size=batch_size))
 fd = D.LibriSpeechData
 fd.init_vocabulary(data['train'].dataset)
 

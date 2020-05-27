@@ -24,9 +24,13 @@ lz = len(str(abs(factors[-1])))
 for ds_factor in factors:
     logging.info('Loading data')
     data = dict(
-        train=D.flickr8k_loader(split='train', batch_size=32, shuffle=True,
+        train=D.flickr8k_loader(args.flickr8k_root, args.flickr8k_meta,
+                                args.flickr8k_language, args.audio_features_fn,
+                                split='train', batch_size=32, shuffle=True,
                                 downsampling_factor=ds_factor),
-        val=D.flickr8k_loader(split='val', batch_size=32, shuffle=False))
+        val=D.flickr8k_loader(args.flickr8k_root, args.flickr8k_meta,
+                              args.flickr8k_language, args.audio_features_fn,
+                              split='val', batch_size=32, shuffle=False))
 
     config = dict(
         SpeechEncoder=dict(

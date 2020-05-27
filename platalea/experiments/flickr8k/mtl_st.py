@@ -25,8 +25,12 @@ dropout = 0.0
 
 logging.info('Loading data')
 data = dict(
-    train=D.flickr8k_loader(split='train', batch_size=batch_size, shuffle=True),
-    val=D.flickr8k_loader(split='val', batch_size=batch_size, shuffle=False))
+    train=D.flickr8k_loader(args.flickr8k_root, args.flickr8k_meta,
+                            args.flickr8k_language, args.audio_features_fn,
+                            split='train', batch_size=batch_size, shuffle=True),
+    val=D.flickr8k_loader(args.flickr8k_root, args.flickr8k_meta,
+                          args.flickr8k_language, args.audio_features_fn,
+                          split='val', batch_size=batch_size, shuffle=False))
 
 config = dict(
     SharedEncoder=dict(
