@@ -50,7 +50,7 @@ jobs:
       run: |
         pip install sklearn python-Levenshtein coverage nltk
         coverage run -m platalea.experiments.flickr8k.basic_default --epochs=1 -c $FLICKR1D_DIR/config.yml
-        coverage run -m platalea.experiments.flickr8k.basic_default_trafo --epochs=1 -c $FLICKR1D_DIR/config.yml
+        coverage run -m platalea.experiments.flickr8k.transformer --epochs=1 -c $FLICKR1D_DIR/config.yml
         coverage xml
 
     - name: Upload coverage to Codecov
