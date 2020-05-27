@@ -18,7 +18,7 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 
 
-_device = platalea.config.device()
+_device = platalea.hardware.device()
 
 
 def preprocess(dataset_name):

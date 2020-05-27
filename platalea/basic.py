@@ -14,7 +14,7 @@ import platalea.score
 import platalea.config
 
 
-_device = platalea.config.device()
+_device = platalea.hardware.device()
 
 
 class SpeechImage(nn.Module):

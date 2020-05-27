@@ -13,7 +13,7 @@ import platalea.config
 # https://github.com/gchrupala/speech2image/blob/master/PyTorch/functions/encoders.py
 
 
-_device = platalea.config.device()
+_device = platalea.hardware.device()
 
 
 class ImageEncoder(nn.Module):

@@ -13,7 +13,7 @@ import platalea.loss
 import platalea.score
 import platalea.config
 
-_device = platalea.config.device()
+_device = platalea.hardware.device()
 
 
 class TextImage(nn.Module):
