@@ -11,7 +11,7 @@ from platalea.encoders import SpeechEncoder, ImageEncoder
 import platalea.loss
 import platalea.dataset as D
 import platalea.score
-import platalea.config
+import platalea.hardware
 
 
 _device = platalea.hardware.device()

@@ -4,40 +4,35 @@
 Preprocesses datasets
 """
 
-import configargparse
 import json
 import logging
 import numpy as np
 import pathlib
 import PIL.Image
-import platalea.config
+import platalea.hardware
 from soundfile import read
 import torch
 import torch.nn as nn
 import torchvision.models as models
 import torchvision.transforms as transforms
+from platalea.config import args
 
 
 _device = platalea.hardware.device()
 
 
-def preprocess(dataset_name):
-    audio_feat_config = dict(type='mfcc', delta=True, alpha=0.97, n_filters=40,
-                             window_size=0.025, frame_shift=0.010)
-    images_feat_config = dict(model='resnet')
-    if dataset_name == 'flickr8k':
-        dataset_root = platalea.config.args.flickr8k_root
-        audio_subdir = platalea.config.args.flickr8k_audio_subdir
-        images_subdir = platalea.config.args.flickr8k_image_subdir
-        dataset_path = pathlib.Path(dataset_root)
-        flickr8k_audio_features(dataset_path, audio_subdir, audio_feat_config)
-        flickr8k_image_features(dataset_path, images_subdir, images_feat_config)
-    elif dataset_name == 'librispeech':
-        dataset_root = platalea.config.args.librispeech_root
-        dataset_path = pathlib.Path(dataset_root)
-        librispeech_audio_features(dataset_path, audio_feat_config)
-    else:
-        raise NotImplementedError
+_audio_feat_config = dict(type='mfcc', delta=True, alpha=0.97, n_filters=40,
+                          window_size=0.025, frame_shift=0.010)
+_images_feat_config = dict(model='resnet')
+
+
+def preprocess_flickr8k(dataset_path, audio_subdir, image_subdir):
+    flickr8k_audio_features(pathlib.Path(dataset_path), audio_subdir, _audio_feat_config)
+    flickr8k_image_features(pathlib.Path(dataset_path), image_subdir, _images_feat_config)
+
+
+def preprocess_librispeech(dataset_path):
+    librispeech_audio_features(pathlib.Path(dataset_path), _audio_feat_config)
 
 
 def flickr8k_audio_features(dataset_path, audio_subdir, feat_config):
@@ -227,11 +222,14 @@ def audio_features(paths, config):
 if __name__ == '__main__':
     # Parsing command line
     doc = __doc__.strip("\n").split("\n", 1)
-    parser = configargparse.get_argument_parser('platalea')
-    parser.description = doc[0]
-    parser.add_argument(
+    args._parser.description = doc[0]
+    args.add_argument(
         'dataset_name', help='Name of the dataset to preprocess.',
         type=str, choices=['flickr8k', 'librispeech'])
-    args, unknown_args = parser.parse_known_args()
+    args.enable_help()
+    args.parse()
 
-    preprocess(args.dataset_name)
+    if args.dataset_name == "flickr8k":
+        preprocess_flickr8k(args.flickr8k_root, args.flickr8k_audio_subdir, args.flickr8k_image_subdir)
+    elif args.dataset_name == "librispeech":
+        preprocess_librispeech(args.librispeech_root)

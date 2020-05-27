@@ -13,7 +13,7 @@ from platalea.decoders import TextDecoder
 from platalea.encoders import SpeechEncoder
 import platalea.loss
 import platalea.score
-import platalea.config
+import platalea.hardware
 
 _device = platalea.hardware.device()
 

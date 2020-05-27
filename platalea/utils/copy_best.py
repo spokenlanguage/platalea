@@ -8,11 +8,11 @@ network to net.best.pt.
 """
 
 
-import configargparse
+import argparse
 import numpy as np
 from shutil import copyfile
 
-from utils.get_best_score import read_results, get_metric_accessor
+from platalea.utils.get_best_score import read_results, get_metric_accessor
 
 
 def copy_best(result_fpath='result.json', save_fpath='net.best.pt',
@@ -29,7 +29,7 @@ def copy_best(result_fpath='result.json', save_fpath='net.best.pt',
 if __name__ == '__main__':
     # Parsing command line
     doc = __doc__.strip("\n").split("\n", 1)
-    parser = configargparse.get_argument_parser('platalea')
+    parser = argparse.ArgParser()
     parser.description = doc[0]
     parser.epilog = doc[1]
     parser.add_argument(
@@ -43,6 +43,6 @@ if __name__ == '__main__':
         help='Type of experiment. Determines which metric is used.',
         type=str, action='store', choices=['retrieval', 'asr', 'mtl', 'slt'],
         default='retrieval')
-    args, unknown_args = parser.parse_known_args()
+    args = parser.parse_args()
 
     copy_best(args.result, args.save, args.experiment_type)

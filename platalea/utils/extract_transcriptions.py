@@ -1,12 +1,10 @@
-import configargparse
+import argparse
 import json
 import logging
-import pickle
+import random
 import torch
 
 import platalea.dataset as D
-
-torch.manual_seed(123)
 
 
 def extract_trn(net, dataset, use_beam_decoding=False):
@@ -23,15 +21,20 @@ def extract_trn(net, dataset, use_beam_decoding=False):
 
 if __name__ == '__main__':
     batch_size = 16
-    logging.basicConfig(level=logging.INFO)
 
-    # Parse command line parameters
-    parser = configargparse.get_argument_parser('platalea')
+    # Parsing arguments
+    parser = argparse.ArgumentParser()
     parser.add_argument('path', metavar='path', help='Model\'s path')
-    parser.add_argument('-b', help='Use beam decoding',
-                        dest='use_beam_decoding', action='store_true',
-                        default=False)
-    args, unknown_args = parser.parse_known_args()
+    parser.add_argument('-b', help='Use beam decoding', dest='use_beam_decoding',
+                        action='store_true', default=False)
+    parser.add_argument('--seed', default=123, type=int,
+                        help='seed for sources of randomness')
+    args = parser.parse_args()
+
+    # Setting general configuration
+    torch.manual_seed(args.seed)
+    random.seed(args.seed)
+    logging.basicConfig(level=logging.INFO)
 
     logging.info('Loading data')
     data = dict(

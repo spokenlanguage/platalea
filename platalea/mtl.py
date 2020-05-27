@@ -12,7 +12,7 @@ from platalea.speech_text import SpeechText
 from platalea.asr import SpeechTranscriber
 import platalea.loss
 import platalea.score
-import platalea.config
+import platalea.hardware
 
 _device = platalea.hardware.device()
 

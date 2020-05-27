@@ -1,6 +1,4 @@
-import configargparse
 import logging
-import pickle
 import random
 import torch
 import torch.nn as nn
@@ -8,17 +6,16 @@ import torch.nn as nn
 import platalea.dataset as D
 import platalea.mtl as M
 from platalea.score import score, score_asr, score_slt
+from platalea.experiments.config import args
+
 
 # Parsing arguments
-parser = configargparse.get_argument_parser('platalea')
-parser.add_argument(
-    '--seed', default=123, type=int,
-    help='seed for sources of randomness (default: 123)')
-config_args, _ = parser.parse_known_args()
+args.enable_help()
+args.parse()
 
 # Setting general configuration
-torch.manual_seed(config_args.seed)
-random.seed(config_args.seed)
+torch.manual_seed(args.seed)
+random.seed(args.seed)
 logging.basicConfig(level=logging.INFO)
 
 

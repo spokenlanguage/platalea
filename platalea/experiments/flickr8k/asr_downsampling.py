@@ -1,24 +1,20 @@
-import configargparse
 import logging
-import pickle
 import random
 from shutil import copyfile
 import torch
 
 import platalea.asr as M
 import platalea.dataset as D
-from utils.copy_best import copy_best
+from platalea.utils.copy_best import copy_best
+from platalea.experiments.config import args
 
 # Parsing arguments
-parser = configargparse.get_argument_parser('platalea')
-parser.add_argument(
-    '--seed', default=123, type=int,
-    help='seed for sources of randomness (default: 123)')
-config_args, _ = parser.parse_known_args()
+args.enable_help()
+args.parse()
 
 # Setting general configuration
-torch.manual_seed(config_args.seed)
-random.seed(config_args.seed)
+torch.manual_seed(args.seed)
+random.seed(args.seed)
 logging.basicConfig(level=logging.INFO)
 
 
