@@ -3,6 +3,7 @@
 DOWNSAMPLING_FACTORS="1 3 9 27 81 243"
 REPLIDS="a b c"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+SCRIPTDIR=$(dirname "$0")
 
 run_experiment() {
     expdir=$1
@@ -16,9 +17,9 @@ clean() {
     expdir=$1
     exptype=$2
     if [ "$exptype" != "" ]; then
-        python ../../utils/copybest.py --experiment_type $exptype $expdir
+        python $SCRIPTDIR/../../utils/copybest.py --experiment_type $exptype $expdir
     fi
-    rm $d/net.?.pt $d/net.??.pt
+    rm $expdir/net.?.pt $expdir/net.??.pt
 }
 
 run_downsampling() {
@@ -157,7 +158,7 @@ run_downsampling_text_jp pip-seq
 # Experiments with transcriptions, matching size of Japanese dataset
 DOWNSAMPLING_FACTORS="2.58"
 run_downsampling asr asr
-replicate basic-default retrieval
+run_downsampling basic-default retrieval
 run_downsampling text-image retrieval
 run_downsampling_text mtl-asr mtl
 run_downsampling_text mtl-st mtl

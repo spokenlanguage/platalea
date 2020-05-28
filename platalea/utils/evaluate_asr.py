@@ -34,9 +34,12 @@ net = torch.load(args.path)
 logging.info('Evaluating')
 with torch.no_grad():
     net.eval()
-    if args.use_beam_decoding:
-        result = platalea.score.score_asr(net, data['val'].dataset,
-                                          beam_size=10)
+    if data['val'].dataset.is_slt():
+        score_fn = platalea.score.score_slt
     else:
-        result = platalea.score.score_asr(net, data['val'].dataset)
+        score_fn = platalea.score.score_asr
+    if args.use_beam_decoding:
+        result = score_fn(net, data['val'].dataset, beam_size=10)
+    else:
+        result = score_fn(net, data['val'].dataset)
 print(json.dumps(result))

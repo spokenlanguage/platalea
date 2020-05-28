@@ -1,11 +1,14 @@
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
 import re
 
-plt.style.use('seaborn-darkgrid')
-
 from utils.get_best_score import get_best_score
+
+plt.style.use('seaborn-darkgrid')
+font = {'size': 12}
+matplotlib.rc('font', **font)
 
 
 def extract_matched_results(root, pattern, path2type_fn):
@@ -67,6 +70,8 @@ def plot_downsampling():
     basic_default_score = np.mean(dict2np(basic_default_results))
     print("basic-default: {}".format(basic_default_score))
     exp_types = ['asr', 'text-image', 'pip-ind', 'pip-seq', 'mtl-asr', 'mtl-st']
+    exp_legend = ['asr', 'text-image', 'pipe-ind', 'pipe-seq',
+                  'mtl-transcribe', 'mtl-match']
     ds_factors = [1, 3, 9, 27, 81, 243]
     ds_factors_text = [str(i).zfill(3) for i in ds_factors]
     replids = ['a', 'b', 'c']
@@ -84,11 +89,8 @@ def plot_downsampling():
     ax.set_ylabel('R@10')
     ax.plot([basic_default_score] * len(ds_factors), 'r--',
             label='speech-image')
-    #ax.plot(res[0, :], '.--', label=exp_types[0])
-    for i in range (1, len(exp_types)):
-        ax.plot(res[i, :], '.-', label=exp_types[i])
-    #ax2 = ax.twinx()
-    #ax2.set_ylabel('WER (ASR experiments)')
+    for i in range(1, len(exp_types)):
+        ax.plot(res[i, :], '.-', label=exp_legend[i])
     ax.legend()
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     #plt.show()
@@ -102,7 +104,8 @@ def plot_downsampling_jp():
     basic_default_score = np.mean(dict2np(basic_default_results))
     print("basic-default: {}".format(basic_default_score))
     exp_types = ['asr', 'text-image', 'pip-ind', 'pip-seq', 'mtl-asr', 'mtl-st']
-    exp_legend = ['slt', 'text-image', 'pip-ind', 'pip-seq', 'mtl-slt', 'mtl-st']
+    exp_legend = ['slt', 'text-image', 'pipe-ind', 'pipe-seq',
+                  'mtl-translate', 'mtl-match']
     ds_factors = [1, 3, 9, 27, 81, 243]
     ds_factors_text = [str(i).zfill(3) for i in ds_factors]
     replids = ['a', 'b', 'c']
@@ -114,17 +117,52 @@ def plot_downsampling_jp():
 
     # Plotting
     fig, ax = plt.subplots()
-    xticklabels = ['13.6 h', '4.5 h', '1.5 h', '30 mins', '10 mins', '3 min']
+    xticklabels = ['13.6 h', '4.5 h', '1.5 h', '30 mins', '10 mins', '3 mins']
     ax.set_xlabel('Amount of translated data available for training (total speech duration)')
     plt.xticks(range(len(xticklabels)), xticklabels, size='small')
     ax.set_ylabel('R@10')
     ax.plot([basic_default_score] * len(ds_factors), 'r--',
             label='speech-image')
-    for i in range (1, len(exp_types)):
+    for i in range(1, len(exp_types)):
         ax.plot(res[i, :], '.-', label=exp_legend[i])
-    #ax2 = ax.twinx()
-    #ax2.set_ylabel('BLEU score (SLT experiments)')
     ax.legend()
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     #plt.show()
     plt.savefig('downsampling_text_jp.pdf')
+
+
+def extract_results_beam_decoding(root, exp_prefix, exptype):
+    ds_factors = [1, 3, 9, 27, 81, 243]
+    replids = ['a', 'b', 'c']
+    res = np.zeros([len(ds_factors), len(replids)])
+    for i, df in enumerate(ds_factors):
+        df_text = str(df).zfill(3)
+        for j, rid in enumerate(replids):
+            pattern = '{}-ds{}-{}-*'.format(exp_prefix, df_text, rid)
+            paths = sorted(Path(root).glob(pattern))
+            if len(paths) != 1:
+                msg = 'Pattern {} matches {} folders'
+                raise ValueError(msg.format(pattern, len(paths)))
+            score = get_best_score(paths[0] / 'result_beam.json', exptype)
+            res[i, j] = score
+    res = np.mean(res, axis=1)
+    return res
+
+
+def extract_results_comparison(root):
+    experiments = {'basic-default': 'retrieval', 'text-image': 'retrieval',
+                   'pip-ind': 'retrieval', 'pip-seq': 'retrieval',
+                   'mtl-asr': 'mtl', 'mtl-st': 'mtl'}
+    replids = ['a', 'b', 'c']
+    res = np.zeros([len(experiments.keys()), len(replids)])
+    for i, exp in enumerate(experiments.items()):
+        for j, rid in enumerate(replids):
+            pattern = '{}-ds2.58*-{}-*'.format(exp[0], rid)
+            paths = sorted(Path(root).glob(pattern))
+            if len(paths) != 1:
+                msg = 'Pattern {} matches {} folders'
+                raise ValueError(msg.format(pattern, len(paths)))
+            score = get_best_score(paths[0] / 'result.json', exp[1])
+            res[i, j] = score
+    res = np.mean(res, axis=1)
+    return res

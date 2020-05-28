@@ -16,17 +16,18 @@ from shutil import copyfile
 from platalea.utils.get_best_score import read_results, get_metric_accessor
 
 
-def copy_best(exp_path='.', result_fname='result.json', save_fname='net.best.pt',
+def copy_best(exp_path=['.'], result_fname='result.json', save_fname='net.best.pt',
               experiment_type='retrieval'):
-    root_path = pathlib.Path(exp_path)
-    res = read_results(root_path / result_fname)
-    metric_accessor = get_metric_accessor(experiment_type)
-    if experiment_type == 'asr':
-        ibest = np.argmin([metric_accessor(r) for r in res]) + 1
-    else:
-        ibest = np.argmax([metric_accessor(r) for r in res]) + 1
-    best_fname = 'net.{}.pt'.format(ibest)
-    copyfile(root_path / best_fname, root_path / save_fname)
+    for path in exp_path:
+        root_path = pathlib.Path(path)
+        res = read_results(root_path / result_fname)
+        metric_accessor = get_metric_accessor(experiment_type)
+        if experiment_type == 'asr':
+            ibest = np.argmin([metric_accessor(r) for r in res]) + 1
+        else:
+            ibest = np.argmax([metric_accessor(r) for r in res]) + 1
+        best_fname = 'net.{}.pt'.format(ibest)
+        copyfile(root_path / best_fname, root_path / save_fname)
 
 
 if __name__ == '__main__':
@@ -36,7 +37,7 @@ if __name__ == '__main__':
     parser.description = doc[0]
     parser.epilog = doc[1]
     parser.add_argument(
-        'exp_path', help='Path to the experiment', default='.', nargs='?')
+        'exp_path', help='Path to the experiment', default=['.'], nargs='*')
     parser.add_argument(
         '--result', help='Name of the JSON file containing the results.',
         type=str, default='result.json')
