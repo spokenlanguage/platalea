@@ -29,6 +29,7 @@ jobs:
 
   install:
     needs: setup_env
+    runs-on: ubuntu-latest
     steps:
     - name: Install the package
       run: pip install -e .
@@ -37,6 +38,7 @@ jobs:
 
   lint:
     needs: install
+    runs-on: ubuntu-latest
     steps:
     - name: Lint with flake8
       env:
@@ -50,6 +52,7 @@ jobs:
 
   test_basic:
     needs: install
+    runs-on: ubuntu-latest
     steps:
     - name: Run basic experiment, including coverage
       env:
@@ -61,6 +64,7 @@ jobs:
 
   test_transformer:
     needs: install
+    runs-on: ubuntu-latest
     steps:
     - name: Run transformer experiment, including coverage
       env:
@@ -72,6 +76,7 @@ jobs:
 
   test_mtl_asr:
     needs: install
+    runs-on: ubuntu-latest
     steps:
     - name: Run mtl_asr experiment, including coverage
       env:
@@ -83,6 +88,7 @@ jobs:
 
   test_mtl_st:
     needs: install
+    runs-on: ubuntu-latest
     steps:
     - name: Run mtl_st experiment, including coverage
       env:
@@ -94,6 +100,7 @@ jobs:
 
   test_asr:
     needs: install
+    runs-on: ubuntu-latest
     steps:
     - name: Run asr experiment, including coverage
       env:
@@ -108,6 +115,7 @@ jobs:
 
   test_text_image:
     needs: install
+    runs-on: ubuntu-latest
     steps:
     - name: Run text_image experiment, including coverage
       env:
@@ -122,6 +130,7 @@ jobs:
 
   test_pip_ind:
     needs: [test_asr, test_text_image]
+    runs-on: ubuntu-latest
     steps:
     - name: Run pip_ind experiment, including coverage
       env:
@@ -133,6 +142,7 @@ jobs:
 
   test_pip_seq:
     needs: test_asr
+    runs-on: ubuntu-latest
     steps:
     - name: Run pip_seq experiment, including coverage
       env:
@@ -144,6 +154,7 @@ jobs:
 
   coverage:
     needs: [test_basic, test_transformer, test_asr, test_mtl_asr, test_mtl_st, test_text_image, test_pip_ind, test_pip_seq]
+    runs-on: ubuntu-latest
     steps:
     - name: Collect coverage information
       env:
