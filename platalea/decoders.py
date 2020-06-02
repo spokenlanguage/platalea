@@ -4,6 +4,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from platalea.attention import BahdanauAttention
+import platalea.hardware
+
+_device = platalea.hardware.device()
 
 
 class TextDecoder(nn.Module):
@@ -192,9 +195,7 @@ class TextDecoder(nn.Module):
                 if type(self.RNN) == nn.LSTM:
                     state = (state, new_cell[:, :best_ended_idx])
                 # Select next input
-                input = torch.unsqueeze(torch.from_numpy(hyps[:, -1]), 1)
-                if self.use_cuda:
-                    input = input.cuda()
+                input = torch.unsqueeze(torch.from_numpy(hyps[:, -1]), 1).to(_device)
                 # Duplicate encoder's output
                 eo = eo[0].unsqueeze(0).repeat([hyps.shape[0], 1, 1])
             if best_ended_hyp is None:
