@@ -53,7 +53,8 @@ args.add_argument(
     location')
 args.add_argument('--seed', default=123, type=int,
                   help='seed for sources of randomness')
-args.add_argument('--epochs', action='store', default=32, type=int,
+args.add_argument('--epochs', env_var='PLATALEA_EPOCHS',
+                  action='store', default=32, type=int,
                   help='number of epochs after which to stop training')
 
 # Flickr8k specific parameters
