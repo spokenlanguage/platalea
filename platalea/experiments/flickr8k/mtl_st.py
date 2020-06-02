@@ -60,7 +60,7 @@ config = dict(
 
 logging.info('Building model')
 net = M.MTLNetSpeechText(config)
-run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32)
+run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=args.epochs)
 
 tasks = [dict(name='SI', net=net.SpeechImage, data=data, eval=score),
          dict(name='ST', net=net.SpeechText, data=data,

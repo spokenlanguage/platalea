@@ -65,7 +65,7 @@ config = dict(
 
 logging.info('Building model')
 net = M.SpeechTranscriber(config)
-run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32)
+run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=args.epochs)
 
 logging.info('Training')
 M.experiment(net, data, run_config)
