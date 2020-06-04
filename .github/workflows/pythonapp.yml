@@ -15,7 +15,7 @@ jobs:
         repository: spokenlanguage/flickr1d
         path: data
     - name: Setup conda
-      uses: s-weigand/setup-conda@master
+      uses: s-weigand/setup-conda@v1
       with:
         update-conda: true
         python-version: 3.7
