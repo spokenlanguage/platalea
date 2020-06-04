@@ -3,7 +3,7 @@ name: install and run in conda env
 on: [push]
 
 jobs:
-  setup_env:
+  install and test:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
@@ -27,19 +27,11 @@ jobs:
     - name: install dependencies for tests
       run: pip install sklearn python-Levenshtein coverage
 
-  install:
-    needs: setup_env
-    runs-on: ubuntu-latest
-    steps:
     - name: Install the package
       run: pip install -e ${{ github.workspace }}
       env:
         CONDA_PREFIX: /usr/share/miniconda
 
-  lint:
-    needs: install
-    runs-on: ubuntu-latest
-    steps:
     - name: Lint with flake8
       env:
         CONDA_PREFIX: /usr/share/miniconda
@@ -50,10 +42,6 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 ${{ github.workspace }} --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-  test_basic:
-    needs: install
-    runs-on: ubuntu-latest
-    steps:
     - name: Run basic experiment, including coverage
       env:
         CONDA_PREFIX: /usr/share/miniconda
@@ -62,10 +50,6 @@ jobs:
         PLATALEA_EPOCHS: 1
       run: coverage run -m platalea.experiments.flickr8k.basic_default -c $FLICKR1D_DIR/config.yml
 
-  test_transformer:
-    needs: install
-    runs-on: ubuntu-latest
-    steps:
     - name: Run transformer experiment, including coverage
       env:
         CONDA_PREFIX: /usr/share/miniconda
@@ -74,10 +58,6 @@ jobs:
         PLATALEA_EPOCHS: 1
       run: coverage run -m platalea.experiments.flickr8k.transformer -c $FLICKR1D_DIR/config.yml
 
-  test_mtl_asr:
-    needs: install
-    runs-on: ubuntu-latest
-    steps:
     - name: Run mtl_asr experiment, including coverage
       env:
         CONDA_PREFIX: /usr/share/miniconda
@@ -86,10 +66,6 @@ jobs:
         PLATALEA_EPOCHS: 1
       run: coverage run -m platalea.experiments.flickr8k.mtl_asr -c $FLICKR1D_DIR/config.yml
 
-  test_mtl_st:
-    needs: install
-    runs-on: ubuntu-latest
-    steps:
     - name: Run mtl_st experiment, including coverage
       env:
         CONDA_PREFIX: /usr/share/miniconda
@@ -98,10 +74,6 @@ jobs:
         PLATALEA_EPOCHS: 1
       run: coverage run -m platalea.experiments.flickr8k.mtl_st -c $FLICKR1D_DIR/config.yml
 
-  test_asr:
-    needs: install
-    runs-on: ubuntu-latest
-    steps:
     - name: Run asr experiment, including coverage
       env:
         CONDA_PREFIX: /usr/share/miniconda
@@ -113,10 +85,6 @@ jobs:
         mkdir -p ${{ github.workspace }}/asr_out
         mv net.1.pt ${{ github.workspace }}/asr_out/net.best.pt
 
-  test_text_image:
-    needs: install
-    runs-on: ubuntu-latest
-    steps:
     - name: Run text_image experiment, including coverage
       env:
         CONDA_PREFIX: /usr/share/miniconda
@@ -128,10 +96,6 @@ jobs:
         mkdir -p ${{ github.workspace }}/text_image_out
         mv net.1.pt ${{ github.workspace }}/text_image_out/net.best.pt
 
-  test_pip_ind:
-    needs: [test_asr, test_text_image]
-    runs-on: ubuntu-latest
-    steps:
     - name: Run pip_ind experiment, including coverage
       env:
         CONDA_PREFIX: /usr/share/miniconda
@@ -140,10 +104,6 @@ jobs:
         PLATALEA_EPOCHS: 1
       run: coverage run -m platalea.experiments.flickr8k.pip_ind -c $FLICKR1D_DIR/config.yml --asr_model_dir=${{ github.workspace }}/asr_out --text_image_model_dir=${{ github.workspace }}/text_image_out
 
-  test_pip_seq:
-    needs: test_asr
-    runs-on: ubuntu-latest
-    steps:
     - name: Run pip_seq experiment, including coverage
       env:
         CONDA_PREFIX: /usr/share/miniconda
@@ -152,10 +112,6 @@ jobs:
         PLATALEA_EPOCHS: 1
       run: coverage run -m platalea.experiments.flickr8k.pip_seq -c $FLICKR1D_DIR/config.yml --asr_model_dir=${{ github.workspace }}/asr_out
 
-  coverage:
-    needs: [test_basic, test_transformer, test_asr, test_mtl_asr, test_mtl_st, test_text_image, test_pip_ind, test_pip_seq]
-    runs-on: ubuntu-latest
-    steps:
     - name: Collect coverage information
       env:
         CONDA_PREFIX: /usr/share/miniconda
