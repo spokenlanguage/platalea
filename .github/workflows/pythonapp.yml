@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Install the package
-      run: pip install -e .
+      run: pip install -e ${{ github.workspace }}
       env:
         CONDA_PREFIX: /usr/share/miniconda
 
@@ -46,9 +46,9 @@ jobs:
       run: |
         pip install flake8
         # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 ${{ github.workspace }} --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 ${{ github.workspace }} --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
   test_basic:
     needs: install
@@ -110,8 +110,8 @@ jobs:
         PLATALEA_EPOCHS: 1
       run: |
         coverage run -m platalea.experiments.flickr8k.asr -c $FLICKR1D_DIR/config.yml
-        mkdir -p asr_out
-        mv net.1.pt asr_out/net.best.pt
+        mkdir -p ${{ github.workspace }}/asr_out
+        mv net.1.pt ${{ github.workspace }}/asr_out/net.best.pt
 
   test_text_image:
     needs: install
@@ -125,8 +125,8 @@ jobs:
         PLATALEA_EPOCHS: 1
       run: |
         coverage run -m platalea.experiments.flickr8k.text_image -c $FLICKR1D_DIR/config.yml
-        mkdir -p text_image_out
-        mv net.1.pt text_image_out/net.best.pt
+        mkdir -p ${{ github.workspace }}/text_image_out
+        mv net.1.pt ${{ github.workspace }}/text_image_out/net.best.pt
 
   test_pip_ind:
     needs: [test_asr, test_text_image]
@@ -138,7 +138,7 @@ jobs:
         FLICKR1D_DIR: ${{ github.workspace }}/data
         FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
         PLATALEA_EPOCHS: 1
-      run: coverage run -m platalea.experiments.flickr8k.pip_ind -c $FLICKR1D_DIR/config.yml --asr_model_dir=asr_out --text_image_model_dir=text_image_out
+      run: coverage run -m platalea.experiments.flickr8k.pip_ind -c $FLICKR1D_DIR/config.yml --asr_model_dir=${{ github.workspace }}/asr_out --text_image_model_dir=${{ github.workspace }}/text_image_out
 
   test_pip_seq:
     needs: test_asr
@@ -150,7 +150,7 @@ jobs:
         FLICKR1D_DIR: ${{ github.workspace }}/data
         FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
         PLATALEA_EPOCHS: 1
-      run: coverage run -m platalea.experiments.flickr8k.pip_seq -c $FLICKR1D_DIR/config.yml --asr_model_dir=asr_out
+      run: coverage run -m platalea.experiments.flickr8k.pip_seq -c $FLICKR1D_DIR/config.yml --asr_model_dir=${{ github.workspace }}/asr_out
 
   coverage:
     needs: [test_basic, test_transformer, test_asr, test_mtl_asr, test_mtl_st, test_text_image, test_pip_ind, test_pip_seq]
