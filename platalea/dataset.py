@@ -7,8 +7,6 @@ from sklearn.preprocessing import LabelEncoder
 import torch
 import torch.utils.data
 
-import platalea.config
-
 
 class TranscribedDataset():
     le = None
@@ -52,7 +50,7 @@ class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
         transcriptions = [sd[2] for sd in dataset.split_data]
         TranscribedDataset.init_vocabulary(transcriptions)
 
-    def __init__(self, root, feature_fname, split='train', language='en',
+    def __init__(self, root, feature_fname, meta_fname, split='train', language='en',
                  downsampling_factor=None):
         self.root = root
         self.split = split
@@ -72,7 +70,7 @@ class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
         with open(root_path / 'label_encoders.pkl', 'rb') as f:
             self.__class__.le = pickle.load(f)[language]
         # Loading metadata
-        with open(root_path / platalea.config.args.flickr8k_meta) as fmeta:
+        with open(root_path / meta_fname) as fmeta:
             metadata = json.load(fmeta)['images']
         # Loading mapping from image id to list of caption id
         self.image_captions = {}
@@ -164,7 +162,7 @@ class LibriSpeechData(torch.utils.data.Dataset, TranscribedDataset):
         transcriptions = [m['trn'] for m in dataset.metadata]
         TranscribedDataset.init_vocabulary(transcriptions)
 
-    def __init__(self, root, feature_fname, split='train',
+    def __init__(self, root, feature_fname, meta_fname, split='train',
                  downsampling_factor=None):
         # 'val' set in flickr8k corresponds to 'dev' in librispeech
         if split == 'val':
@@ -173,7 +171,7 @@ class LibriSpeechData(torch.utils.data.Dataset, TranscribedDataset):
         self.split = split
         self.feature_fname = feature_fname
         root_path = pathlib.Path(root)
-        with open(root_path / platalea.config.args.librispeech_meta) as fmeta:
+        with open(root_path / meta_fname) as fmeta:
             self.metadata = json.load(fmeta)
             self.num_lines = self.metadata[-1]['audio_end']
         if downsampling_factor is not None:
@@ -260,14 +258,14 @@ def collate_fn_speech(data, max_frames=2048):
                 text_len=char_lengths)
 
 
-def flickr8k_loader(split='train', batch_size=32, shuffle=False,
+def flickr8k_loader(root, meta_fname, language, feature_fname,
+                    split='train', batch_size=32, shuffle=False,
                     max_frames=2048,
-                    feature_fname=platalea.config.args.audio_features_fn,
-                    language=platalea.config.args.flickr8k_language,
                     downsampling_factor=None):
     return torch.utils.data.DataLoader(
-        dataset=Flickr8KData(root=platalea.config.args.flickr8k_root,
+        dataset=Flickr8KData(root=root,
                              feature_fname=feature_fname,
+                             meta_fname=meta_fname,
                              split=split,
                              language=language,
                              downsampling_factor=downsampling_factor),
@@ -277,13 +275,14 @@ def flickr8k_loader(split='train', batch_size=32, shuffle=False,
         collate_fn=lambda x: collate_fn(x, max_frames=max_frames))
 
 
-def librispeech_loader(split='train', batch_size=32, shuffle=False,
+def librispeech_loader(root, meta_fname, feature_fname,
+                       split='train', batch_size=32, shuffle=False,
                        max_frames=2048,
-                       feature_fname=platalea.config.args.audio_features_fn,
                        downsampling_factor=None):
     return torch.utils.data.DataLoader(
-        dataset=LibriSpeechData(root=platalea.config.args.librispeech_root,
+        dataset=LibriSpeechData(root=root,
                                 feature_fname=feature_fname,
+                                meta_fname=meta_fname,
                                 split=split,
                                 downsampling_factor=downsampling_factor),
         batch_size=batch_size,
