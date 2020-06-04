@@ -3,7 +3,7 @@ name: install and run in conda env
 on: [push]
 
 jobs:
-  install and test:
+  everything:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
