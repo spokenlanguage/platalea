@@ -28,7 +28,7 @@ data = dict(
     val=D.flickr8k_loader(
         args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
         args.audio_features_fn, split='val', batch_size=batch_size,
-        shuffle=False, downsampling_factor=args.downsampling_factor))
+        shuffle=False)
 
 logging.info('Building model')
 net = M.SpeechTranscriber(M.get_default_config())

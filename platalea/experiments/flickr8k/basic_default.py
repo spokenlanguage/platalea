@@ -27,8 +27,7 @@ data = dict(
         downsampling_factor=args.downsampling_factor),
     val=D.flickr8k_loader(
         args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
-        args.audio_features_fn, split='val', batch_size=32, shuffle=False
-        downsampling_factor=args.downsampling_factor))
+        args.audio_features_fn, split='val', batch_size=32, shuffle=False))
 
 config = dict(
     SpeechEncoder=dict(
