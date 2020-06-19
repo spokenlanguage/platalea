@@ -3,7 +3,8 @@
 DOWNSAMPLING_FACTORS="1 3 9 27 81 243"
 REPLIDS="a b c"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-SCRIPTDIR=$(dirname "$0")
+SCRIPTPATH=$(readlink -f "$0")
+SCRIPTDIR=$(dirname "$SCRIPTPATH")
 
 run_experiment() {
     expdir=$1
@@ -17,7 +18,7 @@ clean() {
     expdir=$1
     exptype=$2
     if [ "$exptype" != "" ]; then
-        python $SCRIPTDIR/../../utils/copybest.py --experiment_type $exptype $expdir
+        python $SCRIPTDIR/../../utils/copy_best.py --experiment_type $exptype $expdir
     fi
     rm $expdir/net.?.pt $expdir/net.??.pt
 }
@@ -26,7 +27,7 @@ run_downsampling() {
     expname=$1
     exptype=$2
     for df in $DOWNSAMPLING_FACTORS; do
-        dftag=ds$(LC_NUMERIC="en_US.UTF-8" printf %03f $df)
+        dftag=ds$(printf %03d $df)
         for rid in $REPLIDS; do
             expdir=runs/$expname-$dftag-$rid-$TIMESTAMP
             mkdir -p $expdir
@@ -51,7 +52,7 @@ run_downsampling_jp() {
     expname=$1
     exptype=$2
     for df in $DOWNSAMPLING_FACTORS; do
-        dftag=ds$(LC_NUMERIC="en_US.UTF-8" printf %03f $df)
+        dftag=ds$(printf %03d $df)
         for rid in $REPLIDS; do
             expdir=runs/$expname-jp-$dftag-$rid-$TIMESTAMP
             mkdir -p $expdir
@@ -76,7 +77,7 @@ run_downsampling_text() {
     expname=$1
     exptype=$2
     for df in $DOWNSAMPLING_FACTORS; do
-        dftag=ds$(LC_NUMERIC="en_US.UTF-8" printf %03f $df)
+        dftag=ds$(printf %03d $df)
         for rid in $REPLIDS; do
             expdir=runs/$expname-$dftag-$rid-$TIMESTAMP
             mkdir -p $expdir
@@ -101,7 +102,7 @@ run_downsampling_text_jp() {
     expname=$1
     exptype=$2
     for df in $DOWNSAMPLING_FACTORS; do
-        dftag=ds$(LC_NUMERIC="en_US.UTF-8" printf %03f $df)
+        dftag=ds$(printf %03d $df)
         for rid in $REPLIDS; do
             expdir=runs/$expname-jp-$dftag-$rid-$TIMESTAMP
             mkdir -p $expdir
@@ -132,8 +133,27 @@ replicate() {
         mkdir -p $expdir
         cp $expname/run.py $expdir
         cp conf/seed-$rid.yml $expdir/config.yml
+        if [ "$tag" == "-comp" ]; then
+            echo -e "flickr8k_meta\tdataset_multilingual_human_only.json" >> $expdir/config.yml
+        fi
         run_experiment $expdir
         clean $expdir $exptype
+    done
+}
+
+rerun() {
+    expname=$1
+    exptype=$2
+    tag=$3
+    [ "$tag" != "" ] && tag=-$tag
+    for df in $DOWNSAMPLING_FACTORS; do
+        dftag=ds$(printf %03d $df)
+        for rid in $REPLIDS; do
+            expdir=$(ls -d runs/$expname$tag-$dftag-$rid-* | xargs basename)
+            expdir=runs/$expdir
+            run_experiment $expdir
+            clean $expdir $exptype
+        done
     done
 }
 
@@ -156,13 +176,12 @@ run_downsampling_jp pip-ind
 run_downsampling_text_jp pip-seq
 
 # Experiments with transcriptions, matching size of Japanese dataset
-DOWNSAMPLING_FACTORS="2.58"
-run_downsampling asr asr
-run_downsampling basic-default retrieval
-run_downsampling text-image retrieval
-run_downsampling_text mtl-asr mtl
-run_downsampling_text mtl-st mtl
-run_downsampling pip-ind
-run_downsampling_text pip-seq
+replicate asr asr comp
+replicate basic-default retrieval comp
+replicate text-image retrieval comp
+replicate mtl-asr mtl comp
+replicate mtl-st mtl comp
+replicate pip-ind "" comp
+replicate pip-seq "" comp
 
 echo "Finished."

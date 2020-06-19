@@ -149,6 +149,26 @@ def extract_results_beam_decoding(root, exp_prefix, exptype):
     return res
 
 
+def extract_results_test_set(root, tag=''):
+    if tag != '':
+        tag = '-' + tag
+    exp_names = ['pip-seq', 'mtl-asr']
+    exp_types = ['retrieval', 'mtl']
+    replids = ['a', 'b', 'c']
+    res = np.zeros([len(exp_names), len(replids)])
+    for i, exp in enumerate(exp_names):
+        for j, rid in enumerate(replids):
+            pattern = '{}{}-ds001-{}-*'.format(exp, tag, rid)
+            paths = sorted(Path(root).glob(pattern))
+            if len(paths) != 1:
+                msg = 'Pattern {} matches {} folders'
+                raise ValueError(msg.format(pattern, len(paths)))
+            score = get_best_score(paths[0] / 'result_test.json', exp_types[i])
+            res[i, j] = score
+    res = np.mean(res, axis=1)
+    return res
+
+
 def extract_results_comparison(root):
     experiments = {'basic-default': 'retrieval', 'text-image': 'retrieval',
                    'pip-ind': 'retrieval', 'pip-seq': 'retrieval',
@@ -157,7 +177,7 @@ def extract_results_comparison(root):
     res = np.zeros([len(experiments.keys()), len(replids)])
     for i, exp in enumerate(experiments.items()):
         for j, rid in enumerate(replids):
-            pattern = '{}-ds2.58*-{}-*'.format(exp[0], rid)
+            pattern = '{}-comp-{}-*'.format(exp[0], rid)
             paths = sorted(Path(root).glob(pattern))
             if len(paths) != 1:
                 msg = 'Pattern {} matches {} folders'
