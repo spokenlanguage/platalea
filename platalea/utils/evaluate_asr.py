@@ -2,6 +2,7 @@
 
 import json
 import logging
+import random
 import torch
 
 import platalea.dataset as D

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import configargparse
 import json
 import logging
 import torch
@@ -13,6 +12,8 @@ from platalea.basic import SpeechImage
 from platalea.mtl import MTLNetASR, MTLNetSpeechText
 from platalea.speech_text import SpeechText
 from platalea.text_image import TextImage
+from platalea.experiments.config import args
+
 
 batch_size = 16
 
@@ -27,17 +28,14 @@ def get_score_fn_speech_transcriber(is_slt, use_beam_decoding):
         score_fn = lambda x, y: score_fn(x, y, beam_size=10)
     return score_fn
 
-# Parse command line parameters
-parser = configargparse.get_argument_parser('platalea')
-parser.add_argument(
-    'path', metavar='path', help='Model\'s path')
-parser.add_argument(
-    '-b', help='Use beam decoding (for ASR and SLT experiments)',
-    dest='use_beam_decoding', action='store_true', default=False)
-parser.add_argument(
-    '-t', help='Evaluate on test set', dest='use_test_set',
-    action='store_true', default=False)
-args, unknown_args = parser.parse_known_args()
+# Parsing arguments
+args.add_argument('path', metavar='path', help='Model\'s path')
+args.add_argument('-b', help='Use beam decoding (for ASR and SLT experiments)',
+                  dest='use_beam_decoding', action='store_true', default=False)
+args.add_argument('-t', help='Evaluate on test set', dest='use_test_set',
+                  action='store_true', default=False)
+args.enable_help()
+args.parse()
 
 logging.info('Loading data')
 if args.use_test_set:

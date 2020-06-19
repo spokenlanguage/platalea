@@ -16,6 +16,9 @@ torch.manual_seed(args.seed)
 random.seed(args.seed)
 logging.basicConfig(level=logging.INFO)
 
+# Logging the arguments
+logging.info('Arguments: {}'.format(args))
+
 
 batch_size = 8
 

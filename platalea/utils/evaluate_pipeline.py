@@ -1,4 +1,3 @@
-import configargparse
 import json
 import logging
 import numpy as np
@@ -8,28 +7,31 @@ import torch
 import platalea.dataset as D
 import platalea.rank_eval as E
 from utils.extract_transcriptions import extract_trn
+from platalea.experiments.config import args
 
-batch_size = 16
 
 logging.basicConfig(level=logging.INFO)
 
-# Parse command line parameters
-parser = configargparse.get_argument_parser('platalea')
-parser.add_argument(
+# Parsing arguments
+args.add_argument(
     'path', metavar='path', help='Model\'s path')
-parser.add_argument(
+args.add_argument(
     '--asr_model_dir',
     help='Path to the directory where the pretrained ASR/SLT model is stored',
     dest='asr_model_dir', type=str, action='store')
-parser.add_argument(
+args.add_argument(
     '-t', help='Evaluate on test set', dest='use_test_set',
     action='store_true', default=False)
-parser.add_argument(
+args.add_argument(
     '--text_image_model_dir',
     help='Path to the directory where the pretrained text-image model is \
     stored',
     dest='text_image_model_dir', type=str, action='store')
-args, unknown_args = parser.parse_known_args()
+args.enable_help()
+args.parse()
+
+
+batch_size = 16
 
 logging.info('Loading data')
 if args.use_test_set:
