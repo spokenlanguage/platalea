@@ -10,10 +10,6 @@ from platalea.experiments.config import args
 
 
 # Parsing arguments
-args.add_argument(
-    '--downsampling_factor_text', default=None, type=float,
-    help='factor by which the amount of available transcriptions should be \
-    downsampled (affecting speech-text retrieval only)')
 args.enable_help()
 args.parse()
 
@@ -40,22 +36,6 @@ data = dict(
         args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
         args.audio_features_fn, split='val', batch_size=batch_size,
         shuffle=False))
-
-if args.downsampling_factor_text:
-    ds_factor_text = args.downsampling_factor_text
-    step_st = args.downsampling_factor_text
-    # The downsampling factor for text is applied on top of the main
-    # downsampling factor that is applied to all data
-    if args.downsampling_factor:
-        ds_factor_text *= args.downsampling_factor
-    data_st = dict(
-        train=D.flickr8k_loader(
-            split='train', batch_size=batch_size, shuffle=True,
-            downsampling_factor=ds_factor_text),
-        val=D.flickr8k_loader(split='val', batch_size=batch_size))
-else:
-    data_st = data
-    step_st = 1
 
 config = dict(
     SharedEncoder=dict(
@@ -88,9 +68,8 @@ net = M.MTLNetSpeechText(config)
 run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32)
 
 tasks = [
-    dict(name='SI', net=net.SpeechImage, data=data, eval=score, step=1),
-    dict(name='ST', net=net.SpeechText, data=data_st, eval=score_speech_text,
-         step=step_st)]
+    dict(name='SI', net=net.SpeechImage, data=data, eval=score),
+    dict(name='ST', net=net.SpeechText, data=data, eval=score_speech_text)]
 
 logging.info('Training')
 M.experiment(net, tasks, run_config)
