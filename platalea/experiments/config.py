@@ -53,7 +53,7 @@ args.add_argument(
     location')
 args.add_argument(
     '--seed', default=123, type=int, help='seed for sources of randomness')
-parser.add_argument(
+args.add_argument(
     '--downsampling-factor', default=None, type=float,
     dest='downsampling_factor',
     help='factor by which the dataset should be downsampled')
