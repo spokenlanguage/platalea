@@ -8,8 +8,6 @@ from platalea.experiments.config import args
 
 
 # Parsing arguments
-args.add_argument('--epochs', action='store', default=32, type=int,
-                  help='number of epochs after which to stop training')
 args.enable_help()
 args.parse()
 

@@ -57,7 +57,7 @@ for ds_factor in factors:
         logging.info('Building ASR/SLT model')
         config = M1.get_default_config()
         net = M1.SpeechTranscriber(config)
-        run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=32)
+        run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=args.epochs)
         logging.info('Training ASR/SLT')
         M1.experiment(net, data, run_config, slt=data['train'].dataset.is_slt())
         suffix = str(ds_factor).zfill(lz)
@@ -79,7 +79,7 @@ for ds_factor in factors:
     else:
         logging.info('Building model text-image')
         net = M2.TextImage(M2.get_default_config())
-        run_config = dict(max_lr=2 * 1e-4, epochs=32)
+        run_config = dict(max_lr=2 * 1e-4, epochs=args.epochs)
         logging.info('Training text-image')
         M2.experiment(net, data, run_config)
         suffix = str(ds_factor).zfill(lz)

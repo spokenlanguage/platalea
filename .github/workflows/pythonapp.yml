@@ -3,11 +3,9 @@ name: install and run in conda env
 on: [push]
 
 jobs:
-  build:
-
+  everything:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
-
     steps:
     - name: checkout
       uses: actions/checkout@v2
@@ -17,7 +15,7 @@ jobs:
         repository: spokenlanguage/flickr1d
         path: data
     - name: Setup conda
-      uses: s-weigand/setup-conda@master
+      uses: s-weigand/setup-conda@v1
       with:
         update-conda: true
         python-version: 3.7
@@ -26,9 +24,11 @@ jobs:
     - run: which python
     - run: conda install pytorch -c pytorch
     - run: pip install torchvision
+    - name: install dependencies for tests
+      run: pip install sklearn python-Levenshtein coverage
 
     - name: Install the package
-      run: pip install -e .
+      run: pip install -e ${{ github.workspace }}
       env:
         CONDA_PREFIX: /usr/share/miniconda
 
@@ -38,21 +38,84 @@ jobs:
       run: |
         pip install flake8
         # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 ${{ github.workspace }} --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 ${{ github.workspace }} --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-    - name: Run some experiments, including coverage
+    - name: Run basic experiment, including coverage
       env:
         CONDA_PREFIX: /usr/share/miniconda
         FLICKR1D_DIR: ${{ github.workspace }}/data
         FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
-      run: |
-        pip install sklearn python-Levenshtein coverage nltk
-        coverage run -m platalea.experiments.flickr8k.basic_default --epochs=1 -c $FLICKR1D_DIR/config.yml
-        coverage run -m platalea.experiments.flickr8k.transformer --epochs=1 -c $FLICKR1D_DIR/config.yml
-        coverage xml
+        PLATALEA_EPOCHS: 1
+      run: coverage run -m platalea.experiments.flickr8k.basic_default -c $FLICKR1D_DIR/config.yml
 
+    - name: Run transformer experiment, including coverage
+      env:
+        CONDA_PREFIX: /usr/share/miniconda
+        FLICKR1D_DIR: ${{ github.workspace }}/data
+        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
+        PLATALEA_EPOCHS: 1
+      run: coverage run -m platalea.experiments.flickr8k.transformer -c $FLICKR1D_DIR/config.yml
+
+    - name: Run mtl_asr experiment, including coverage
+      env:
+        CONDA_PREFIX: /usr/share/miniconda
+        FLICKR1D_DIR: ${{ github.workspace }}/data
+        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
+        PLATALEA_EPOCHS: 1
+      run: coverage run -m platalea.experiments.flickr8k.mtl_asr -c $FLICKR1D_DIR/config.yml
+
+    - name: Run mtl_st experiment, including coverage
+      env:
+        CONDA_PREFIX: /usr/share/miniconda
+        FLICKR1D_DIR: ${{ github.workspace }}/data
+        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
+        PLATALEA_EPOCHS: 1
+      run: coverage run -m platalea.experiments.flickr8k.mtl_st -c $FLICKR1D_DIR/config.yml
+
+    - name: Run asr experiment, including coverage
+      env:
+        CONDA_PREFIX: /usr/share/miniconda
+        FLICKR1D_DIR: ${{ github.workspace }}/data
+        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
+        PLATALEA_EPOCHS: 1
+      run: |
+        coverage run -m platalea.experiments.flickr8k.asr -c $FLICKR1D_DIR/config.yml
+        mkdir -p ${{ github.workspace }}/asr_out
+        mv net.1.pt ${{ github.workspace }}/asr_out/net.best.pt
+
+    - name: Run text_image experiment, including coverage
+      env:
+        CONDA_PREFIX: /usr/share/miniconda
+        FLICKR1D_DIR: ${{ github.workspace }}/data
+        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
+        PLATALEA_EPOCHS: 1
+      run: |
+        coverage run -m platalea.experiments.flickr8k.text_image -c $FLICKR1D_DIR/config.yml
+        mkdir -p ${{ github.workspace }}/text_image_out
+        mv net.1.pt ${{ github.workspace }}/text_image_out/net.best.pt
+
+    - name: Run pip_ind experiment, including coverage
+      env:
+        CONDA_PREFIX: /usr/share/miniconda
+        FLICKR1D_DIR: ${{ github.workspace }}/data
+        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
+        PLATALEA_EPOCHS: 1
+      run: coverage run -m platalea.experiments.flickr8k.pip_ind -c $FLICKR1D_DIR/config.yml --asr_model_dir=${{ github.workspace }}/asr_out --text_image_model_dir=${{ github.workspace }}/text_image_out
+
+    - name: Run pip_seq experiment, including coverage
+      env:
+        CONDA_PREFIX: /usr/share/miniconda
+        FLICKR1D_DIR: ${{ github.workspace }}/data
+        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
+        PLATALEA_EPOCHS: 1
+      run: coverage run -m platalea.experiments.flickr8k.pip_seq -c $FLICKR1D_DIR/config.yml --asr_model_dir=${{ github.workspace }}/asr_out
+
+    - name: Collect coverage information
+      env:
+        CONDA_PREFIX: /usr/share/miniconda
+      run: coverage xml
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
       with:
