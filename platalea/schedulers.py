@@ -8,7 +8,8 @@ def cyclic(optimizer, n_batches, max_lr, min_lr=1e-6):
     logging.info("Setting stepsize of {}".format(stepsize))
 
     def learning_rate(iteration):
-        return (max_lr - min_lr)*(0.5 * (np.cos(np.pi * (1 + (3 - 1) / stepsize * iteration)) + 1)) + min_lr
+        lr = (max_lr - min_lr)*(0.5 * (np.cos(np.pi * (1 + (3 - 1) / stepsize * iteration)) + 1)) + min_lr
+        return lr
 
     scheduler = lr_scheduler.LambdaLR(optimizer, learning_rate, last_epoch=-1)
     # lambda function which uses the cosine function to cycle the learning rate between the given min and max rates
@@ -27,7 +28,9 @@ def noam(optimizer, d_model, warmup_steps=4000):
     """
 
     def learning_rate(iteration):
-        return d_model**-0.5 * min(iteration**-0.5, iteration * warmup_steps**-1.5)
+        step = iteration + 1  # skip zero to avoid divide by zero
+        lr = d_model**-0.5 * min(step**-0.5, step * warmup_steps**-1.5)
+        return lr
 
     scheduler = lr_scheduler.LambdaLR(optimizer, learning_rate)
     return scheduler
