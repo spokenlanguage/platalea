@@ -1,6 +1,5 @@
 *.pt
 *.json
-*.pkl
 *.txt
 *.log
 config.yml
@@ -19,6 +18,9 @@ __pycache__/
 
 # C extensions
 *.so
+
+# OS junk
+.DS_Store
 
 # Distribution / packaging
 .Python
