@@ -19,7 +19,7 @@ class PlataleaConfig:
     def __init__(self):
         self._args = {}
         self._parser = configargparse.ArgParser(default_config_files=default_config_files,
-                                                add_help=False)
+                                                add_help=False, formatter_class=configargparse.DefaultsFormatter)
         self._help = False
 
     def add_argument(self, *args, **kwargs):
@@ -56,6 +56,8 @@ args.add_argument('--seed', default=123, type=int,
 args.add_argument('--epochs', env_var='PLATALEA_EPOCHS',
                   action='store', default=32, type=int,
                   help='number of epochs after which to stop training')
+args.add_argument('--lr_scheduler', default="cyclic", choices=['cyclic', 'noam'],
+                  help='The learning rate scheduler to use. WARNING: noam not yet implemented for most experiments!')
 
 # Flickr8k specific parameters
 args.add_argument(
