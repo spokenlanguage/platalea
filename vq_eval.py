@@ -10,6 +10,8 @@ logging.basicConfig(level=logging.INFO)
 import os.path
 
 def experiments(outfile=None):
+    """Return the list of directories which do not contain the result file
+named `outfile`."""
     dirs = glob.glob("experiments/vq-*/")
     if outfile is None:
         return dirs

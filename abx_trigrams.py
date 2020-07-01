@@ -5,6 +5,10 @@ import json
 import platalea.ipa as ipa
 import h5py
 import logging
+import zerospeech2020.evaluation.abx as abx
+from ABXpy.misc.any2h5features import convert
+from sklearn.preprocessing import OneHotEncoder
+import numpy as np
 
 def phonemes(u):
     result = []
@@ -27,31 +31,50 @@ def trigrams(xs):
 
 def deoov(xs):
     return [ x for x in xs if not any(xi['phone'].startswith('oov') or xi['phone'].startswith('sil') for xi in x) ]
-    
+
+
+class Topline:
+
+    def __init__(self):
+        self.oh = OneHotEncoder(dtype=np.int32, sparse=False)
+        #phonemes = np.array(list(ipa._arpa2ipa.values())).reshape(-1, 1)
+        phonemes = np.array(list(ipa._arpa2ipa.keys())).reshape(-1, 1)
+        self.oh.fit(phonemes)
+
+    def transform(self, xs):
+        features = np.array(xs).reshape(-1,1)
+        return self.oh.transform(features)
+
+    def dump(self, xs, path):
+        np.savetxt(path, self.transform(xs))
+            
 def chop(us):
     import csv
     wav = Path("data/datasets/flickr8k/flickr_audio/wavs")
     out = Path("data/flickr8k_abx_wav")
-    with h5py.File("data/flickr8k_abx_top.features", "w") as features:
-        items = csv.writer(open("data/flickr8k_abx.item", "w"), delimiter=' ', lineterminator='\n')
-        items.writerow(["#file", "onset", "offset", "#middle", "trigram", "context"])
-        for u in us:        
-            filename = os.path.split(u['audiopath'])[-1]
-            bare, _ = os.path.splitext(filename)
-            grams = deoov(trigrams(phonemes(u)))
-            logging.info("Loading audio from {}".format(filename))
-            sound = pydub.AudioSegment.from_file(wav / filename)
-            Path(out / bare).mkdir(parents=True, exist_ok=True)
-            for i, gram in enumerate(grams):
-                #logging.info("3gram: {}".format(gram))
-                start = int(gram[0]['start']*1000)
-                end = int(gram[-1]['end']*1000)
-                triple = [ ipa.arpa2ipa(phone['phone'].split('_')[0]) for phone in gram ]
-                fragment = sound[start : end]
-                target = out / bare / ("{}".format(i) + ".wav")
-                items.writerow([Path(bare) / "{}".format(i), 0, end-start, triple[1], '_'.join(triple), '_'.join([triple[0], triple[-1]])])
-                fragment.export(format='wav', out_f=target)
-                logging.info("Saved {}th trigram in {}".format(i, target))
+    out.mkdir(parents=True, exist_ok=True)
+    outtxt = Path("data/flickr8k_abx_topline")
+    outtxt.mkdir(parents=True, exist_ok=True)
+    items = csv.writer(open("data/flickr8k_abx.item", "w"), delimiter=' ', lineterminator='\n')
+    items.writerow(["#file", "onset", "offset", "#middle", "trigram", "context"])
+    topline = Topline()
+    for u in us:        
+        filename = os.path.split(u['audiopath'])[-1]
+        bare, _ = os.path.splitext(filename)
+        grams = deoov(trigrams(phonemes(u)))
+        logging.info("Loading audio from {}".format(filename))
+        sound = pydub.AudioSegment.from_file(wav / filename)
+        Path(out / bare).mkdir(parents=True, exist_ok=True)
+        for i, gram in enumerate(grams):
+            start = int(gram[0]['start']*1000)
+            end = int(gram[-1]['end']*1000)
+            triple = [ phone['phone'].split('_')[0] for phone in gram ]
+            topline.dump(triple, outtxt / "{}_{}.txt".format(bare, i))
+            fragment = sound[start : end]
+            target = out / "{}_{}.wav".format(bare, i)
+            items.writerow([ "{}_{}".format(bare,i), 0, end-start, triple[1], '_'.join(triple), '_'.join([triple[0], triple[-1]])])
+            fragment.export(format='wav', out_f=target)
+            logging.info("Saved {}th trigram in {}".format(i, target))
 
 
     
@@ -64,7 +87,21 @@ def main():
         u['audiopath'] =  os.path.split(u['audiopath'])[-1]
         align[u['audiopath']] = u
     chop(list(align.values())[:1000])
+    
 
+def ed(x, y, normalized=None): 
+    return edit_distance(x, y) 
 
+def _abx():
+    # FIXME this code is not currently working in the environment installed with pip. It needs to run in a conda env with ABXpy installed (Some h5py fuckery)
+    convert("data/flickr8k_abx_topline/", "data/flickr8k_abx_topline.features",load=_load_features_2019) 
+    distances.compute_distances( 
+        "../platalea.vq/data/flickr8k_abx_topline.features", 'features', 
+        "../platalea.vq/data/flickr8k_abx.abx", "../platalea.vq/data/flickr8k_abx_topline.distance", ed, normalized=True, n_cpu=16)  
+    task = ABXpy.task.Task("../platalea.vq/data/flickr8k_abx.item", "middle", by="context")
+    task.generate_triplets()
+    score.score("../platalea.vq/data/flickr8k_abx.abx", "../platalea.vq/data/flickr8k_abx_topline.distance", "../platalea.vq/data/flickr8k_abx_topline.score")
+    analyze.analyze("../platalea.vq/data/flickr8k_abx.abx", "../platalea.vq/data/flickr8k_abx_topline.score", "../platalea.vq/data/flickr8k_abx_topline.analyze")
+    
 main()
 
