@@ -92,7 +92,7 @@ def task_iterator(tasks):
     step = 1
     try:
         while True:
-            yield [(t, next(it)) for t, it in zip(tasks, iterators) if step % t['step'] == 0]
+            yield [(t, next(it)) for t, it in zip(tasks, iterators) if 'step' not in t or step % t['step'] == 0]
             step += 1
     except StopIteration:
         return
