@@ -15,10 +15,6 @@ from platalea.text_image import TextImage
 from platalea.experiments.config import args
 
 
-batch_size = 16
-
-logging.basicConfig(level=logging.INFO)
-
 def get_score_fn_speech_transcriber(is_slt, use_beam_decoding):
     if is_slt:
         score_fn = platalea.score.score_slt
@@ -37,13 +33,23 @@ args.add_argument('-t', help='Evaluate on test set', dest='use_test_set',
 args.enable_help()
 args.parse()
 
+batch_size = 16
+
+logging.basicConfig(level=logging.INFO)
+
+
 logging.info('Loading data')
 if args.use_test_set:
-    data = D.flickr8k_loader(split='test', batch_size=batch_size,
+    data = D.flickr8k_loader(args.flickr8k_root, args.flickr8k_meta,
+                             args.flickr8k_language, args.audio_features_fn,
+                             split='test', batch_size=batch_size,
                              shuffle=False)
 else:
-    data = D.flickr8k_loader(split='val', batch_size=batch_size,
+    data = D.flickr8k_loader(args.flickr8k_root, args.flickr8k_meta,
+                             args.flickr8k_language, args.audio_features_fn,
+                             split='val', batch_size=batch_size,
                              shuffle=False)
+
 logging.info('Loading model')
 net = torch.load(args.path)
 logging.info('Evaluating')
