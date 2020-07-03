@@ -21,13 +21,13 @@ def encode(net, datadir, outdir):
         feat = audio_features(paths, config)
         logging.info("Saving preprocessed data")
         torch.save(feat, str(datadir) + "_audiofeat.pt")
-        logging.info("Computing codes")
-        codes = net.code_audio(feat, one_hot=True)
-        for path, code in zip(paths, codes):
-            filename = os.path.splitext(os.path.basename(path))[0]
-            out = outdir + '/' + filename + ".txt"
-            assert code.shape[0] > 0
-            np.savetxt(out, code.astype(int), fmt='%d')
+    logging.info("Computing codes")
+    codes = net.code_audio(feat, one_hot=True)
+    for path, code in zip(paths, codes):
+        filename = os.path.splitext(os.path.basename(path))[0]
+        out = outdir + '/' + filename + ".txt"
+        assert code.shape[0] > 0
+        np.savetxt(out, code.astype(int), fmt='%d')
     
 def encode_zerospeech(net, outdir='.'):
     encode(net, "/roaming/gchrupal/verdigris/platalea.vq/data/2020/2019/english/test/")    
