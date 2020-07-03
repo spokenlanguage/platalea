@@ -1,4 +1,3 @@
-from nltk.translate.bleu_score import sentence_bleu
 import numpy as np
 import platalea.dataset as D
 import platalea.rank_eval as E
@@ -52,6 +51,7 @@ def score_asr(net, dataset, beam_size=None):
 
 
 def bleu_score(references, hypotheses):
+    from nltk.translate.bleu_score import sentence_bleu
     bleu = np.zeros(len(references))
     for i in range(len(references)):
         bleu[i] = sentence_bleu([references[i]], hypotheses[i])

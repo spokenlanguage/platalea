@@ -378,6 +378,8 @@ class SpeechEncoderBottom(nn.Module):
         x = self.Conv(input)
         # Update the lengths to compensate for the convolution subsampling
         length = inout(self.Conv, length)
+        # FIXME. Avoid negative lengths which `inout` returns in some cases.
+        length = length.clamp(min=1)
         # Create a packed_sequence object. The padding will be excluded from
         # the update step thereby training on the original sequence length
         # only.  Expecting a SpeechEncoderTop to unpack the sequence
