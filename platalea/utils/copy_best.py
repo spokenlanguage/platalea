@@ -33,20 +33,25 @@ def copy_best(exp_path=['.'], result_fname='result.json', save_fname='net.best.p
 if __name__ == '__main__':
     # Parsing command line
     doc = __doc__.strip("\n").split("\n", 1)
-    parser = argparse.ArgParser()
+    parser = argparse.ArgumentParser()
     parser.description = doc[0]
     parser.epilog = doc[1]
     parser.add_argument(
         'exp_path', help='Path to the experiment', default=['.'], nargs='*')
     parser.add_argument(
-        '--result', help='Name of the JSON file containing the results.',
+        '--result',
+        help='Path to the JSON file containing the results'\
+        ' (default=result.json).',
         type=str, default='result.json')
     parser.add_argument(
-        '--save', help='Name under which the best network should be saved.',
+        '--save',
+        help='Path where the corresponding net should be saved'\
+        ' (default=net.best.pt).',
         type=str, default='net.best.pt')
     parser.add_argument(
         '--experiment_type', dest='experiment_type',
-        help='Type of experiment. Determines which metric is used.',
+        help='Type of experiment. Determines which metric is used'\
+        ' (default=retrieval).',
         type=str, choices=['retrieval', 'asr', 'mtl', 'slt'],
         default='retrieval')
     args = parser.parse_args()
