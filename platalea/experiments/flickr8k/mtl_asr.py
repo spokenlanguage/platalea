@@ -18,19 +18,24 @@ torch.manual_seed(args.seed)
 random.seed(args.seed)
 logging.basicConfig(level=logging.INFO)
 
+# Logging the arguments
+logging.info('Arguments: {}'.format(args))
+
 
 batch_size = 8
-hidden_size = 1024
+hidden_size = 1024 * 3 // 4
 dropout = 0.0
 
 logging.info('Loading data')
 data = dict(
-    train=D.flickr8k_loader(args.flickr8k_root, args.flickr8k_meta,
-                            args.flickr8k_language, args.audio_features_fn,
-                            split='train', batch_size=batch_size, shuffle=True),
-    val=D.flickr8k_loader(args.flickr8k_root, args.flickr8k_meta,
-                          args.flickr8k_language, args.audio_features_fn,
-                          split='val', batch_size=batch_size, shuffle=False))
+    train=D.flickr8k_loader(
+        args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
+        args.audio_features_fn, split='train', batch_size=batch_size,
+        shuffle=True, downsampling_factor=args.downsampling_factor),
+    val=D.flickr8k_loader(
+        args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
+        args.audio_features_fn, split='val', batch_size=batch_size,
+        shuffle=False))
 fd = D.Flickr8KData
 
 config = dict(

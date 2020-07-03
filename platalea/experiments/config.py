@@ -51,11 +51,15 @@ args.add_argument(
     default='mfcc_delta_features.pt',
     help='filename of the MFCC audio features file relative to the dataset \
     location')
-args.add_argument('--seed', default=123, type=int,
-                  help='seed for sources of randomness')
-args.add_argument('--epochs', env_var='PLATALEA_EPOCHS',
-                  action='store', default=32, type=int,
-                  help='number of epochs after which to stop training')
+args.add_argument(
+    '--seed', default=123, type=int, help='seed for sources of randomness')
+args.add_argument(
+    '--epochs', env_var='PLATALEA_EPOCHS', action='store', default=32,
+    type=int, help='number of epochs after which to stop training')
+args.add_argument(
+    '--downsampling-factor', default=None, type=float,
+    dest='downsampling_factor',
+    help='factor by which the dataset should be downsampled')
 
 # Flickr8k specific parameters
 args.add_argument(
