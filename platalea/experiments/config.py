@@ -41,6 +41,9 @@ class PlataleaConfig:
     def __getattr__(self, arg_name):
         return self._args[arg_name]
 
+    def __str__(self):
+        return self._args.__str__()
+
 
 args = PlataleaConfig()
 
