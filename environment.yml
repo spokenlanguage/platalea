@@ -86,6 +86,7 @@ dependencies:
     - git+https://github.com/bootphon/ABXpy.git@master
     - git+https://github.com/bootphon/tdev2.git@master
     - git+https://github.com/bootphon/zerospeech2020.git@master
+    - git+https://github.com/gchrupala/ursa.git@master
     - git+https://github.com/gchrupala/lyz.git@master
 prefix: /home/gchrupal/miniconda3/envs/platalea.vq
 
