@@ -81,7 +81,24 @@ def prepare_rsa():
         net.cuda()
         net_rand.cuda()
         save_data([('trained', net), ('random', net_rand)], modeldir, batch_size=8)
-
+        
+def prepare_rsa_trigrams():
+    from prepare_flickr8k import save_data_trigrams, make_factors
+    for modeldir in experiments("ed_rsa_trigrams.json"):
+        result = [ json.loads(line) for line in open(modeldir + "/result.json") ]
+        best = sorted(result, key=lambda x: x['recall']['10'], reverse=True)[0]['epoch']
+        oldnet = torch.load("{}/net.{}.pt".format(modeldir, best))
+        logging.info("Loading model from {} at epoch {}".format(modeldir, best))
+        net = M.SpeechImage(oldnet.config)
+        net.load_state_dict(oldnet.state_dict())
+        net.cuda()
+        json.dump(make_factors(net), open("{}/downsampling_factors.json".format(modeldir), "w"))
+        net = M.SpeechImage(oldnet.config)
+        net_rand = M.SpeechImage(oldnet.config)
+        net.load_state_dict(oldnet.state_dict())
+        net.cuda()
+        net_rand.cuda()
+        save_data_trigrams([('trained', net), ('random', net_rand)], "{}/trigrams".format(modeldir), batch_size=8)
 
 def rsa():
     from lyz.methods import ed_rsa
@@ -92,6 +109,14 @@ def rsa():
         json.dump(cor, open("{}/ed_rsa.json".format(modeldir), "w"))
         
 
+def rsa_trigrams():
+    from lyz.methods import ed_rsa
+    for modeldir in experiments("ed_rsa_trigrams.json"):
+        logging.info("Processing {}".format(modeldir))
+        cor = ed_rsa("{}/trigrams".format(modeldir), layers=['codebook'], test_size=1/2)
+        logging.info("RSA on trigrams for {}: {}".format(modeldir, json.dumps(cor, indent=2)))
+        json.dump(cor, open("{}/ed_rsa_trigrams.json".format(modeldir), "w"))
+        
 
 def local_diag():
     from lyz.methods import local_diagnostic

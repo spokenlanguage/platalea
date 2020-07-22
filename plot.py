@@ -27,6 +27,7 @@ def scores():
             
             
             cor      = select("{}/ed_rsa.json".format(d), dict(model='trained', reference='phoneme'))['cor']
+            cor3     = select("{}/ed_rsa_trigrams.json".format(d), dict(model='trained', reference='phoneme'))['cor']
             cor_base = select("{}/ed_rsa.json".format(d), dict(model='random', reference='phoneme'))['cor']
             cor_word = select("{}/ed_rsa.json".format(d), dict(model='trained', reference='word'))['cor']
             cor_word_base = select("{}/ed_rsa.json".format(d), dict(model='random', reference='word'))['cor']
@@ -43,8 +44,10 @@ def scores():
                 abx=100-zs['2019']['english']['scores']['abx'],
                 abx_lev=100-zs['2019']['english']['details_abx']['test']['levenshtein'],
                 abx_f=100-json.load(open("{}/abx_flickr8k_result.json".format(d)))['avg_abx_error'],
+                abx_fw = 100-json.load(open("{}/abx_within_flickr8k_result.json".format(d)))['avg_abx_error'],
                 bitrate=zs['2019']['english']['scores']['bitrate'],
                 ed_rsa=cor,
+                ed_rsa3=cor3,
                 ed_rsa_word=cor_word,
                 recall_diff=ret['recall']['10'] - ret_base['recall']['10'],
                 abx_diff=(100-zs['2019']['english']['scores']['abx']) - (100-zs_base['2019']['english']['scores']['abx']),
@@ -64,7 +67,7 @@ data = pd.read_json(json.dumps(list(scores())), orient='records')
 print(data)
 from plotnine import *
 
-vars = ['abx', 'abx_lev', 'abx_f', 'ed_rsa', 'ed_rsa_word', 'diag']
+vars = ['abx', 'abx_lev', 'abx_f', 'abx_fw', 'ed_rsa', 'ed_rsa_word', 'diag', 'ed_rsa3']
 for var in vars:
     
     p = ggplot(data, aes(x='recall', y=var)) + \

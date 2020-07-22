@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from platalea.encoders import SpeechEncoderVQ, ImageEncoder, inout
+from platalea.encoders import SpeechEncoderVQ, SpeechEncoderVQ2, ImageEncoder, inout
 import platalea.loss
 from collections import Counter
 import logging
@@ -16,7 +16,10 @@ class SpeechImage(nn.Module):
         super(SpeechImage, self).__init__()
         self.config = config
         # Components can be pre-instantiated or configured through a dictionary
-        self.SpeechEncoder = SpeechEncoderVQ(config['SpeechEncoder'])
+        if config['SpeechEncoder'].get('VQEmbedding1', False):
+            self.SpeechEncoder = SpeechEncoderVQ2(config['SpeechEncoder'])
+        else:
+            self.SpeechEncoder = SpeechEncoderVQ(config['SpeechEncoder'])
         self.ImageEncoder = ImageEncoder(config['ImageEncoder'])
 
     def cost(self, item):
@@ -62,6 +65,7 @@ class SpeechImage(nn.Module):
                 audio_e.append(code)
         return audio_e
 
+    
 def cyclic_scheduler(optimizer, n_batches, max_lr, min_lr=1e-6):
     stepsize = n_batches * 4
     logging.info("Setting stepsize of {}".format(stepsize))

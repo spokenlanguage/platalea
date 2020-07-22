@@ -17,7 +17,7 @@ class IntrospectRNN(nn.Module):
                                    bidirectional=rnn.bidirectional)
             for key in model.__dict__['_parameters']:
                 model.__dict__['_parameters'][key] = rnn.__dict__['_parameters'][key]
-            self.submodels.append(model)
+            self.submodels.append(model.cuda())
 
     def forward(self, x):
         return self.rnn(x)

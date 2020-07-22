@@ -11,6 +11,7 @@ from pathlib import Path
 config = dict(type='mfcc', delta=True, alpha=0.97, n_filters=40,  window_size=0.025, frame_shift=0.010)
 
 
+
 def encode(net, datadir, outdir):
     paths = glob.glob(datadir +  "/*.wav")
     assert len(paths) > 0
