@@ -8,7 +8,7 @@ import torch.utils.checkpoint
 from platalea.attention import Attention
 import platalea.hardware
 import platalea.introspect
-from platalea.vq import VQEmbeddingEMA, Jitter
+from platalea.vq import VQEmbeddingEMA
 
 # Includes code adapted from
 # https://github.com/gchrupala/speech2image/blob/master/PyTorch/functions/encoders.py
@@ -411,7 +411,7 @@ class SpeechEncoderBottom(nn.Module):
 
         return result, length
 
-    
+
 class SpeechEncoderMiddle(nn.Module):
     def __init__(self, config):
         super(SpeechEncoderMiddle, self).__init__()
@@ -437,7 +437,7 @@ class SpeechEncoderMiddle(nn.Module):
         result = {}
         # Computing full stack of RNN states
         x = nn.utils.rnn.pack_padded_sequence(
-            conv, length, batch_first=True, enforce_sorted=False)
+            input, length, batch_first=True, enforce_sorted=False)
         if self.RNN is not None:
             rnn = self.IntrospectRNN.introspect(x)
             for l in range(self.RNN.num_layers):
@@ -447,7 +447,7 @@ class SpeechEncoderMiddle(nn.Module):
 
         return result, length
 
-    
+
 class SpeechEncoderTop(nn.Module):
     def __init__(self, config):
         super(SpeechEncoderTop, self).__init__()
@@ -479,7 +479,7 @@ class SpeechEncoderTop(nn.Module):
             logging.info("Creating IntrospectRNN wrapper")
             self.IntrospectRNN = platalea.introspect.IntrospectRNN(self.RNN)
         result = {}
-        
+
         # Computing full stack of RNN states
         if self.RNN is not None:
             rnn = self.IntrospectRNN.introspect(x)
@@ -523,25 +523,24 @@ class SpeechEncoderVQ(nn.Module):
         super(SpeechEncoderVQ, self).__init__()
         self.Bottom = SpeechEncoderBottom(config['SpeechEncoderBottom'])
         self.Codebook = VQEmbeddingEMA(config['VQEmbedding']['num_codebook_embeddings'], config['VQEmbedding']['embedding_dim'], jitter=config['VQEmbedding']['jitter'])
-        self.Top =  SpeechEncoderTop(config['SpeechEncoderTop'])
-
+        self.Top = SpeechEncoderTop(config['SpeechEncoderTop'])
 
     def forward(self, input, length):
         return self.Top(self.Codebook(self.Bottom(input, length))['quantized'])
 
-
     def introspect(self, input, length):
-        
+
         x = self.Bottom(input, length)
         # get intro and updated length
         bottom, length = self.Bottom.introspect(input, length)
         # FIXME probably not needed to run both forward and introspect?
         x = self.Codebook(x)
-        codebook = [ xi[:l,:] for xi,l in zip(x['one_hot'], length) ]
+        codebook = [xi[:l, :] for xi, l in zip(x['one_hot'], length)]
         top = self.Top.introspect(x['quantized'], length)
-        result =  {**bottom, **dict(codebook=codebook), **top }
+        result = {**bottom, **dict(codebook=codebook), **top}
         return result
-    
+
+
 class SpeechEncoderVQ2(nn.Module):
     def __init__(self, config):
         super(SpeechEncoderVQ2, self).__init__()
@@ -549,33 +548,32 @@ class SpeechEncoderVQ2(nn.Module):
         self.Codebook1 = VQEmbeddingEMA(config['VQEmbedding1']['num_codebook_embeddings'], config['VQEmbedding1']['embedding_dim'], jitter=config['VQEmbedding1']['jitter'])
         self.Middle = SpeechEncoderMiddle(config['SpeechEncoderMiddle'])
         self.Codebook2 = VQEmbeddingEMA(config['VQEmbedding2']['num_codebook_embeddings'], config['VQEmbedding2']['embedding_dim'], jitter=config['VQEmbedding2']['jitter'])
-        self.Top =  SpeechEncoderTop(config['SpeechEncoderTop'])
-
+        self.Top = SpeechEncoderTop(config['SpeechEncoderTop'])
 
     def forward(self, input, length):
         #return self.Top(self.Codebook(self.Bottom(input, length))['quantized'])
         return self.Top(self.Codebook2(self.Middle(self.Codebook1(self.Bottom(input, length))['quantized']))['quantized'])
 
-
     def introspect(self, input, length):
-        
+
         x = self.Bottom(input, length)
         # get intro and updated length
 
         bottom, length = self.Bottom.introspect(input, length)
-        
+
         x = self.Codebook1(x)
-        codebook1 = [ xi[:l,:] for xi,l in zip(x['one_hot'], length) ]
-        
+        codebook1 = [xi[:l, :] for xi, l in zip(x['one_hot'], length)]
+
         middle, length = self.Middle.introspect(x['quantized'], length)
 
         x = self.Codebook2(x)
-        codebook2 = [ xi[:l,:] for xi,l in zip(x['one_hot'], length) ]
+        codebook2 = [xi[:l, :] for xi, l in zip(x['one_hot'], length)]
 
         top = self.Top.introspect(x['quantized'], length)
-        
-        result =  {**bottom, **dict(codebook1=codebook1), **middle, **dict(codebook2=codebook2), **top }
+
+        result = {**bottom, **dict(codebook1=codebook1), **middle, **dict(codebook2=codebook2), **top}
         return result
+
 
 def inout(layer, L):
     """Mapping from size of input to the size of the output of a 1D
