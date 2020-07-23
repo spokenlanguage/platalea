@@ -84,7 +84,8 @@ def prepare_rsa():
         net.cuda()
         net_rand.cuda()
         save_data([('trained', net), ('random', net_rand)], modeldir, batch_size=8)
-        
+
+
 def prepare_rsa_trigrams():
     from prepare_flickr8k import save_data_trigrams, make_factors
     for modeldir in experiments("ed_rsa_trigrams.json"):
@@ -103,6 +104,7 @@ def prepare_rsa_trigrams():
         net_rand.cuda()
         save_data_trigrams([('trained', net), ('random', net_rand)], "{}/trigrams".format(modeldir), batch_size=8)
 
+
 def rsa(modeldirs):
     from lyz.methods import ed_rsa
     for mdldir in modeldirs:
@@ -119,7 +121,7 @@ def rsa_trigrams():
         cor = ed_rsa("{}/trigrams".format(modeldir), layers=['codebook'], test_size=1/2)
         logging.info("RSA on trigrams for {}: {}".format(modeldir, json.dumps(cor, indent=2)))
         json.dump(cor, open("{}/ed_rsa_trigrams.json".format(modeldir), "w"))
-        
+
 
 def local_diag(modeldirs):
     from lyz.methods import local_diagnostic

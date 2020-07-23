@@ -17,6 +17,46 @@ def save_data(indir, outdir, mode):
                     alignment_fpath='data/datasets/flickr8k/fa.json')
 
 
+def save_data_trigrams(indir, outdir, batch_size=32):
+    Path(outdir).mkdir(parents=True, exist_ok=True)
+    json.dump(make_factors(nets[0][1]), open(Path(directory) / "downsampling_factors.json", "w"))
+    save_global_data_trigrams(indir, outdir=outdir, mode=mode,
+                              alignment_fpath='data/flickr8k_trigrams_fa.json')
+    save_local_data(outdir=outdir, mode=mode,
+                    alignment_fpath="data/flickr8k_trigrams_fa.json")
+
+
+def save_global_data_trigrams(indir, outdir, mode, alignment_fpath):
+    """Generate data from trigrams for training a phoneme decoding model."""
+    from platalea.vq_encode import config, audio_features
+    logging.info("Loading alignments")
+    data = load_alignment(alignment_fpath)
+    # Only consider cases where alignement does not fail
+    alignments = [item for item in data.values() if good_alignment(item)]
+    paths = [item['audiopath'] for item in alignments]
+    audio = audio_features(paths, config)
+    audio_np = [a.numpy() for a in audio]
+
+    ## Global data
+    audio_id = np.array([datum['audio_id'] for datum in alignments])
+    global_input = dict(
+        audio_id=audio_id,
+        ipa=np.array([align2ipa(datum) for datum in alignments]),
+        text=np.array([datum['transcript'] for datum in alignments]),
+        audio=np.array(audio_np))
+    global_input_path = Path(outdir) / 'global_input.pkl'
+    pickle.dump(global_input, open(global_input_path, "wb"), protocol=4)
+
+    # Global activations
+    encodings = []
+    for sid in audio_id:
+        fpath = os.path.join(indir, os.path.splitext(sid)[0] + '.txt')
+        encodings.append(np.loadtxt(fpath))
+    path = "{}/global_{}_codebook.pkl".format(outdir, mode)
+    logging.info("Saving global data in {}".format(path))
+    pickle.dump({'codebook': encodings}, open(path, "wb"), protocol=4)
+
+
 def save_global_data(indir, outdir, mode, alignment_fpath):
     """Generate data for training a phoneme decoding model."""
     logging.info("Loading alignments")
@@ -36,7 +76,7 @@ def save_global_data(indir, outdir, mode, alignment_fpath):
     audio_np = [a.numpy() for a in audio]
 
     # Global input
-    audio_id = np.array([item['audio_id'] for item in alignments])
+    audio_id = np.array([datum['audio_id'] for datum in alignments])
     global_input = dict(
         audio_id=audio_id,
         ipa=np.array([align2ipa(datum) for datum in alignments]),

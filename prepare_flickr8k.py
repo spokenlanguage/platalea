@@ -20,16 +20,18 @@ def save_data(nets, directory, batch_size=32):
 def save_data_trigrams(nets, directory, batch_size=32):
     Path(directory).mkdir(parents=True, exist_ok=True)
     json.dump(make_factors(nets[0][1]), open(Path(directory) / "downsampling_factors.json", "w"))
-    save_global_data_trigrams(nets, directory=directory, batch_size=batch_size)  # FIXME adapt this per directory too
+    save_global_data_trigrams(nets, directory=directory,
+                              alignment_fpath='data/flickr8k_trigrams_fa.json',
+                              batch_size=batch_size)  # FIXME adapt this per directory too
     save_local_data(directory=directory,
                     alignment_fpath="data/flickr8k_trigrams_fa.json")
 
 
-def save_global_data_trigrams(nets, directory='.', batch_size=32):
+def save_global_data_trigrams(nets, directory, alignment_fpath, batch_size=32):
     """Generate data from trigrams for training a phoneme decoding model."""
     from platalea.vq_encode import config, audio_features
     logging.info("Loading alignments")
-    data = load_alignment("data/flickr8k_trigrams_fa.json")
+    data = load_alignment(alignment_fpath)
     # Only consider cases where alignement does not fail
     alignments = [item for item in data.values() if good_alignment(item)]
     paths = [item['audiopath'] for item in alignments]
@@ -38,18 +40,21 @@ def save_global_data_trigrams(nets, directory='.', batch_size=32):
 
     ## Global data
 
-    global_input = dict(audio_id=np.array([datum['audio_id'] for datum in alignments]),
-                        ipa=np.array([align2ipa(datum) for datum in alignments]),
-                        text=np.array([datum['transcript'] for datum in alignments]),
-                        audio=np.array(audio_np))
+    global_input = dict(
+        audio_id=np.array([datum['audio_id'] for datum in alignments]),
+        ipa=np.array([align2ipa(datum) for datum in alignments]),
+        text=np.array([datum['transcript'] for datum in alignments]),
+        audio=np.array(audio_np))
     global_input_path = Path(directory) / 'global_input.pkl'
     pickle.dump(global_input, open(global_input_path, "wb"), protocol=4)
 
     for mode, net in nets:
         global_act = collect_activations(net, audio, batch_size=batch_size)
         for layer in global_act:
-            logging.info("Saving global data in {}/global_{}_{}.pkl".format(directory, mode, layer))
-            pickle.dump({layer: global_act[layer]}, open("{}/global_{}_{}.pkl".format(directory, mode, layer), "wb"), protocol=4)
+            path = "{}/global_{}_{}.pkl".format(directory, mode, layer)
+            logging.info("Saving global data in {}".format(path))
+            pickle.dump({layer: global_act[layer]}, open(path, "wb"),
+                        protocol=4)
 
 
 def save_global_data(nets, directory, alignment_fpath, batch_size=32):
@@ -74,7 +79,7 @@ def save_global_data(nets, directory, alignment_fpath, batch_size=32):
     ## Global data
 
     global_input = dict(
-        audio_id=np.array([item['audio_id'] for item in alignments]),
+        audio_id=np.array([datum['audio_id'] for datum in alignments]),
         ipa=np.array([align2ipa(datum) for datum in alignments]),
         text=np.array([datum['transcript'] for datum in alignments]),
         audio=np.array(audio_np))
