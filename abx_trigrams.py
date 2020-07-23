@@ -100,15 +100,15 @@ def prepare_abx(k=1000, within_speaker=False):
                     tri_fa.write(json.dumps(dict(audiopath="{}".format(target),
                                                  transcript=word,
                                                  words=[dict(start=0,
-                                                             end=sum([phone['duration'] for phone in gram]) ,
+                                                             end=sum([phone['duration'] for phone in gram]),
                                                              word=word,
                                                              alignedWord=word,
                                                              case='success',
                                                              phones=gram)])))
-                    tri_fa.write("\n")                                                           
+                    tri_fa.write("\n")
                     logging.info("Saved {}th trigram in {}".format(i, target))
     if within_speaker:
-        
+
         task = ABXpy.task.Task("data/flickr8k_abx.item", "phone", by=["speaker", "context", "lang"])
         triplets = "data/flickr8k_abx_within.triplets"
     else:
@@ -125,7 +125,7 @@ def ed(x, y, normalized=None):
     return edit_distance(x, y)
 
 
-def run_abx(feature_dir, triplet_file):
+def run_abx(feature_dir, triplet_file, distancefun=ed):
     root, _ = os.path.split(feature_dir)
     logging.info("Converting features {}".format(feature_dir))
     convert(feature_dir, root + "/features", load=_load_features_2019)
@@ -135,7 +135,7 @@ def run_abx(feature_dir, triplet_file):
             'features',
             triplet_file,
             root + "/distance",
-            ed,
+            distancefun,
             normalized=True,
             n_cpu=16)
     logging.info("Computing scores")
@@ -145,9 +145,9 @@ def run_abx(feature_dir, triplet_file):
     return data
 
 
-def compute_result(encoded_dir, triplets_fpath, output_dir, within_speaker=False):
-    result = run_abx(encoded_dir, triplets_fpath)
-    
+def compute_result(encoded_dir, triplets_fpath, output_dir,
+                   within_speaker=False, distancefun=ed):
+    result = run_abx(encoded_dir, triplets_fpath, distancefun)
     if within_speaker:
         result.to_csv("{}/abx_within_flickr8k_analyze.csv".format(output_dir),
                   sep='\t', header=True, index=False)
@@ -162,7 +162,6 @@ def compute_result(encoded_dir, triplets_fpath, output_dir, within_speaker=False
                          "across")
         json.dump(dict(avg_abx_error=avg_error),
                   open("{}/abx_flickr8k_result.json".format(output_dir), "w"))
-    
     return avg_error
 
 
@@ -188,7 +187,7 @@ def abx(k=1000, within_speaker=False):
         logging.info("Encoding data")
         encode(net, "data/flickr8k_abx_wav/", encoded_dir)
         logging.info("Computing ABX")
-        triplets = "data/flickr8k_abx_within.triplets" if within_speaker else "data/flickr8k_abx.triplets" 
+        triplets = "data/flickr8k_abx_within.triplets" if within_speaker else "data/flickr8k_abx.triplets"
         avg_error = compute_result(encoded_dir, triplets, modeldir, within_speaker=within_speaker)
         logging.info("Score: {}".format(avg_error))
 

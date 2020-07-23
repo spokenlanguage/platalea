@@ -1,3 +1,4 @@
+import argparse
 import torch
 import platalea.basicvq as M
 import json
@@ -6,8 +7,10 @@ from platalea.vq_encode import evaluate_zerospeech
 import pathlib
 from pathlib import Path
 import logging
-logging.basicConfig(level=logging.INFO)
 import os.path
+
+logging.basicConfig(level=logging.INFO)
+
 
 def experiments(outfile=None):
     """Return the list of directories which do not contain the result file
@@ -24,10 +27,9 @@ named `outfile`."""
             else:
                 out.append(d)
         return out
-                
 
-          
-def zerospeech_baseline(): 
+
+def zerospeech_baseline():
     for modeldir in experiments("vq_base_result.json"):
         result = [ json.loads(line) for line in open(modeldir + "/result.json") ]
         best = result[0]['epoch']
@@ -44,7 +46,8 @@ def zerospeech_baseline():
         scores['epoch' ]=  best
         scores['modelpath'] =  "{}/net.{}.pt".format(modeldir, best)
         json.dump(scores, open("{}/vq_base_result.json".format(modeldir), "w"))
-   
+
+
 def zerospeech():
     for modeldir in experiments("vq_result.json"):
         result = [ json.loads(line) for line in open(modeldir + "result.json") ]
@@ -100,14 +103,14 @@ def prepare_rsa_trigrams():
         net_rand.cuda()
         save_data_trigrams([('trained', net), ('random', net_rand)], "{}/trigrams".format(modeldir), batch_size=8)
 
-def rsa():
+def rsa(modeldirs):
     from lyz.methods import ed_rsa
-    for modeldir in experiments("ed_rsa.json"):
-        logging.info("Processing {}".format(modeldir))
-        cor = ed_rsa(modeldir, layers=['codebook'], test_size=1/2)
-        logging.info("RSA for {}: {}".format(modeldir, json.dumps(cor, indent=2)))
-        json.dump(cor, open("{}/ed_rsa.json".format(modeldir), "w"))
-        
+    for mdldir in modeldirs:
+        logging.info("Processing {}".format(mdldir))
+        cor = ed_rsa(mdldir, layers=['codebook'], test_size=1/2)
+        logging.info("RSA for {}: {}".format(mdldir, json.dumps(cor, indent=2)))
+        json.dump(cor, open("{}/ed_rsa.json".format(mdldir), "w"))
+
 
 def rsa_trigrams():
     from lyz.methods import ed_rsa
@@ -118,18 +121,33 @@ def rsa_trigrams():
         json.dump(cor, open("{}/ed_rsa_trigrams.json".format(modeldir), "w"))
         
 
-def local_diag():
+def local_diag(modeldirs):
     from lyz.methods import local_diagnostic
-    for modeldir in experiments("local/local_diagnostic.json"):
-        logging.info("Running local diagnostic on {}".format(modeldir))
-        output_dir = Path(modeldir) / 'local'
+    for mdldir in modeldirs:
+        logging.info("Running local diagnostic on {}".format(mdldir))
+        output_dir = Path(mdldir) / 'local'
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         logging.info("Local diagnostic")
-        config = dict(directory=modeldir,
+        config = dict(directory=mdldir,
                       output=output_dir,
                       hidden=None,
                       epochs=40,
                       layers=['codebook'],
                       runs=1)
         local_diagnostic(config)
+
+
+if __name__ == '__main__':
+    # Parsing command line
+    doc = __doc__.strip("\n").split("\n", 1)
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('-m', '--method', help='Method for analysis',
+                        choices=['rsa', 'dc'])
+    args = parser.parse_args()
+
+    if args.method == 'rsa':
+        rsa(experiments("ed_rsa.json"))
+    elif args.method == 'dc':
+        local_diag(experiments("local/local_diagnostic.json"))
