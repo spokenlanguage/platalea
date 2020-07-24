@@ -17,9 +17,8 @@ def save_data(indir, outdir, mode):
                     alignment_fpath='data/datasets/flickr8k/fa.json')
 
 
-def save_data_trigrams(indir, outdir, batch_size=32):
+def save_data_trigrams(indir, outdir, mode):
     Path(outdir).mkdir(parents=True, exist_ok=True)
-    json.dump(make_factors(nets[0][1]), open(Path(directory) / "downsampling_factors.json", "w"))
     save_global_data_trigrams(indir, outdir=outdir, mode=mode,
                               alignment_fpath='data/flickr8k_trigrams_fa.json')
     save_local_data(outdir=outdir, mode=mode,

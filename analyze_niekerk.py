@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from prepare_niekerk import save_data, save_data_trigrams
 from shutil import copyfile
-from vq_eval import local_diag, rsa
+from vq_eval import local_diag, rsa, rsa_trigrams
 
 experiments = ['english/val', 'english_triplets/val']
 encroot = Path('/home/bjrhigy/dev/bshall-zrsc/submission/flickr8k')
