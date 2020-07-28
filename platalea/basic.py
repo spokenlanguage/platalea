@@ -99,8 +99,12 @@ def experiment(net, data, config):
                 cost += Counter({'cost': loss.item(), 'N':1})
                 if j % 100 == 0:
                     logging.info("train {} {} {}".format(epoch, j, cost['cost']/cost['N']))
+                else:
+                    logging.debug("train {} {} {}".format(epoch, j, cost['cost']/cost['N']))
                 if j % 400 == 0:
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
+                else:
+                    logging.debug("valid {} {} {}".format(epoch, j, val_loss()))
             result = platalea.score.score(net, data['val'].dataset)
             result['epoch'] = epoch
             json.dump(result, out)
