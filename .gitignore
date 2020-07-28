@@ -9,6 +9,9 @@ config.ini
 # vscode
 .vscode
 
+# OS stuff
+.DS_Store
+
 
 # The rest from https://github.com/github/gitignore/blob/master/Python.gitignore
 
