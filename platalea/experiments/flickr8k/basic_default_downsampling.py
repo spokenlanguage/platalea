@@ -16,7 +16,6 @@ args.parse()
 # Setting general configuration
 torch.manual_seed(args.seed)
 random.seed(args.seed)
-logging.basicConfig(level=logging.INFO)
 
 
 factors = [3, 9, 27, 81, 243]

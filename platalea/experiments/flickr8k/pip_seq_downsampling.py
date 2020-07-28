@@ -23,7 +23,6 @@ args.parse()
 # Setting general configuration
 torch.manual_seed(args.seed)
 random.seed(args.seed)
-logging.basicConfig(level=logging.INFO)
 
 
 batch_size = 8
