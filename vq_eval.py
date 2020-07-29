@@ -8,6 +8,8 @@ import pathlib
 from pathlib import Path
 import logging
 import os.path
+import numpy as np
+import pickle
 
 logging.basicConfig(level=logging.INFO)
 
@@ -107,11 +109,12 @@ def prepare_rsa_trigrams():
 
 def rsa(modeldirs):
     from lyz.methods import ed_rsa
-    for mdldir in modeldirs:
-        logging.info("Processing {}".format(mdldir))
-        cor = ed_rsa(mdldir, layers=['codebook'], test_size=1/2)
-        logging.info("RSA for {}: {}".format(mdldir, json.dumps(cor, indent=2)))
-        json.dump(cor, open("{}/ed_rsa.json".format(mdldir), "w"))
+    terciles = (0.0, 1/3, 2/3, 1.0)
+    for modeldir in experiments("ed_rsa.json"):
+        logging.info("Processing {}".format(modeldir))
+        cor = ed_rsa(modeldir, layers=['codebook'], test_size=1/2, quantiles=terciles)
+        logging.info("RSA for {}: {}".format(modeldir, json.dumps(cor, indent=2)))
+        json.dump(cor, open("{}/ed_rsa.json".format(modeldir), "w"))
 
 
 def rsa_trigrams():
@@ -138,6 +141,31 @@ def local_diag(modeldirs):
                       layers=['codebook'],
                       runs=1)
         local_diagnostic(config)
+
+
+def rle_compression_ratio():
+    def rle(seq):
+        "Compute run-length encoding of `seq`."
+        from itertools import groupby
+        return [ (k, len(list(v))) for k, v in groupby(seq) ]
+
+    def rle_string(seq):
+        return ''.join([ k if v == 1 else "{}{}".format(k,v) for k,v in rle(seq) ])
+
+    def rle_ratio(seq):
+        return len(seq) / len(rle_string(seq))
+
+    def directory_ratio(directory, layer='codebook', mode='trained'):
+        ratios = []
+        data = pickle.load(open("{}/global_{}_{}.pkl".format(directory, mode, layer), "rb"))
+        act = data[layer]
+        ratio = np.mean([ rle_ratio([ chr(x) for x in item.argmax(axis=1)]) for item in act ])
+        return ratio
+
+    for modeldir in experiments("rle_compression.json"):
+        logging.info("Processing {}".format(modeldir))
+        ratio = directory_ratio(modeldir, layer='codebook', mode='trained')
+        json.dump(dict(ratio=ratio), open("{}/rle_compression.json".format(modeldir), "w"))
 
 
 if __name__ == '__main__':

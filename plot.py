@@ -4,6 +4,9 @@ import glob
 import io
 import os.path
 import logging
+import numpy as np
+from plotnine import *
+
 logging.basicConfig(level=logging.INFO)
 
 def load_results(d, fname='result.json'):
@@ -13,6 +16,27 @@ def select(path, spec):
     data = json.load(open(path))
     return [ x for x in data if all(x[key] == val for key, val in spec.items()) ][0]
 
+def select_all(path, spec):
+    data = json.load(open(path))
+    return [ x for x in data if all(x[key] == val for key, val in spec.items()) ]
+
+def by_size():
+    for  d in glob.glob("experiments/vq-*"):
+        logging.info("Loading results from {}".format(d))
+        size = d.split('-')[1]
+        level = d.split('-')[2][1]
+        cors      = select_all("{}/ed_rsa.json".format(d), dict(model='trained', reference='phoneme', by_size=True))
+        for cor in cors:
+            
+            trained = dict(condition=os.path.basename(d),
+                           mode='trained',
+                           size=size,
+                           level=level,
+                           cor=cor['cor'],
+                           reference='phoneme',
+                           quantile=cor['quantile'])
+            yield trained
+                       
 def scores():
     for d in glob.glob("experiments/vq-*"):
         try:
@@ -26,11 +50,11 @@ def scores():
             zs_base = json.load(open("{}/vq_base_result.json".format(d)))
             
             
-            cor      = select("{}/ed_rsa.json".format(d), dict(model='trained', reference='phoneme'))['cor']
-            cor3     = select("{}/ed_rsa_trigrams.json".format(d), dict(model='trained', reference='phoneme'))['cor']
-            cor_base = select("{}/ed_rsa.json".format(d), dict(model='random', reference='phoneme'))['cor']
-            cor_word = select("{}/ed_rsa.json".format(d), dict(model='trained', reference='word'))['cor']
-            cor_word_base = select("{}/ed_rsa.json".format(d), dict(model='random', reference='word'))['cor']
+            cor      = select("{}/ed_rsa.json".format(d), dict(model='trained', reference='phoneme', by_size=False))['cor']
+            cor3     = select("{}/ed_rsa_trigrams.json".format(d), dict(model='trained', reference='phoneme', by_size=False))['cor']
+            cor_base = select("{}/ed_rsa.json".format(d), dict(model='random', reference='phoneme', by_size=False))['cor']
+            cor_word = select("{}/ed_rsa.json".format(d), dict(model='trained', reference='word', by_size=False))['cor']
+            cor_word_base = select("{}/ed_rsa.json".format(d), dict(model='random', reference='word', by_size=False))['cor']
             diag     = select("{}/local/local_diagnostic.json".format(d), dict(model='trained'))['acc']
             diag_base = select("{}/local/local_diagnostic.json".format(d), dict(model='random'))['acc']
         
@@ -45,7 +69,10 @@ def scores():
                 abx_lev=100-zs['2019']['english']['details_abx']['test']['levenshtein'],
                 abx_f=100-json.load(open("{}/abx_flickr8k_result.json".format(d)))['avg_abx_error'],
                 abx_fw = 100-json.load(open("{}/abx_within_flickr8k_result.json".format(d)))['avg_abx_error'],
+                abx_fr = 100-json.load(open("{}/flickr8k_abx_rep_result.json".format(d)))['avg_abx_error'],
+                abx_frw = 100-json.load(open("{}/flickr8k_abx_rep_within_result.json".format(d)))['avg_abx_error'],
                 bitrate=zs['2019']['english']['scores']['bitrate'],
+                rle_ratio=json.load(open("{}/rle_compression.json".format(d)))['ratio'],
                 ed_rsa=cor,
                 ed_rsa3=cor3,
                 ed_rsa_word=cor_word,
@@ -59,23 +86,27 @@ def scores():
             logging.warning("MISSING DATA FOR {}\\{}".format(d,e))
             
         yield trained
-
         
-        
-data = pd.read_json(json.dumps(list(scores())), orient='records')
 
-print(data)
-from plotnine import *
-
-vars = ['abx', 'abx_lev', 'abx_f', 'abx_fw', 'ed_rsa', 'ed_rsa_word', 'diag', 'ed_rsa3']
-for var in vars:
+def dump():
+    #data = pd.read_json(json.dumps(list(scores())), orient='records')
+    #data.to_csv("vq_experiment_stats.csv", header=True, index=False)
     
-    p = ggplot(data, aes(x='recall', y=var)) + \
-        geom_point(aes(size='bitrate', shape='factor(level)', color='factor(size)'))
-    ggsave(p, 'plot-recall-{}.pdf'.format(var))
+    data_by_size = pd.read_json(json.dumps(list(by_size())), orient='records')
+    data_by_size.to_csv('by_size.csv', header=True, index=False)
+    
+def main():        
 
-    for var2 in vars:
-        if var < var2:
-            p = ggplot(data, aes(x=var, y=var2)) + \
-                geom_point(aes(size='bitrate', shape='factor(level)', color='factor(size)'))
-            ggsave(p, 'plot-{}-{}.pdf'.format(var, var2))
+    data = pd.read_json(json.dumps(list(scores())), orient='records')
+    vars = ['abx', 'abx_lev', 'abx_f', 'abx_fw', 'abx_fr', 'abx_frw', 'ed_rsa', 'ed_rsa_word', 'diag', 'ed_rsa3']
+    for var in vars:
+        
+        p = ggplot(data, aes(x='recall', y=var)) + \
+                                geom_point(aes(size='bitrate', shape='factor(level)', color='factor(size)'))
+        ggsave(p, 'plot-recall-{}.pdf'.format(var))
+        
+        for var2 in vars:
+            if var < var2:
+                p = ggplot(data, aes(x=var, y=var2)) + \
+                                        geom_point(aes(size='bitrate', shape='factor(level)', color='factor(size)'))
+                ggsave(p, 'plot-{}-{}.pdf'.format(var, var2))
