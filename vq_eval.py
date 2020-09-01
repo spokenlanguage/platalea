@@ -110,16 +110,17 @@ def prepare_rsa_trigrams():
 def rsa(modeldirs):
     from lyz.methods import ed_rsa
     terciles = (0.0, 1/3, 2/3, 1.0)
-    for modeldir in experiments("ed_rsa.json"):
-        logging.info("Processing {}".format(modeldir))
-        cor = ed_rsa(modeldir, layers=['codebook'], test_size=1/2, quantiles=terciles)
-        logging.info("RSA for {}: {}".format(modeldir, json.dumps(cor, indent=2)))
-        json.dump(cor, open("{}/ed_rsa.json".format(modeldir), "w"))
+    for mdldir in modeldirs:
+        logging.info("Processing {}".format(mdldir))
+        cor = ed_rsa(mdldir, layers=['codebook'], test_size=1/2,
+                     quantiles=terciles)
+        logging.info("RSA for {}: {}".format(mdldir, json.dumps(cor, indent=2)))
+        json.dump(cor, open("{}/ed_rsa.json".format(mdldir), "w"))
 
 
-def rsa_trigrams():
+def rsa_trigrams(modeldirs):
     from lyz.methods import ed_rsa
-    for modeldir in experiments("ed_rsa_trigrams.json"):
+    for modeldir in modeldirs:
         logging.info("Processing {}".format(modeldir))
         cor = ed_rsa("{}/trigrams".format(modeldir), layers=['codebook'], test_size=1/2)
         logging.info("RSA on trigrams for {}: {}".format(modeldir, json.dumps(cor, indent=2)))
@@ -174,10 +175,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-m', '--method', help='Method for analysis',
-                        choices=['rsa', 'dc'])
+                        choices=['rsa', 'rsa_trigrams', 'dc'])
     args = parser.parse_args()
 
     if args.method == 'rsa':
         rsa(experiments("ed_rsa.json"))
+    elif args.method == 'rsa_trigrams':
+        rsa_trigrams(experiments("ed_rsa_trigrams.json"))
     elif args.method == 'dc':
         local_diag(experiments("local/local_diagnostic.json"))
