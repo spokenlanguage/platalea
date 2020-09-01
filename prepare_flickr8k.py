@@ -12,68 +12,73 @@ def save_data(nets, directory, batch_size=32):
     Path(directory).mkdir(parents=True, exist_ok=True)
     save_global_data(nets, directory=directory,
                      alignment_fpath='data/datasets/flickr8k/fa.json',
-                     batch_size=batch_size)  # FIXME adapt this per directory too
+                     batch_size=batch_size,
+                     audio_exists=True)  
     save_local_data(directory=directory,
                     alignment_fpath='data/datasets/flickr8k/fa.json')
-
 
 def save_data_trigrams(nets, directory, batch_size=32):
     Path(directory).mkdir(parents=True, exist_ok=True)
     json.dump(make_factors(nets[0][1]), open(Path(directory) / "downsampling_factors.json", "w"))
-    save_global_data_trigrams(nets, directory=directory,
-                              alignment_fpath='data/flickr8k_trigrams_fa.json',
-                              batch_size=batch_size)  # FIXME adapt this per directory too
+    save_global_data(nets, directory=directory,
+                     alignment_fpath='data/flickr8k_trigrams_fa.json',
+                     batch_size=batch_size,
+                     audio_exists=False) 
     save_local_data(directory=directory,
                     alignment_fpath="data/flickr8k_trigrams_fa.json")
 
+def save_data_fragments(nets, directory, batch_size=32):
+    Path(directory).mkdir(parents=True, exist_ok=True)
+    json.dump(make_factors(nets[0][1]), open(Path(directory) / "downsampling_factors.json", "w"))
+    save_global_data(nets, directory=directory,
+                     alignment_fpath='data/flickr8k_fragments_fa.json',
+                     batch_size=batch_size,
+                     audio_exists=False) 
+    save_local_data(directory=directory,
+                    alignment_fpath="data/flickr8k_fragments_fa.json")
 
-def save_global_data_trigrams(nets, directory, alignment_fpath, batch_size=32):
-    """Generate data from trigrams for training a phoneme decoding model."""
-    from platalea.vq_encode import config, audio_features
-    logging.info("Loading alignments")
-    data = load_alignment(alignment_fpath)
-    # Only consider cases where alignement does not fail
-    alignments = [item for item in data.values() if good_alignment(item)]
-    paths = [item['audiopath'] for item in alignments]
-    audio = audio_features(paths, config)
-    audio_np = [a.numpy() for a in audio]
+def save_data_wordgrams(nets, directory, n, batch_size=32):
+    Path(directory).mkdir(parents=True, exist_ok=True)
+    json.dump(make_factors(nets[0][1]), open(Path(directory) / "downsampling_factors.json", "w"))
+    save_global_data(nets, directory=directory,
+                     alignment_fpath='data/flickr8k_wordgrams{}_fa.json'.format(n),
+                     batch_size=batch_size,
+                     audio_exists=False) 
+    save_local_data(directory=directory,
+                    alignment_fpath="data/flickr8k_wordgrams{}_fa.json".format(n))
 
-    ## Global data
-
-    global_input = dict(
-        audio_id=np.array([datum['audio_id'] for datum in alignments]),
-        ipa=np.array([align2ipa(datum) for datum in alignments]),
-        text=np.array([datum['transcript'] for datum in alignments]),
-        audio=np.array(audio_np))
-    global_input_path = Path(directory) / 'global_input.pkl'
-    pickle.dump(global_input, open(global_input_path, "wb"), protocol=4)
-
-    for mode, net in nets:
-        global_act = collect_activations(net, audio, batch_size=batch_size)
-        for layer in global_act:
-            path = "{}/global_{}_{}.pkl".format(directory, mode, layer)
-            logging.info("Saving global data in {}".format(path))
-            pickle.dump({layer: global_act[layer]}, open(path, "wb"),
-                        protocol=4)
-
-
-def save_global_data(nets, directory, alignment_fpath, batch_size=32):
+    
+def save_global_data(nets, directory, alignment_fpath, batch_size=32, audio_exists=True):
     """Generate data for training a phoneme decoding model."""
-    logging.info("Loading alignments")
-    data = load_alignment(alignment_fpath)
-    logging.info("Loading audio features")
-    val = dataset.Flickr8KData(root='data/datasets/flickr8k/', split='val',
+    if audio_exists:
+        logging.info("Loading alignments")
+        data = load_alignment(alignment_fpath)
+        logging.info("Loading audio features")
+        val = dataset.Flickr8KData(root='data/datasets/flickr8k/', split='val',
                                feature_fname='mfcc_features.pt')
-    # Vocabulary should be initialized even if we are not going to use text
-    # data
-    if dataset.Flickr8KData.le is None:
-        dataset.Flickr8KData.init_vocabulary(val)
-    #
-    alignments = [data[sent['audio_id']] for sent in val]
-    # Only consider cases where alignement does not fail
-    alignments = [item for item in alignments if good_alignment(item)]
-    sentids = set(item['audio_id'] for item in alignments)
-    audio = [sent['audio'] for sent in val if sent['audio_id'] in sentids]
+        # Vocabulary should be initialized even if we are not going to use text
+        # data
+        if dataset.Flickr8KData.le is None:
+            dataset.Flickr8KData.init_vocabulary(val)
+    
+        alignments = [data[sent['audio_id']] for sent in val]
+        # Only consider cases where alignement does not fail
+        alignments = [item for item in alignments if good_alignment(item)]
+        sentids = set(item['audio_id'] for item in alignments)
+        audio = [sent['audio'] for sent in val if sent['audio_id'] in sentids]
+    else:
+        from platalea.vq_encode import config, audio_features
+        logging.info("Loading alignments")
+        data = load_alignment(alignment_fpath)
+        # Only consider cases where alignement does not fail
+        alignments = [item for item in data.values() if good_alignment(item)]
+        paths = [item['audiopath'] for item in alignments]
+        try:
+            audio = pickle.load(open("{}_cached_audio.pkl".format(alignment_fpath), 'rb'))
+        except FileNotFoundError:
+            audio = audio_features(paths, config)     
+            pickle.dump(audio, open("{}_cached_audio.pkl".format(alignment_fpath), 'wb'))
+            
     audio_np = [a.numpy() for a in audio]
 
     ## Global data

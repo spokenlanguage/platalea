@@ -35,16 +35,54 @@ def phonemes(u):
     return result
 
 
+
+def wordgrams(u, n):
+    """Extract nonoverlapping segments of n words from utterance u."""
+    xss = grams(u['words'], n)
+    for xs in xss:
+        s = dict(transcript=" ".join(x['word'] for x in xs),
+                 words=list(xs),
+                 audiopath=None)
+        yield s
+
+def shift_times(words):
+    start = words[0]['start']
+    startOffset = words[0]['startOffset']
+    for word in words:
+        word['start']       = word['start'] - start
+        word['end']         = word['end'] - start
+        word['startOffset'] = word['startOffset'] - startOffset
+        word['endOffset']   = word['endOffset'] - startOffset
+        yield word
+        
 def trigrams(xs):
     if len(xs) < 3:
         return []
     else:
         return [xs[0:3]] + trigrams(xs[1:])
 
+def grams(xs, n):
+    """Split sequence xs into non-overlapping segments of  length n."""
+    if len(xs) < n:
+        return []
+    else:
+        return [xs[:n]] + grams(xs[n:], n)
+    
+def fragments(xs):
+    """Split sequence xs into non-overlapping segments of random lengths."""
+    MIN = 3
+    MAX = len(xs)-1
+    if MAX-MIN <= MIN:
+        return [xs]
+    else:
+        I = random.randint(MIN, MAX-MIN)
+        return [xs[:I]] + fragments(xs[I:])
 
 def deoov(xs):
     return [x for x in xs if not any(xi['phone'].startswith('oov') or xi['phone'].startswith('sil') for xi in x)]
 
+def deoov_u(us):
+    return [u for u in us if not any([p['phone'].startswith('oov') or p['phone'].startswith('sil') for w in u['words'] for p in w['phones']])]
 
 class Topline:
 
@@ -73,7 +111,7 @@ def prepare_abx(k=1000, within_speaker=False):
     speakers = dict(line.split() for line in open("data/datasets/flickr8k/wav2spk.txt"))
     out.mkdir(parents=True, exist_ok=True)
     with open("data/flickr8k_abx.item", "w") as itemout:
-      with open("data/flickr8k_trigrams_fa.json", "w") as tri_fa:
+     with open("data/flickr8k_trigrams_fa.json", "w") as tri_fa:
         items = csv.writer(itemout, delimiter=' ', lineterminator='\n')
         items.writerow(["#file", "onset", "offset", "#phone", "speaker", "context", "lang"])
         for u in us:
@@ -94,6 +132,7 @@ def prepare_abx(k=1000, within_speaker=False):
                 else:
                     items.writerow(["{}_{}".format(bare, i), 0, end-start, triple[1], speaker, '_'.join([triple[0], triple[-1]]), "en"])
                     fragment.export(format='wav', out_f=target)
+                    # FIXME '_' should be '' for RSA?
                     word = '_'.join(phone['phone'].split('_')[0] for phone in gram)
                     tri_fa.write(json.dumps(dict(audiopath="{}".format(target),
                                                  transcript=word,
@@ -118,6 +157,82 @@ def prepare_abx(k=1000, within_speaker=False):
         os.remove(triplets)
     task.generate_triplets(output=triplets)
 
+def prepare_fragments_fa(k=1000):
+    logging.basicConfig(level=logging.INFO)
+    from prepare_flickr8k import make_indexer, load_alignment, good_alignment
+    align = { key: value for key, value in load_alignment("data/datasets/flickr8k/fa.json").items() if good_alignment(value) }
+    if k is not None:
+        us = random.sample(list(align.values()), k)
+    else:
+        us = list(align.values())
+    wav = Path("data/datasets/flickr8k/flickr_audio/wavs")
+    out = Path("data/flickr8k_fragments/")
+    speakers = dict(line.split() for line in open("data/datasets/flickr8k/wav2spk.txt"))
+    out.mkdir(parents=True, exist_ok=True)
+    with open("data/flickr8k_fragments_fa.json", "w") as tri_fa:
+        for u in us:
+            filename = os.path.split(u['audiopath'])[-1]
+            speaker = speakers[filename]
+            bare, _ = os.path.splitext(filename)
+            grams = deoov(fragments(phonemes(u)))
+            logging.info("Loading audio from {}".format(filename))
+            sound = pydub.AudioSegment.from_file(wav / filename)
+            for i, gram in enumerate(grams):
+                start = int(gram[0]['start']*1000)
+                end = int(gram[-1]['end']*1000)
+                fragment = sound[start: end]
+                target = out / "{}_{}.wav".format(bare, i)
+                if end - start < 100:
+                    logging.info("SKIPPING short audio {}".format(target))
+                else:
+                    fragment.export(format='wav', out_f=target)
+                    tri_fa.write(json.dumps(dict(audiopath="{}".format(target),
+                                                 transcript="<NA>",
+                                                 words=[dict(start=0,
+                                                             end=sum([phone['duration'] for phone in gram]),
+                                                             word="<NA>",
+                                                             alignedWord="<NA>",
+                                                             case='success',
+                                                             phones=gram)])))
+                    tri_fa.write("\n")
+                    logging.info("Saved {}th fragment in {}".format(i, target))
+
+def prepare_wordgrams_fa(k=1000, n=1):
+    logging.basicConfig(level=logging.INFO)
+    from prepare_flickr8k import make_indexer, load_alignment, good_alignment
+    align = { key: value for key, value in load_alignment("data/datasets/flickr8k/fa.json").items() if good_alignment(value) }
+    if k is not None:
+        us = random.sample(list(align.values()), k)
+    else:
+        us = list(align.values())
+    wav = Path("data/datasets/flickr8k/flickr_audio/wavs")
+    out = Path("data/flickr8k_wordgrams{}/".format(n))
+    speakers = dict(line.split() for line in open("data/datasets/flickr8k/wav2spk.txt"))
+    out.mkdir(parents=True, exist_ok=True)
+    with open("data/flickr8k_wordgrams{}_fa.json".format(n), "w") as j:
+        for u in us:
+            filename = os.path.split(u['audiopath'])[-1]
+            speaker = speakers[filename]
+            bare, _ = os.path.splitext(filename)
+            grams = deoov_u(wordgrams(u, n))
+            logging.info("Loading audio from {}".format(filename))
+            sound = pydub.AudioSegment.from_file(wav / filename)
+            for i, gram in enumerate(grams):
+                start = int(gram['words'][0]['start']*1000)
+                end = int(gram['words'][-1]['end']*1000)
+                fragment = sound[start: end]
+                target = out / "{}_{}.wav".format(bare, i)
+                if end - start < 100:
+                    logging.info("SKIPPING short audio {}".format(target))
+                else:
+                    fragment.export(format='wav', out_f=target)
+                    gram['audiopath'] = "{}".format(target)
+                    gram['words'] = list(shift_times(gram['words']))
+                    j.write(json.dumps(gram))
+                    j.write("\n")
+                    logging.info("Saved {}th fragment in {}".format(i, target))
+    
+   
 def prepare_abx_rep(directory, k=1000, within_speaker=False):
     import pickle
     import csv

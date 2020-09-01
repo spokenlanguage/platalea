@@ -10,6 +10,7 @@ import logging
 import os.path
 import numpy as np
 import pickle
+import lyz.methods
 
 logging.basicConfig(level=logging.INFO)
 
@@ -106,6 +107,43 @@ def prepare_rsa_trigrams():
         net_rand.cuda()
         save_data_trigrams([('trained', net), ('random', net_rand)], "{}/trigrams".format(modeldir), batch_size=8)
 
+def prepare_rsa_fragments():
+    from prepare_flickr8k import save_data_fragments, make_factors
+    for modeldir in experiments("ed_rsa_fragments.json"):
+        result = [ json.loads(line) for line in open(modeldir + "/result.json") ]
+        best = sorted(result, key=lambda x: x['recall']['10'], reverse=True)[0]['epoch']
+        oldnet = torch.load("{}/net.{}.pt".format(modeldir, best))
+        logging.info("Loading model from {} at epoch {}".format(modeldir, best))
+        net = M.SpeechImage(oldnet.config)
+        net.load_state_dict(oldnet.state_dict())
+        net.cuda()
+        json.dump(make_factors(net), open("{}/downsampling_factors.json".format(modeldir), "w"))
+        net = M.SpeechImage(oldnet.config)
+        net_rand = M.SpeechImage(oldnet.config)
+        net.load_state_dict(oldnet.state_dict())
+        net.cuda()
+        net_rand.cuda()
+        save_data_fragments([('trained', net), ('random', net_rand)], "{}/fragments".format(modeldir), batch_size=8)
+
+def prepare_rsa_wordgrams(n=1):
+    from prepare_flickr8k import save_data_wordgrams, make_factors
+    for modeldir in experiments("ed_rsa_wordgrams{}.json".format(n)):
+        result = [ json.loads(line) for line in open(modeldir + "/result.json") ]
+        best = sorted(result, key=lambda x: x['recall']['10'], reverse=True)[0]['epoch']
+        oldnet = torch.load("{}/net.{}.pt".format(modeldir, best))
+        logging.info("Loading model from {} at epoch {}".format(modeldir, best))
+        net = M.SpeechImage(oldnet.config)
+        net.load_state_dict(oldnet.state_dict())
+        net.cuda()
+        json.dump(make_factors(net), open("{}/downsampling_factors.json".format(modeldir), "w"))
+        net = M.SpeechImage(oldnet.config)
+        net_rand = M.SpeechImage(oldnet.config)
+        net.load_state_dict(oldnet.state_dict())
+        net.cuda()
+        net_rand.cuda()
+        batch_size = 32 if n > 2 else 128 
+        save_data_wordgrams([('trained', net), ('random', net_rand)], "{}/wordgrams{}".format(modeldir, n), n, batch_size=batch_size)
+
 
 def rsa(modeldirs):
     from lyz.methods import ed_rsa
@@ -125,8 +163,25 @@ def rsa_trigrams(modeldirs):
         cor = ed_rsa("{}/trigrams".format(modeldir), layers=['codebook'], test_size=1/2)
         logging.info("RSA on trigrams for {}: {}".format(modeldir, json.dumps(cor, indent=2)))
         json.dump(cor, open("{}/ed_rsa_trigrams.json".format(modeldir), "w"))
+        
+def rsa_fragments(quantiles=lyz.methods.DECILES):
+    from lyz.methods import ed_rsa
+    for modeldir in experiments("ed_rsa_fragments.json"):
+        logging.info("Processing {}".format(modeldir))
+        cor = ed_rsa("{}/fragments".format(modeldir), layers=['codebook'], test_size=1/2, quantiles=quantiles)
+        logging.info("RSA on fragments for {}: {}".format(modeldir, json.dumps(cor, indent=2)))
+        json.dump(cor, open("{}/ed_rsa_fragments.json".format(modeldir), "w"))
+
+def rsa_wordgrams(n=1):
+    from lyz.methods import ed_rsa
+    for modeldir in experiments("ed_rsa_wordgrams{}.json".format(n)):
+        logging.info("Processing {}".format(modeldir))
+        cor = ed_rsa("{}/wordgrams{}".format(modeldir, n), layers=['codebook'], test_size=1/2)
+        logging.info("RSA on fragments for {}: {}".format(modeldir, json.dumps(cor, indent=2)))
+        json.dump(cor, open("{}/ed_rsa_wordgrams{}.json".format(modeldir, n), "w"))
 
 
+        
 def local_diag(modeldirs):
     from lyz.methods import local_diagnostic
     for mdldir in modeldirs:

@@ -14,21 +14,23 @@ def load_results(d, fname='result.json'):
 
 def select(path, spec):
     data = json.load(open(path))
-    return [ x for x in data if all(x[key] == val for key, val in spec.items()) ][0]
+    return [ x for x in data if all(x.get(key, False) == val for key, val in spec.items()) ][0]
 
 def select_all(path, spec):
     data = json.load(open(path))
-    return [ x for x in data if all(x[key] == val for key, val in spec.items()) ]
+    return [ x for x in data if all(x.get(key, False) == val for key, val in spec.items()) ]
 
 def by_size():
     for  d in glob.glob("experiments/vq-*"):
         logging.info("Loading results from {}".format(d))
         size = d.split('-')[1]
         level = d.split('-')[2][1]
-        cors      = select_all("{}/ed_rsa.json".format(d), dict(model='trained', reference='phoneme', by_size=True))
+        plus  = '+' in d
+        cors      = select_all("{}/ed_rsa_fragments.json".format(d), dict(model='trained', reference='phoneme', by_size=True))
         for cor in cors:
             
             trained = dict(condition=os.path.basename(d),
+                           plus = plus,
                            mode='trained',
                            size=size,
                            level=level,
@@ -52,6 +54,9 @@ def scores():
             
             cor      = select("{}/ed_rsa.json".format(d), dict(model='trained', reference='phoneme', by_size=False))['cor']
             cor3     = select("{}/ed_rsa_trigrams.json".format(d), dict(model='trained', reference='phoneme', by_size=False))['cor']
+            corw1    = select("{}/ed_rsa_wordgrams1.json".format(d), dict(model='trained', reference='phoneme', by_size=False))['cor']
+            corw5    = select("{}/ed_rsa_wordgrams5.json".format(d), dict(model='trained', reference='phoneme', by_size=False))['cor']
+            corF     = select("{}/ed_rsa_fragments.json".format(d), dict(model='trained', reference='phoneme', by_size=False))['cor']
             cor_base = select("{}/ed_rsa.json".format(d), dict(model='random', reference='phoneme', by_size=False))['cor']
             cor_word = select("{}/ed_rsa.json".format(d), dict(model='trained', reference='word', by_size=False))['cor']
             cor_word_base = select("{}/ed_rsa.json".format(d), dict(model='random', reference='word', by_size=False))['cor']
@@ -75,6 +80,9 @@ def scores():
                 rle_ratio=json.load(open("{}/rle_compression.json".format(d)))['ratio'],
                 ed_rsa=cor,
                 ed_rsa3=cor3,
+                ed_rsaw1=corw1,
+                ed_rsaw5=corw5,
+                ed_rsa_F=corF,
                 ed_rsa_word=cor_word,
                 recall_diff=ret['recall']['10'] - ret_base['recall']['10'],
                 abx_diff=(100-zs['2019']['english']['scores']['abx']) - (100-zs_base['2019']['english']['scores']['abx']),
@@ -94,11 +102,46 @@ def dump():
     
     data_by_size = pd.read_json(json.dumps(list(by_size())), orient='records')
     data_by_size.to_csv('by_size.csv', header=True, index=False)
+
+
+def from_records(rows):
+    return pd.read_json(json.dumps(list(rows)), orient='records')
+
+def sizewise(rows):
+    records = []
+    for row in rows:
+        common=dict(condition=row['condition'], codebook=row['size'], level=row['level'], epoch=row['epoch'],
+                    recall=row['recall'], bitrate=row['bitrate'], rle_ratio=row['rle_ratio'], plus  = '+' in row['condition'])
+        records.append({'size': '10', 'cor': row['ed_rsa'], **common})
+        records.append({'size': '0', 'cor': row['ed_rsa3'], **common})
+        records.append({'size': '1', 'cor': row['ed_rsaw1'], **common})
+        records.append({'size': '5', 'cor': row['ed_rsaw5'], **common})
+    data = from_records(records)
+    
+    g = ggplot(data.query('level==1 & plus == False & size in [1,5]'), aes(x='size', y='cor', color='factor(codebook)')) +\
+                                                              geom_point() +\
+                                                              geom_line() +\
+                                                              xlab("Fragment size in words") +\
+                                                              ylab("RSA correlation")
+                                                              
+    ggsave(g, 'sizewise.pdf')
+    g = ggplot(data.query('level==1 & plus == False & size in [0,10]'), aes(x='size', y='cor', color='factor(codebook)')) +\
+                                                              geom_point() +\
+                                                              geom_line() +\
+                                                              xlab("Input size") +\
+                                                              ylab("RSA correlation") +\
+                                                              scale_x_continuous(breaks=[0, 10], labels=["3 phonemes","complete"])
+                                                              
+    ggsave(g, 'sizewise2.pdf')
+                                  
+    
     
 def main():        
-
-    data = pd.read_json(json.dumps(list(scores())), orient='records')
-    vars = ['abx', 'abx_lev', 'abx_f', 'abx_fw', 'abx_fr', 'abx_frw', 'ed_rsa', 'ed_rsa_word', 'diag', 'ed_rsa3']
+    rows = list(scores())
+    sizewise(rows)
+    data = from_records(rows)
+    #vars = ['abx', 'abx_lev', 'abx_f', 'abx_fw', 'abx_fr', 'abx_frw', 'ed_rsa', 'ed_rsa_word', 'diag', 'ed_rsa3', 'ed_rsa_F']
+    vars = ['abx_fw', 'ed_rsa', 'ed_rsa3', 'ed_rsaw1', 'ed_rsaw5', 'diag']
     for var in vars:
         
         p = ggplot(data, aes(x='recall', y=var)) + \
@@ -110,3 +153,4 @@ def main():
                 p = ggplot(data, aes(x=var, y=var2)) + \
                                         geom_point(aes(size='bitrate', shape='factor(level)', color='factor(size)'))
                 ggsave(p, 'plot-{}-{}.pdf'.format(var, var2))
+
