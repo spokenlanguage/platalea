@@ -28,7 +28,8 @@ for exp, is_trigram in experiments:
                         if os.path.isfile(srcdir / fname):
                             os.remove(srcdir / fname)
                     abx.compute_result(encdir, 'data/flickr8k_abx.triplets',
-                                       outdir, distancefun=distfun)
+                                       outdir, within_speaker=True,
+                                       distancefun=distfun)
                 # Preparing files for DC and RSA
                 if encoding == 'indices' or not is_trigram:
                     logging.info("Processing files for DC and RSA scores")
