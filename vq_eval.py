@@ -181,6 +181,12 @@ def rsa_wordgrams(n=1):
         json.dump(cor, open("{}/ed_rsa_wordgrams{}.json".format(modeldir, n), "w"))
 
 
+def prepare_and_run_rsa_wordgrams():
+    from abx_trigrams import prepare_wordgrams_fa
+    for n in [1, 5]:
+        prepare_wordgrams_fa(k=None, n=n)
+        prepare_rsa_wordgrams(n=n)
+        rsa_wordgrams(n=n)
         
 def local_diag(modeldirs):
     from lyz.methods import local_diagnostic
