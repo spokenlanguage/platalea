@@ -1,22 +1,38 @@
+import json
+import pandas as pd
+import glob
+import os.path
+import logging
+from plotnine import *
+
+logging.basicConfig(level=logging.INFO)
+
+
+def load_results(d, fname='result.json'):
+    return [json.loads(line) for line in open("{}/{}".format(d, fname))]
+
+
 def select(path, spec):
     data = json.load(open(path))
-    return [ x for x in data if all(x.get(key, False) == val for key, val in spec.items()) ][0]
+    return [x for x in data if all(x.get(key, False) == val for key, val in spec.items())][0]
+
 
 def select_all(path, spec):
     data = json.load(open(path))
-    return [ x for x in data if all(x.get(key, False) == val for key, val in spec.items()) ]
+    return [x for x in data if all(x.get(key, False) == val for key, val in spec.items())]
+
 
 def by_size():
-    for  d in glob.glob("experiments/vq-*"):
+    for d in glob.glob("experiments/vq-*"):
         logging.info("Loading results from {}".format(d))
         size = d.split('-')[1]
         level = d.split('-')[2][1]
-        plus  = '+' in d
-        cors      = select_all("{}/ed_rsa_fragments.json".format(d), dict(model='trained', reference='phoneme', by_size=True))
+        plus = '+' in d
+        cors = select_all("{}/ed_rsa_fragments.json".format(d), dict(model='trained', reference='phoneme', by_size=True))
         for cor in cors:
 
             trained = dict(condition=os.path.basename(d),
-                           plus = plus,
+                           plus=plus,
                            mode='trained',
                            size=size,
                            level=level,
@@ -24,6 +40,7 @@ def by_size():
                            reference='phoneme',
                            quantile=cor['quantile'])
             yield trained
+
 
 def scores():
     for d in glob.glob("experiments/vq-*"):
@@ -34,9 +51,8 @@ def scores():
 
             ret = sorted(load_results(d), key=lambda x: x['recall']['10'])[-1]
             ret_base = load_results(d)[0]
-            zs  = json.load(open("{}/vq_result.json".format(d)))
+            zs = json.load(open("{}/vq_result.json".format(d)))
             zs_base = json.load(open("{}/vq_base_result.json".format(d)))
-
 
             cor      = select("{}/ed_rsa.json".format(d), dict(model='trained', reference='phoneme', by_size=False))['cor']
             cor3     = select("{}/ed_rsa_trigrams.json".format(d), dict(model='trained', reference='phoneme', by_size=False))['cor']
@@ -51,7 +67,7 @@ def scores():
 
             trained = dict(
                 condition=os.path.basename(d),
-                mode = 'trained',
+                mode='trained',
                 size=size,
                 level=level,
                 epoch=ret['epoch'],
@@ -59,9 +75,9 @@ def scores():
                 abx=100-zs['2019']['english']['scores']['abx'],
                 abx_lev=100-zs['2019']['english']['details_abx']['test']['levenshtein'],
                 abx_f=100-json.load(open("{}/abx_flickr8k_result.json".format(d)))['avg_abx_error'],
-                abx_fw = 100-json.load(open("{}/abx_within_flickr8k_result.json".format(d)))['avg_abx_error'],
-                abx_fr = 100-json.load(open("{}/flickr8k_abx_rep_result.json".format(d)))['avg_abx_error'],
-                abx_frw = 100-json.load(open("{}/flickr8k_abx_rep_within_result.json".format(d)))['avg_abx_error'],
+                abx_fw=100-json.load(open("{}/abx_within_flickr8k_result.json".format(d)))['avg_abx_error'],
+                abx_fr=100-json.load(open("{}/flickr8k_abx_rep_result.json".format(d)))['avg_abx_error'],
+                abx_frw=100-json.load(open("{}/flickr8k_abx_rep_within_result.json".format(d)))['avg_abx_error'],
                 bitrate=zs['2019']['english']['scores']['bitrate'],
                 rle_ratio=json.load(open("{}/rle_compression.json".format(d)))['ratio'],
                 ed_rsa=cor,
@@ -72,12 +88,12 @@ def scores():
                 ed_rsa_word=cor_word,
                 recall_diff=ret['recall']['10'] - ret_base['recall']['10'],
                 abx_diff=(100-zs['2019']['english']['scores']['abx']) - (100-zs_base['2019']['english']['scores']['abx']),
-                ed_rsa_diff=cor - cor_base ,
+                ed_rsa_diff=cor - cor_base,
                 ed_rsa_word_diff=cor_word - cor_word_base,
                 diag=diag,
                 diag_diff=diag-diag_base)
         except FileNotFoundError as e:
-            logging.warning("MISSING DATA FOR {}\\{}".format(d,e))
+            logging.warning("MISSING DATA FOR {}\\{}".format(d, e))
 
         yield trained
 
@@ -93,11 +109,12 @@ def dump():
 def from_records(rows):
     return pd.read_json(json.dumps(list(rows)), orient='records')
 
+
 def sizewise(rows):
     records = []
     for row in rows:
-        common=dict(condition=row['condition'], codebook=row['size'], level=row['level'], epoch=row['epoch'],
-                    recall=row['recall'], bitrate=row['bitrate'], rle_ratio=row['rle_ratio'], plus  = '+' in row['condition'])
+        common = dict(condition=row['condition'], codebook=row['size'], level=row['level'], epoch=row['epoch'],
+                      recall=row['recall'], bitrate=row['bitrate'], rle_ratio=row['rle_ratio'], plus='+' in row['condition'])
         records.append({'size': '10', 'cor': row['ed_rsa'], **common})
         records.append({'size': '0', 'cor': row['ed_rsa3'], **common})
         records.append({'size': '1', 'cor': row['ed_rsaw1'], **common})
@@ -119,7 +136,6 @@ def sizewise(rows):
                                                               scale_x_continuous(breaks=[0, 10], labels=["3 phonemes","complete"])
 
     ggsave(g, 'sizewise2.pdf')
-
 
 
 def main():
