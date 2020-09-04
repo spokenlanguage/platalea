@@ -24,10 +24,11 @@ for exp, is_trigram in experiments:
                 # TODO adapt for full sentences
                 if is_trigram:
                     logging.info("Computing ABX score")
-                    for fname in ['features', 'distance', 'score']:
-                        if os.path.isfile(srcdir / fname):
-                            os.remove(srcdir / fname)
-                    abx.compute_result(encdir, 'data/flickr8k_abx.triplets',
+                    for fname in ['features', 'distance', 'score', 'analyze']:
+                        if os.path.isfile(encdir / fname):
+                            os.remove(encdir / fname)
+                    abx.compute_result(str(encdir),
+                                       'data/flickr8k_abx_within.triplets',
                                        outdir, within_speaker=True,
                                        distancefun=distfun)
                 # Preparing files for DC and RSA

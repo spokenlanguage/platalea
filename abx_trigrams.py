@@ -35,7 +35,6 @@ def phonemes(u):
     return result
 
 
-
 def wordgrams(u, n):
     """Extract nonoverlapping segments of n words from utterance u."""
     xss = grams(u['words'], n)
@@ -44,6 +43,7 @@ def wordgrams(u, n):
                  words=list(xs),
                  audiopath=None)
         yield s
+
 
 def shift_times(words):
     start = words[0]['start']
@@ -54,12 +54,14 @@ def shift_times(words):
         word['startOffset'] = word['startOffset'] - startOffset
         word['endOffset']   = word['endOffset'] - startOffset
         yield word
-        
+
+
 def trigrams(xs):
     if len(xs) < 3:
         return []
     else:
         return [xs[0:3]] + trigrams(xs[1:])
+
 
 def grams(xs, n):
     """Split sequence xs into non-overlapping segments of  length n."""
@@ -67,7 +69,8 @@ def grams(xs, n):
         return []
     else:
         return [xs[:n]] + grams(xs[n:], n)
-    
+
+
 def fragments(xs):
     """Split sequence xs into non-overlapping segments of random lengths."""
     MIN = 3
@@ -78,11 +81,14 @@ def fragments(xs):
         I = random.randint(MIN, MAX-MIN)
         return [xs[:I]] + fragments(xs[I:])
 
+
 def deoov(xs):
     return [x for x in xs if not any(xi['phone'].startswith('oov') or xi['phone'].startswith('sil') for xi in x)]
 
+
 def deoov_u(us):
     return [u for u in us if not any([p['phone'].startswith('oov') or p['phone'].startswith('sil') for w in u['words'] for p in w['phones']])]
+
 
 class Topline:
 
@@ -100,18 +106,17 @@ class Topline:
         np.savetxt(path, self.transform(xs))
 
 
-
-def prepare_abx(k=1000, within_speaker=False):
+def prepare_abx(k=1000):
     import csv
-    from prepare_flickr8k import make_indexer, load_alignment, good_alignment
-    align = { key: value for key, value in load_alignment("data/datasets/flickr8k/fa.json").items() if good_alignment(value) }
+    from prepare_flickr8k import load_alignment, good_alignment
+    align = {key: value for key, value in load_alignment("data/datasets/flickr8k/fa.json").items() if good_alignment(value)}
     us = random.sample(list(align.values()), k)
     wav = Path("data/datasets/flickr8k/flickr_audio/wavs")
     out = Path("data/flickr8k_abx_wav")
-    speakers = dict(line.split() for line in open("data/datasets/flickr8k/wav2spk.txt"))
+    speakers = dict(line.split() for line in open("data/datasets/flickr8k/flickr_audio/wav2spk.txt"))
     out.mkdir(parents=True, exist_ok=True)
     with open("data/flickr8k_abx.item", "w") as itemout:
-     with open("data/flickr8k_trigrams_fa.json", "w") as tri_fa:
+      with open("data/flickr8k_trigrams_fa.json", "w") as tri_fa:
         items = csv.writer(itemout, delimiter=' ', lineterminator='\n')
         items.writerow(["#file", "onset", "offset", "#phone", "speaker", "context", "lang"])
         for u in us:
@@ -144,12 +149,18 @@ def prepare_abx(k=1000, within_speaker=False):
                                                              phones=gram)])))
                     tri_fa.write("\n")
                     logging.info("Saved {}th trigram in {}".format(i, target))
-    if within_speaker:
+    generate_triplets()
+    generate_triplets(within_speaker=True)
 
-        task = ABXpy.task.Task("data/flickr8k_abx.item", "phone", by=["speaker", "context", "lang"])
+
+def generate_triplets(within_speaker=False):
+    if within_speaker:
+        task = ABXpy.task.Task("data/flickr8k_abx.item", "phone",
+                               by=["speaker", "context", "lang"])
         triplets = "data/flickr8k_abx_within.triplets"
     else:
-        task = ABXpy.task.Task("data/flickr8k_abx.item", "phone", by="context", across="speaker")
+        task = ABXpy.task.Task("data/flickr8k_abx.item", "phone",
+                               by="context", across="speaker")
         triplets = "data/flickr8k_abx.triplets"
     logging.info("Task statistics: {}".format(task.stats))
     logging.info("Generating triplets")
@@ -157,22 +168,21 @@ def prepare_abx(k=1000, within_speaker=False):
         os.remove(triplets)
     task.generate_triplets(output=triplets)
 
+
 def prepare_fragments_fa(k=1000):
     logging.basicConfig(level=logging.INFO)
-    from prepare_flickr8k import make_indexer, load_alignment, good_alignment
-    align = { key: value for key, value in load_alignment("data/datasets/flickr8k/fa.json").items() if good_alignment(value) }
+    from prepare_flickr8k import load_alignment, good_alignment
+    align = {key: value for key, value in load_alignment("data/datasets/flickr8k/fa.json").items() if good_alignment(value)}
     if k is not None:
         us = random.sample(list(align.values()), k)
     else:
         us = list(align.values())
     wav = Path("data/datasets/flickr8k/flickr_audio/wavs")
     out = Path("data/flickr8k_fragments/")
-    speakers = dict(line.split() for line in open("data/datasets/flickr8k/wav2spk.txt"))
     out.mkdir(parents=True, exist_ok=True)
     with open("data/flickr8k_fragments_fa.json", "w") as tri_fa:
         for u in us:
             filename = os.path.split(u['audiopath'])[-1]
-            speaker = speakers[filename]
             bare, _ = os.path.splitext(filename)
             grams = deoov(fragments(phonemes(u)))
             logging.info("Loading audio from {}".format(filename))
@@ -197,22 +207,21 @@ def prepare_fragments_fa(k=1000):
                     tri_fa.write("\n")
                     logging.info("Saved {}th fragment in {}".format(i, target))
 
+
 def prepare_wordgrams_fa(k=1000, n=1):
     logging.basicConfig(level=logging.INFO)
-    from prepare_flickr8k import make_indexer, load_alignment, good_alignment
-    align = { key: value for key, value in load_alignment("data/datasets/flickr8k/fa.json").items() if good_alignment(value) }
+    from prepare_flickr8k import load_alignment, good_alignment
+    align = {key: value for key, value in load_alignment("data/datasets/flickr8k/fa.json").items() if good_alignment(value)}
     if k is not None:
         us = random.sample(list(align.values()), k)
     else:
         us = list(align.values())
     wav = Path("data/datasets/flickr8k/flickr_audio/wavs")
     out = Path("data/flickr8k_wordgrams{}/".format(n))
-    speakers = dict(line.split() for line in open("data/datasets/flickr8k/wav2spk.txt"))
     out.mkdir(parents=True, exist_ok=True)
     with open("data/flickr8k_wordgrams{}_fa.json".format(n), "w") as j:
         for u in us:
             filename = os.path.split(u['audiopath'])[-1]
-            speaker = speakers[filename]
             bare, _ = os.path.splitext(filename)
             grams = deoov_u(wordgrams(u, n))
             logging.info("Loading audio from {}".format(filename))
@@ -231,20 +240,20 @@ def prepare_wordgrams_fa(k=1000, n=1):
                     j.write(json.dumps(gram))
                     j.write("\n")
                     logging.info("Saved {}th fragment in {}".format(i, target))
-    
-   
+
+
 def prepare_abx_rep(directory, k=1000, within_speaker=False):
     import pickle
     import csv
     from prepare_flickr8k import make_indexer, load_alignment, good_alignment
-    align = { key: value for key, value in load_alignment("data/datasets/flickr8k/fa.json").items() if good_alignment(value) }
+    align = {key: value for key, value in load_alignment("data/datasets/flickr8k/fa.json").items() if good_alignment(value)}
     us = random.sample(list(align.values()), k)
     out = Path(directory) / "encoded/flickr8k_val_rep/"
     speakers = dict(line.split() for line in open("data/datasets/flickr8k/wav2spk.txt"))
     factors = json.load(open("{}/downsampling_factors.json".format(directory), "rb"))
     mode = 'trained'
-    layer  = 'codebook'
-    global_inp = pickle.load(open("{}/global_input.pkl".format(directory), "rb")) 
+    layer = 'codebook'
+    global_inp = pickle.load(open("{}/global_input.pkl".format(directory), "rb"))
     global_act = pickle.load(open("{}/global_{}_{}.pkl".format(directory, mode, layer), "rb"))
     activation = dict(zip(global_inp['audio_id'], global_act[layer]))
     index = make_indexer(factors, layer)
@@ -271,7 +280,7 @@ def prepare_abx_rep(directory, k=1000, within_speaker=False):
                     logging.info("Saved activation of size {} for {}th trigram in {}".format(fragment.shape, i, target))
     logging.info("Saved item file in {}".format(Path(directory) / "flickr8k_abx_rep.item"))
     if within_speaker:
-        
+
         task = ABXpy.task.Task("{}/flickr8k_abx_rep.item".format(directory), "phone", by=["speaker", "context", "lang"])
         triplets = "{}/flickr8k_abx_rep_within.triplets".format(directory)
     else:
@@ -282,7 +291,8 @@ def prepare_abx_rep(directory, k=1000, within_speaker=False):
     if os.path.isfile(triplets):
         os.remove(triplets)
     task.generate_triplets(output=triplets)
-    
+
+
 def ed(x, y, normalized=None):
     return edit_distance(x, y)
 
@@ -314,16 +324,16 @@ def compute_result(encoded_dir, triplets_fpath, output_dir,
     base, _ = os.path.splitext(os.path.split(triplets_fpath)[-1])
     if within_speaker:
         result.to_csv("{}/{}_analyze.csv".format(output_dir, base),
-                  sep='\t', header=True, index=False)
+                      sep='\t', header=True, index=False)
         avg_error = _average("{}/{}_analyze.csv".format(output_dir, base),
-                         "within")
+                             "within")
         json.dump(dict(avg_abx_error=avg_error),
                   open("{}/{}_result.json".format(output_dir, base), "w"))
     else:
         result.to_csv("{}/{}_analyze.csv".format(output_dir, base),
-                  sep='\t', header=True, index=False)
+                      sep='\t', header=True, index=False)
         avg_error = _average("{}/{}_analyze.csv".format(output_dir, base),
-                         "across")
+                             "across")
         json.dump(dict(avg_abx_error=avg_error),
                   open("{}/{}_result.json".format(output_dir, base), "w"))
     return avg_error
@@ -355,8 +365,8 @@ def abx(k=1000, within_speaker=False):
         avg_error = compute_result(encoded_dir, triplets, modeldir, within_speaker=within_speaker)
         logging.info("Score: {}".format(avg_error))
 
+
 def abx_rep(k=1000, within_speaker=False):
-    from platalea.vq_encode import encode
     from vq_eval import experiments
     result = "abx_rep_within_flickr8k_result.json" if within_speaker else "abx_rep_flickr8k_result.json"
     for modeldir in experiments(result):
@@ -366,9 +376,10 @@ def abx_rep(k=1000, within_speaker=False):
         prepare_abx_rep(modeldir, k=k, within_speaker=within_speaker)
         Path(encoded_dir).mkdir(parents=True, exist_ok=True)
         logging.info("Computing ABX rep")
-        triplets = "{}/flickr8k_abx_rep_within.triplets".format(modeldir) if within_speaker else "{}/flickr8k_abx_rep.triplets".format(modeldir) 
+        triplets = "{}/flickr8k_abx_rep_within.triplets".format(modeldir) if within_speaker else "{}/flickr8k_abx_rep.triplets".format(modeldir)
         avg_error = compute_result(encoded_dir, triplets, modeldir, within_speaker=within_speaker)
         logging.info("Score: {}".format(avg_error))
+
 
 def main():
     random.seed(123)
