@@ -1,17 +1,3 @@
-import json
-import pandas as pd
-import glob
-import io
-import os.path
-import logging
-import numpy as np
-from plotnine import *
-
-logging.basicConfig(level=logging.INFO)
-
-def load_results(d, fname='result.json'):
-    return [ json.loads(line) for line in open("{}/{}".format(d, fname)) ]
-
 def select(path, spec):
     data = json.load(open(path))
     return [ x for x in data if all(x.get(key, False) == val for key, val in spec.items()) ][0]
@@ -28,7 +14,7 @@ def by_size():
         plus  = '+' in d
         cors      = select_all("{}/ed_rsa_fragments.json".format(d), dict(model='trained', reference='phoneme', by_size=True))
         for cor in cors:
-            
+
             trained = dict(condition=os.path.basename(d),
                            plus = plus,
                            mode='trained',
@@ -38,20 +24,20 @@ def by_size():
                            reference='phoneme',
                            quantile=cor['quantile'])
             yield trained
-                       
+
 def scores():
     for d in glob.glob("experiments/vq-*"):
         try:
             logging.info("Loading results from {}".format(d))
             size = d.split('-')[1]
             level = d.split('-')[2][1]
-            
+
             ret = sorted(load_results(d), key=lambda x: x['recall']['10'])[-1]
             ret_base = load_results(d)[0]
             zs  = json.load(open("{}/vq_result.json".format(d)))
             zs_base = json.load(open("{}/vq_base_result.json".format(d)))
-            
-            
+
+
             cor      = select("{}/ed_rsa.json".format(d), dict(model='trained', reference='phoneme', by_size=False))['cor']
             cor3     = select("{}/ed_rsa_trigrams.json".format(d), dict(model='trained', reference='phoneme', by_size=False))['cor']
             corw1    = select("{}/ed_rsa_wordgrams1.json".format(d), dict(model='trained', reference='phoneme', by_size=False))['cor']
@@ -62,7 +48,7 @@ def scores():
             cor_word_base = select("{}/ed_rsa.json".format(d), dict(model='random', reference='word', by_size=False))['cor']
             diag     = select("{}/local/local_diagnostic.json".format(d), dict(model='trained'))['acc']
             diag_base = select("{}/local/local_diagnostic.json".format(d), dict(model='random'))['acc']
-        
+
             trained = dict(
                 condition=os.path.basename(d),
                 mode = 'trained',
@@ -92,14 +78,14 @@ def scores():
                 diag_diff=diag-diag_base)
         except FileNotFoundError as e:
             logging.warning("MISSING DATA FOR {}\\{}".format(d,e))
-            
+
         yield trained
-        
+
 
 def dump():
     #data = pd.read_json(json.dumps(list(scores())), orient='records')
     #data.to_csv("vq_experiment_stats.csv", header=True, index=False)
-    
+
     data_by_size = pd.read_json(json.dumps(list(by_size())), orient='records')
     data_by_size.to_csv('by_size.csv', header=True, index=False)
 
@@ -117,13 +103,13 @@ def sizewise(rows):
         records.append({'size': '1', 'cor': row['ed_rsaw1'], **common})
         records.append({'size': '5', 'cor': row['ed_rsaw5'], **common})
     data = from_records(records)
-    
+
     g = ggplot(data.query('level==1 & plus == False & size in [1,5]'), aes(x='size', y='cor', color='factor(codebook)')) +\
                                                               geom_point() +\
                                                               geom_line() +\
                                                               xlab("Fragment size in words") +\
                                                               ylab("RSA correlation")
-                                                              
+
     ggsave(g, 'sizewise.pdf')
     g = ggplot(data.query('level==1 & plus == False & size in [0,10]'), aes(x='size', y='cor', color='factor(codebook)')) +\
                                                               geom_point() +\
@@ -131,26 +117,25 @@ def sizewise(rows):
                                                               xlab("Input size") +\
                                                               ylab("RSA correlation") +\
                                                               scale_x_continuous(breaks=[0, 10], labels=["3 phonemes","complete"])
-                                                              
+
     ggsave(g, 'sizewise2.pdf')
-                                  
-    
-    
-def main():        
+
+
+
+def main():
     rows = list(scores())
     sizewise(rows)
     data = from_records(rows)
     #vars = ['abx', 'abx_lev', 'abx_f', 'abx_fw', 'abx_fr', 'abx_frw', 'ed_rsa', 'ed_rsa_word', 'diag', 'ed_rsa3', 'ed_rsa_F']
     vars = ['abx_fw', 'ed_rsa', 'ed_rsa3', 'ed_rsaw1', 'ed_rsaw5', 'diag']
     for var in vars:
-        
+
         p = ggplot(data, aes(x='recall', y=var)) + \
                                 geom_point(aes(size='bitrate', shape='factor(level)', color='factor(size)'))
         ggsave(p, 'plot-recall-{}.pdf'.format(var))
-        
+
         for var2 in vars:
             if var < var2:
                 p = ggplot(data, aes(x=var, y=var2)) + \
                                         geom_point(aes(size='bitrate', shape='factor(level)', color='factor(size)'))
                 ggsave(p, 'plot-{}-{}.pdf'.format(var, var2))
-
