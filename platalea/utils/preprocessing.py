@@ -52,14 +52,6 @@ def flickr8k_image_features(dataset_path, images_subdir, feat_config):
     torch.save(dict(features=features, filenames=files), dataset_path / 'resnet_features.pt')
 
 
-def flickr8k_scaled_audio_features(features, filenames, dataset_path):
-    mean = np.vstack([feature.numpy() for feature in features]).mean()
-    std = np.vstack([feature.numpy() for feature in features]).std()
-    scaled_features = [(feature - mean) / std for feature in features]
-    torch.save(dict(features=scaled_features, filenames=filenames), dataset_path / 'mfcc_features_scaled.pt')
-    return scaled_features
-
-
 def librispeech_audio_features(dataset_path, feat_config):
     metadata = []
     paths = []
