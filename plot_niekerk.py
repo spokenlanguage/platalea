@@ -50,7 +50,7 @@ def extract_results_niekerk():
     return results
 
 
-def main():
+def plot_all():
     res = extract_results_niekerk()
     res = [r for r in res if r['abx'] is not None and r['rsa3'] is not None]
     res = from_records(res)
