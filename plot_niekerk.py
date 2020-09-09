@@ -58,91 +58,92 @@ def main():
             pn.geom_point(pn.aes(color='factor(size)'))
     pn.ggsave(p, 'vn_abx_rsa3.pdf')
     return
-    # ABX
-    xrange = range_size
-    fig, ax = plt.subplots()
-    legend = []
-    for type in ['z', 'indices']:
-        for mode in ['random', 'trained']:
-            data = [100 - abx['english_triplets'][x][type][mode] for x in xrange]
-            ax.plot(range(0, len(xrange)), data)
-            legend.append('{} - {}'.format(type, mode))
-            ax.set(xlabel='Size of the codebook', ylabel='ABX accuracy')
-    ax.set_xticks(np.arange(len(xrange)))
-    ax.set_xticklabels(xrange)
-    ax.legend(legend)
-    ax.grid()
-    fig.savefig("vn_abx_triplets.pdf")
-    fig, ax = plt.subplots()
-    legend = []
-    for type in ['z', 'indices']:
-        for mode in ['random', 'trained']:
-            data = [100 - abx_within['english_triplets'][x][type][mode] for x in xrange]
-            ax.plot(range(0, len(xrange)), data)
-            legend.append('{} - {}'.format(type, mode))
-            ax.set(xlabel='Size of the codebook', ylabel='ABX accuracy')
-    ax.set_xticks(np.arange(len(xrange)))
-    ax.set_xticklabels(xrange)
-    ax.legend(legend)
-    ax.grid()
-    fig.savefig("vn_abx_within_triplets.pdf")
 
-    # RSA
-    fig, ax = plt.subplots()
-    legend = []
-    for mode in ['random', 'trained']:
-        for level in ['phoneme', 'word']:
-            data = [rsa['english_triplets'][x]['indices'][mode][level] for x in xrange]
-            ax.plot(range(0, len(xrange)), data)
-            legend.append('{} - {} - {}'.format(type, mode, level))
-            ax.set(xlabel='Size of the codebook', ylabel='RSA score')
-    ax.set_xticks(np.arange(len(xrange)))
-    ax.set_xticklabels(xrange)
-    ax.legend(legend)
-    ax.grid()
-    fig.savefig("vn_rsa_triplets.pdf")
-    fig, ax = plt.subplots()
-    legend = []
-    for mode in ['random', 'trained']:
-        for level in ['phoneme', 'word']:
-            data = [rsa['english'][x]['indices'][mode][level] for x in xrange]
-            ax.plot(range(0, len(xrange)), data)
-            legend.append('{} - {} - {}'.format(type, mode, level))
-            ax.set(xlabel='Size of the codebook', ylabel='RSA score')
-    ax.set_xticks(np.arange(len(xrange)))
-    ax.set_xticklabels(xrange)
-    ax.legend(legend)
-    ax.grid()
-    fig.savefig("vn_rsa.pdf")
-
-    # DC
-    fig, ax = plt.subplots()
-    legend = []
-    for mode in ['random', 'trained']:
-        for level in ['acc', 'baseline']:
-            data = [dc['english'][x]['indices'][mode][level] for x in xrange]
-            ax.plot(range(0, len(xrange)), data)
-            legend.append('{} - {} - {}'.format(type, mode, level))
-            ax.set(xlabel='Size of the codebook', ylabel='DC score')
-    ax.set_xticks(np.arange(len(xrange)))
-    ax.set_xticklabels(xrange)
-    ax.legend(legend)
-    ax.grid()
-    fig.savefig("vn_dc.pdf")
-
-    # DC vs. RSA
-    fig, ax = plt.subplots()
-    legend = []
-    for mode in ['trained']:
-        xdata = [dc['english'][x]['indices'][mode]['acc'] for x in xrange]
-        ydata = [rsa['english_triplets'][x]['indices'][mode]['phoneme'] for x in xrange]
-        for i in range(len(xdata)):
-            ax.plot(xdata[i], ydata[i], 'o')
-            legend.append('{}'.format(range_size[i]))
-        ax.set(xlabel='DC score', ylabel='RSA score')
-    ax.legend(legend)
-    ax.grid()
-    fig.savefig("vn_dc_rsa.pdf")
+#    # ABX
+#    xrange = range_size
+#    fig, ax = plt.subplots()
+#    legend = []
+#    for type in ['z', 'indices']:
+#        for mode in ['random', 'trained']:
+#            data = [100 - abx['english_triplets'][x][type][mode] for x in xrange]
+#            ax.plot(range(0, len(xrange)), data)
+#            legend.append('{} - {}'.format(type, mode))
+#            ax.set(xlabel='Size of the codebook', ylabel='ABX accuracy')
+#    ax.set_xticks(np.arange(len(xrange)))
+#    ax.set_xticklabels(xrange)
+#    ax.legend(legend)
+#    ax.grid()
+#    fig.savefig("vn_abx_triplets.pdf")
+#    fig, ax = plt.subplots()
+#    legend = []
+#    for type in ['z', 'indices']:
+#        for mode in ['random', 'trained']:
+#            data = [100 - abx_within['english_triplets'][x][type][mode] for x in xrange]
+#            ax.plot(range(0, len(xrange)), data)
+#            legend.append('{} - {}'.format(type, mode))
+#            ax.set(xlabel='Size of the codebook', ylabel='ABX accuracy')
+#    ax.set_xticks(np.arange(len(xrange)))
+#    ax.set_xticklabels(xrange)
+#    ax.legend(legend)
+#    ax.grid()
+#    fig.savefig("vn_abx_within_triplets.pdf")
+#
+#    # RSA
+#    fig, ax = plt.subplots()
+#    legend = []
+#    for mode in ['random', 'trained']:
+#        for level in ['phoneme', 'word']:
+#            data = [rsa['english_triplets'][x]['indices'][mode][level] for x in xrange]
+#            ax.plot(range(0, len(xrange)), data)
+#            legend.append('{} - {} - {}'.format(type, mode, level))
+#            ax.set(xlabel='Size of the codebook', ylabel='RSA score')
+#    ax.set_xticks(np.arange(len(xrange)))
+#    ax.set_xticklabels(xrange)
+#    ax.legend(legend)
+#    ax.grid()
+#    fig.savefig("vn_rsa_triplets.pdf")
+#    fig, ax = plt.subplots()
+#    legend = []
+#    for mode in ['random', 'trained']:
+#        for level in ['phoneme', 'word']:
+#            data = [rsa['english'][x]['indices'][mode][level] for x in xrange]
+#            ax.plot(range(0, len(xrange)), data)
+#            legend.append('{} - {} - {}'.format(type, mode, level))
+#            ax.set(xlabel='Size of the codebook', ylabel='RSA score')
+#    ax.set_xticks(np.arange(len(xrange)))
+#    ax.set_xticklabels(xrange)
+#    ax.legend(legend)
+#    ax.grid()
+#    fig.savefig("vn_rsa.pdf")
+#
+#    # DC
+#    fig, ax = plt.subplots()
+#    legend = []
+#    for mode in ['random', 'trained']:
+#        for level in ['acc', 'baseline']:
+#            data = [dc['english'][x]['indices'][mode][level] for x in xrange]
+#            ax.plot(range(0, len(xrange)), data)
+#            legend.append('{} - {} - {}'.format(type, mode, level))
+#            ax.set(xlabel='Size of the codebook', ylabel='DC score')
+#    ax.set_xticks(np.arange(len(xrange)))
+#    ax.set_xticklabels(xrange)
+#    ax.legend(legend)
+#    ax.grid()
+#    fig.savefig("vn_dc.pdf")
+#
+#    # DC vs. RSA
+#    fig, ax = plt.subplots()
+#    legend = []
+#    for mode in ['trained']:
+#        xdata = [dc['english'][x]['indices'][mode]['acc'] for x in xrange]
+#        ydata = [rsa['english_triplets'][x]['indices'][mode]['phoneme'] for x in xrange]
+#        for i in range(len(xdata)):
+#            ax.plot(xdata[i], ydata[i], 'o')
+#            legend.append('{}'.format(range_size[i]))
+#        ax.set(xlabel='DC score', ylabel='RSA score')
+#    ax.legend(legend)
+#    ax.grid()
+#    fig.savefig("vn_dc_rsa.pdf")
 
 
 if __name__ == '__main__':
