@@ -138,6 +138,24 @@ def sizewise(rows):
     ggsave(g, 'sizewise2.pdf')
 
 
+def r2_partial():
+    data = pd.read_csv("partial_rsa_by_size-text.csv")
+    g = ggplot(data, aes(x='size', y='r2', color='factor(codebook)')) + geom_point() + geom_line() + \
+                            labs(color='codebook size', y='$R^2$')
+    ggsave(g, "plot-r2.pdf")
+    g = ggplot(data, aes(x='size', y='r_xonly', color='factor(codebook)')) + geom_point() + geom_line() + \
+                            labs(color='codebook size', y="Pearson's r")
+    ggsave(g, "plot-r.pdf")
+    g = ggplot(data, aes(x='size', y='r2_part', color='factor(codebook)')) + geom_point() + geom_line() + \
+                                                        labs(color='codebook', y='$R^2$ partial')
+    ggsave(g, "plot-r2_partial-text.pdf")
+
+    data = pd.read_csv("partial_rsa_by_size-vis.csv")
+    g = ggplot(data, aes(x='size', y='r2_part', color='factor(codebook)')) + geom_point() + geom_line() + \
+                                                        labs(color='codebook', y='$R^2$ partial')
+    ggsave(g, "plot-r2_partial-vis.pdf")
+
+
 def main():
     rows = list(scores())
     sizewise(rows)
