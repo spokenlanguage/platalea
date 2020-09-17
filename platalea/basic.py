@@ -70,16 +70,20 @@ def cyclic_scheduler(optimizer, n_batches, max_lr, min_lr=1e-6):
     return scheduler
 
 
+def dict_values_to_device(data, device):
+    return {key: value.to(device) for key, value in data.items()}
+
+
 def experiment(net, data, config):
     def val_loss():
-        net.eval()
+        net.eval()  # switch to eval mode
         result = []
         for item in data['val']:
-            item = {key: value.to(_device) for key, value in item.items()}
+            item = dict_values_to_device(item, _device)
             result.append(net.cost(item).item())
-        net.train()
+        net.train()  # back to train mode
         return torch.tensor(result).mean()
-    
+
     net.to(_device)
     net.train()
     optimizer = optim.Adam(net.parameters(), lr=1)
@@ -90,7 +94,7 @@ def experiment(net, data, config):
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
             for j, item in enumerate(data['train'], start=1): # check reshuffling
-                item = {key: value.to(_device) for key, value in item.items()}
+                item = dict_values_to_device(item, _device)
                 loss = net.cost(item)
                 optimizer.zero_grad()
                 loss.backward()
@@ -99,8 +103,12 @@ def experiment(net, data, config):
                 cost += Counter({'cost': loss.item(), 'N':1})
                 if j % 100 == 0:
                     logging.info("train {} {} {}".format(epoch, j, cost['cost']/cost['N']))
+                else:
+                    logging.debug("train {} {} {}".format(epoch, j, cost['cost']/cost['N']))
                 if j % 400 == 0:
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
+                else:
+                    logging.debug("valid {} {} {}".format(epoch, j, val_loss()))
             result = platalea.score.score(net, data['val'].dataset)
             result['epoch'] = epoch
             json.dump(result, out)

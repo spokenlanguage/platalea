@@ -1,5 +1,6 @@
 import configargparse
 from pathlib import Path
+import logging
 
 home = Path.home()
 # Looking at the home folder, then at current folder (later ones in list override previous ones)
@@ -37,6 +38,12 @@ class PlataleaConfig:
                 exit(0)
         for arg, value in vars(parsed_args).items():
             self._args[arg] = value
+        if self._args['verbose']:
+            logging.basicConfig(level=logging.DEBUG)
+        elif self._args['silent']:
+            logging.basicConfig(level=logging.WARNING)
+        else:
+            logging.basicConfig(level=logging.INFO)
 
     def __getattr__(self, arg_name):
         return self._args[arg_name]
@@ -49,6 +56,8 @@ args = PlataleaConfig()
 
 args.add_argument(
     '-c', '--config', is_config_file=True, help='config file path')
+args.add_argument("-v", "--verbose", help="increase output verbosity", action="store_true")
+args.add_argument("--silent", help="decrease output verbosity", action="store_true")
 args.add_argument(
     '--audio_features_fn', env_var='PLATALEA_AUDIO_FEATURES_FN',
     default='mfcc_delta_features.pt',
