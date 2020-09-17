@@ -214,3 +214,61 @@ def sample_distributions(path):
                   'size': size,
                   'level': level} for i, p in enumerate(distr_lab)]
     return distr_ind, distr_lab
+
+
+def plot_distributions_3d():
+    distr_ind = []
+    distr_lab = []
+    for p in ['/roaming/gchrupal/verdigris/platalea.vq/experiments/vq-32-q1',
+              '/roaming/gchrupal/verdigris/platalea.vq/experiments/vq-1024-q1',
+              '/roaming/gchrupal/verdigris/platalea.vq/experiments/vq-32-q2',
+              '/roaming/gchrupal/verdigris/platalea.vq/experiments/vq-1024-q2',
+              '/roaming/gchrupal/verdigris/platalea.vq/experiments/vq-32-q3',
+              '/roaming/gchrupal/verdigris/platalea.vq/experiments/vq-1024-q3']:
+        condition = os.path.basename(p)
+        split = condition.split('-')
+        size = int(split[1])
+        level = int(split[2][1])
+        d_ind, d_lab = compute_distributions(p)
+        plot_3d(d_ind, 'plot-distr-ind-{}-{}.pdf'.format(level, size))
+        plot_3d(d_lab.T, 'plot-distr-lab-{}-{}.pdf'.format(level, size))
+
+
+def compute_distributions(path):
+    d = Path(path)
+    D = pickle.load(open(d / 'local_trained_codebook.pkl', 'rb'))
+    indices = [d.nonzero()[0][0] for d in D['codebook']['features']]
+    labels = D['codebook']['labels']
+    _, _, p_xy = compute_joint_probability(indices, labels)
+    p_xy_sy = np.array(p_xy)
+    for i_x in range(p_xy.shape[0]):
+        p_xy_sy[i_x, :] = sorted(p_xy[i_x, :], reverse=True)
+        p_xy_sy[i_x, :] = p_xy_sy[i_x, :] / np.sum(p_xy[i_x, :])
+    p_xy_sx = np.array(p_xy)
+    for i_y in range(p_xy.shape[1]):
+        p_xy_sx[:, i_y] = sorted(p_xy[:, i_y], reverse=True)
+        p_xy_sx[:, i_y] = p_xy_sx[:, i_y] / np.sum(p_xy[:, i_y])
+    return p_xy_sy, p_xy_sx
+
+
+def plot_3d(data, fname):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    # This import registers the 3D projection, but is otherwise unused.
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
+
+    # setup the figure and axes
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    _x = np.arange(data.shape[1])
+    _y = np.arange(data.shape[0])
+    _xx, _yy = np.meshgrid(_x, _y)
+    x, y = _xx.ravel(), _yy.ravel()
+    top = data.ravel()
+    bottom = np.zeros_like(top)
+    width = depth = 1
+
+    ax.bar3d(x, y, bottom, width, depth, top, shade=True)
+    plt.tight_layout()
+    plt.savefig(fname)
