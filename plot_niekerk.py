@@ -28,35 +28,43 @@ def extract_rsa(fpath, mode, ref):
 
 def extract_results_niekerk():
     results = []
-    for path in glob.glob('experiments/niekerk/*/val/*/*'):
+    for path in glob.glob('experiments/niekerk/english/val/*/*'):
         d = Path(path)
         s = path.split('/')
+        # Computing path for results with triplets
+        s3 = s.copy()
+        s3[2] = 'english_triplets'
+        d3 = Path('/'.join(s3))
         results.append(dict(
             size=s[4],
-            input_type=('sentences' if s[2] == 'english' else 'trigrams'),
             output_type=('embeddings' if s[5] == 'z' else 'indices'),
-            abx_base=extract_abx(d / 'random/flickr8k_abx_within_result.json'),
-            abx=extract_abx(d / 'trained/flickr8k_abx_within_result.json'),
             dc_base=extract_dc(d / 'local/local_diagnostic.json', 'random'),
             dc=extract_dc(d / 'local/local_diagnostic.json', 'trained'),
             rsa_base=extract_rsa(d / 'ed_rsa.json', 'random', 'phoneme'),
             rsa_base_w=extract_rsa(d / 'ed_rsa.json', 'random', 'word'),
             rsa=extract_rsa(d / 'ed_rsa.json', 'trained', 'phoneme'),
             rsa_w=extract_rsa(d / 'ed_rsa.json', 'trained', 'word'),
-            rsa3_base=extract_rsa(d / 'ed_rsa.json', 'random', 'phoneme'),
-            rsa3_base_w=extract_rsa(d / 'ed_rsa_trigrams.json', 'random', 'word'),
-            rsa3=extract_rsa(d / 'ed_rsa_trigrams.json', 'trained', 'phoneme'),
-            rsa3_w=extract_rsa(d / 'ed_rsa_trigrams.json', 'trained', 'word')))
+            abx3_base=extract_abx(d3/ 'random/flickr8k_abx_within_result.json'),
+            abx3=extract_abx(d3 / 'trained/flickr8k_abx_within_result.json'),
+            rsa3_base=extract_rsa(d3 / 'ed_rsa.json', 'random', 'phoneme'),
+            rsa3_base_w=extract_rsa(d3 / 'ed_rsa_trigrams.json', 'random', 'word'),
+            rsa3=extract_rsa(d3 / 'ed_rsa_trigrams.json', 'trained', 'phoneme'),
+            rsa3_w=extract_rsa(d3 / 'ed_rsa_trigrams.json', 'trained', 'word')))
     return results
 
 
 def plot_all():
-    res = extract_results_niekerk()
-    res = [r for r in res if r['abx'] is not None and r['rsa3'] is not None]
+    results = extract_results_niekerk()
+    res = [r for r in results if r['abx3'] is not None and r['rsa3'] is not None]
     res = from_records(res)
-    p = pn.ggplot(res, pn.aes(x='abx', y='rsa3')) + \
+    p = pn.ggplot(res, pn.aes(x='abx3', y='rsa3')) + \
             pn.geom_point(pn.aes(color='factor(size)'))
-    pn.ggsave(p, 'vn_abx_rsa3.pdf')
+    pn.ggsave(p, 'vn_abx3_rsa3.pdf')
+    res = [r for r in results if r['abx3'] is not None and r['rsa'] is not None]
+    res = from_records(res)
+    p = pn.ggplot(res, pn.aes(x='abx3', y='rsa')) + \
+            pn.geom_point(pn.aes(color='factor(size)'))
+    pn.ggsave(p, 'vn_abx3_rsa.pdf')
     return
 
 #    # ABX
