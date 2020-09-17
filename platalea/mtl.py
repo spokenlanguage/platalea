@@ -85,6 +85,19 @@ def val_loss(net, data):
     return torch.tensor(result).mean()
 
 
+def task_iterator(tasks):
+    # returns a list of batches for each task to train this step
+    # allows to train a task only every n step
+    iterators = [t['data']['train'].__iter__() for t in tasks]
+    step = 1
+    try:
+        while True:
+            yield [(t, next(it)) for t, it in zip(tasks, iterators) if 'step' not in t or step % t['step'] == 0]
+            step += 1
+    except StopIteration:
+        return
+
+
 def experiment(net, tasks, config):
     for t in tasks:
         # Preparing nets
@@ -105,10 +118,9 @@ def experiment(net, tasks, config):
         for epoch in range(1, config['epochs']+1):
             for t in tasks:
                 t['cost'] = Counter()
-            for j, items in enumerate(zip(*[t['data']['train'] for t in tasks]),
-                                      start=1):
-                for i_t, t in enumerate(tasks):
-                    item = {key: value.to(_device) for key, value in items[i_t].items()}
+            for j, items in enumerate(task_iterator(tasks), start=1):
+                for t, item in items:
+                    item = {k: v.to(_device) for k, v in item.items()}
                     loss = t['net'].cost(item)
                     t['optimizer'].zero_grad()
                     loss.backward()

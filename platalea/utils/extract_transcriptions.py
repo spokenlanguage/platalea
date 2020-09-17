@@ -32,7 +32,6 @@ if __name__ == '__main__':
     # Setting general configuration
     torch.manual_seed(args.seed)
     random.seed(args.seed)
-    logging.basicConfig(level=logging.INFO)
 
     logging.info('Loading data')
     data = dict(

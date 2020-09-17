@@ -147,11 +147,13 @@ class SpeechEncoder(nn.Module):
 
 
 def generate_padding_mask(batch_size, lengths, max_len=None):
+    # when a value is True, the corresponding value on the attention layer will be ignored
+    # (https://pytorch.org/docs/stable/generated/torch.nn.MultiheadAttention.html#torch.nn.MultiheadAttention.forward)
     if max_len is None:
         max_len = max(lengths)
-    mask = torch.ones((batch_size, max_len), dtype=bool)
+    mask = torch.zeros((batch_size, max_len), dtype=bool)
     for ix, l in enumerate(lengths):
-        mask[ix, l:] = False
+        mask[ix, l:] = True
     return mask
 
 

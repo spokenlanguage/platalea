@@ -23,19 +23,23 @@ args.parse()
 # Setting general configuration
 torch.manual_seed(args.seed)
 random.seed(args.seed)
-logging.basicConfig(level=logging.INFO)
+
+# Logging the arguments
+logging.info('Arguments: {}'.format(args))
 
 
 batch_size = 8
 
 logging.info('Loading data')
 data = dict(
-    train=D.flickr8k_loader(args.flickr8k_root, args.flickr8k_meta,
-                            args.flickr8k_language, args.audio_features_fn,
-                            split='train', batch_size=batch_size, shuffle=True),
-    val=D.flickr8k_loader(args.flickr8k_root, args.flickr8k_meta,
-                          args.flickr8k_language, args.audio_features_fn,
-                          split='val', batch_size=batch_size, shuffle=False))
+    train=D.flickr8k_loader(
+        args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
+        args.audio_features_fn, split='train', batch_size=batch_size,
+        shuffle=True, downsampling_factor=args.downsampling_factor),
+    val=D.flickr8k_loader(
+        args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
+        args.audio_features_fn, split='val', batch_size=batch_size,
+        shuffle=False))
 
 if args.asr_model_dir:
     net = torch.load(os.path.join(args.asr_model_dir, 'net.best.pt'))
@@ -47,10 +51,10 @@ else:
     logging.info('Training ASR/SLT')
     if data['train'].dataset.is_slt():
         M1.experiment(net, data, run_config, slt=True)
-        copy_best('result.json', 'asr.best.pt', experiment_type='slt')
+        copy_best('.', 'result.json', 'asr.best.pt', experiment_type='slt')
     else:
         M1.experiment(net, data, run_config)
-        copy_best('result.json', 'asr.best.pt', experiment_type='asr')
+        copy_best('.', 'result.json', 'asr.best.pt', experiment_type='asr')
     copyfile('result.json', 'result_asr.json')
     net = torch.load('asr.best.pt')
 
@@ -76,4 +80,4 @@ run_config = dict(max_lr=2 * 1e-4, epochs=args.epochs)
 logging.info('Training text-image')
 M2.experiment(net, data, run_config)
 copyfile('result.json', 'result_text_image.json')
-copy_best('result_text_image.json', 'ti.best.pt')
+copy_best('.', 'result_text_image.json', 'ti.best.pt')

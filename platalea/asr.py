@@ -97,12 +97,12 @@ def experiment(net, data, config, slt=False):
         lr = config['lr']
     else:
         lr = 1.0
-    if 'opt' in config.keys() and config['opt'] == 'adam':
+    if 'opt' in config.keys() and config['opt'] == 'adadelta':
+        optimizer = optim.Adadelta(net.parameters(), lr=lr, rho=0.95, eps=1e-8)
+    else:
         optimizer = optim.Adam(net.parameters(), lr=lr)
         scheduler = cyclic_scheduler(optimizer, len(data['train']),
                                      max_lr=config['max_lr'], min_lr=1e-6)
-    else:
-        optimizer = optim.Adadelta(net.parameters(), lr=lr, rho=0.95, eps=1e-8)
     optimizer.zero_grad()
 
     with open("result.json", "w") as out:
@@ -116,7 +116,7 @@ def experiment(net, data, config, slt=False):
                 loss.backward()
                 nn.utils.clip_grad_norm_(net.parameters(), config['max_norm'])
                 optimizer.step()
-                if 'opt' in config.keys() and config['opt'] == 'adam':
+                if 'opt' not in config.keys() or config['opt'] == 'adam':
                     scheduler.step()
                 cost += Counter({'cost': loss.item(), 'N': 1})
                 if j % 100 == 0:

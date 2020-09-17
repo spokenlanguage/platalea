@@ -17,7 +17,11 @@ def read_results(fpath="result.json"):
     res = []
     content = open(fpath).readlines()
     for line in content:
-        res.append(json.loads(line))
+        try:
+            res.append(json.loads(line))
+        except json.JSONDecodeError as e:
+            print('Error reading {}'.format(fpath))
+            raise e
     return res
 
 
@@ -54,7 +58,7 @@ if __name__ == '__main__':
         help='Separator used when several result files are given.',
         type=str, action='store', default=',')
     parser.add_argument(
-        '--experiment-type', dest='experiment_type',
+        '--experiment_type', dest='experiment_type',
         help='Type of experiment. Determines which metric is used.',
         type=str, action='store', choices=['retrieval', 'asr', 'mtl', 'slt'],
         default='retrieval')
