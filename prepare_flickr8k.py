@@ -172,15 +172,24 @@ def default_factors():
 
 
 def make_factors(net):
-    conv = dict(pad=0,
-                ksize=net.SpeechEncoder.Bottom.Conv.kernel_size[0],
-                stride=net.SpeechEncoder.Bottom.Conv.stride[0])
+    try:
+        conv  = dict(pad=0,
+                     ksize=net.SpeechEncoder.Conv.kernel_size[0],
+                     stride=net.SpeechEncoder.Conv.stride[0])
+    except AttributeError:
+        conv = dict(pad=0,
+                    ksize=net.SpeechEncoder.Bottom.Conv.kernel_size[0],
+                    stride=net.SpeechEncoder.Bottom.Conv.stride[0])
     D = dict(conv=conv)
-    for k in range(net.SpeechEncoder.Bottom.RNN.num_layers):
-        D['rnn_bottom{}'.format(k)] = None
-    D['codebook'] = None
-    for k in range(net.SpeechEncoder.Top.RNN.num_layers):
-        D['rnn_top{}'.format(k)] = None
+    try:
+        for k in range(net.SpeechEncoder.RNN.num_layers):
+            D['rnn{}'.format(k)] = None
+    except AttributeError:
+        for k in range(net.SpeechEncoder.Bottom.RNN.num_layers):
+            D['rnn_bottom{}'.format(k)] = None
+        D['codebook'] = None
+        for k in range(net.SpeechEncoder.Top.RNN.num_layers):
+            D['rnn_top{}'.format(k)] = None
     return D
 
 

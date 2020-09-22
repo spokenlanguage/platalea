@@ -1,6 +1,7 @@
 import argparse
 import torch
 import platalea.basicvq as M
+import platalea.basic as B
 import json
 import glob
 from platalea.vq_encode import evaluate_zerospeech
@@ -69,24 +70,27 @@ def zerospeech():
         scores['modelpath'] =  "{}/net.{}.pt".format(modeldir, best)
         json.dump(scores, open("{}/vq_result.json".format(modeldir), "w"))
 
-
-def prepare_rsa():
+def prepare_rsa_on(modeldir, module):
     from prepare_flickr8k import save_data, make_factors
+    result = [ json.loads(line) for line in open(modeldir + "result.json") ]
+    best = sorted(result, key=lambda x: x['recall']['10'], reverse=True)[0]['epoch']
+    oldnet = torch.load("{}/net.{}.pt".format(modeldir, best))
+    logging.info("Loading model from {} at epoch {}".format(modeldir, best))
+    net = module.SpeechImage(oldnet.config)
+    net.load_state_dict(oldnet.state_dict())
+    net.cuda()
+    json.dump(make_factors(net), open("{}/downsampling_factors.json".format(modeldir), "w"))
+    net = module.SpeechImage(oldnet.config)
+    net_rand = module.SpeechImage(oldnet.config)
+    net.load_state_dict(oldnet.state_dict())
+    net.cuda()
+    net_rand.cuda()
+    save_data([('trained', net), ('random', net_rand)], modeldir, batch_size=8)
+
+        
+def prepare_rsa():
     for modeldir in experiments("ed_rsa.json"):
-        result = [ json.loads(line) for line in open(modeldir + "result.json") ]
-        best = sorted(result, key=lambda x: x['recall']['10'], reverse=True)[0]['epoch']
-        oldnet = torch.load("{}/net.{}.pt".format(modeldir, best))
-        logging.info("Loading model from {} at epoch {}".format(modeldir, best))
-        net = M.SpeechImage(oldnet.config)
-        net.load_state_dict(oldnet.state_dict())
-        net.cuda()
-        json.dump(make_factors(net), open("{}/downsampling_factors.json".format(modeldir), "w"))
-        net = M.SpeechImage(oldnet.config)
-        net_rand = M.SpeechImage(oldnet.config)
-        net.load_state_dict(oldnet.state_dict())
-        net.cuda()
-        net_rand.cuda()
-        save_data([('trained', net), ('random', net_rand)], modeldir, batch_size=8)
+        prepare_rsa_on(modeldir, module=M)
 
 
 def prepare_rsa_trigrams():
@@ -181,6 +185,37 @@ def rsa_wordgrams(n=1):
         json.dump(cor, open("{}/ed_rsa_wordgrams{}.json".format(modeldir, n), "w"))
 
 
+def prepare_and_run_compare_rsa(prepared=False):
+    from lyz.methods import global_rsa
+    from pathlib import Path
+    basedir = "experiments/basic-stack/"
+    if not prepared:
+        prepare_rsa_on(basedir, B)
+    (Path(basedir)/"mean").mkdir(parents=True, exist_ok=True)
+    config = dict(directory=basedir,
+                  output="{}/mean/".format(basedir),
+                  attention='mean',
+                  epochs=60,
+                  test_size=1/2,
+                  layers=['rnn1'],
+                  device='cpu',
+                  runs=1)
+    global_rsa(config)
+    vq_dirs = ["experiments/vq-{}-q1/".format(2**n) for n in range(5, 11) ]
+    for modeldir in vq_dirs:
+        if not prepared:
+            prepare_rsa_on(modeldir, M)
+        (Path(modeldir)/"mean").mkdir(parents=True, exist_ok=True)
+        config = dict(directory=modeldir,
+                      output="{}/mean/".format(modeldir),
+                      attention='mean',
+                      epochs=60,
+                      test_size=1/2,
+                      layers=['rnn_top0'],
+                      device='cpu',
+                      runs=1)
+        global_rsa(config)
+        
 def prepare_and_run_rsa_wordgrams():
     from abx_trigrams import prepare_wordgrams_fa
     for n in [1, 5]:

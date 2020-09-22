@@ -166,6 +166,29 @@ def r2_partial():
     ggsave(g, "plot-r2_partial-vis.pdf")
 
 
+def compare_rsa_plot():
+    rows = []
+    base = "experiments/basic-stack/mean/global_rsa.json"
+    row = select(base, dict(model='trained', layer='rnn1'))
+    row['size'] = None
+    rows.append(row)
+    sizes = [2**n for n in range(5, 11) ]
+    for size in sizes:
+        try:
+            row = select("experiments/vq-{}-q1/mean/global_rsa.json".format(size), dict(model='trained', layer='rnn_top0'))
+            row['size'] =size
+            rows.append(row)
+        except:
+            pass
+    data = pd.DataFrame.from_records(rows)
+    data.to_csv("compare_rsa.csv", header=True, index=False)
+    baseline = data.query("size!=size")
+    g = ggplot(data.query('size==size'), aes(x='size', y='cor'))  + geom_point() + geom_line() + scale_x_continuous(trans='log2') + \
+                                                labs(x='codebook size', y="Pearson's r") + \
+                                                geom_hline(data=baseline, mapping=aes(yintercept='cor'), linetype='dashed', show_legend=True)
+    ggsave(g, "compare_rsa.pdf")
+
+
 def main():
     rows = list(scores())
     sizewise(rows)
