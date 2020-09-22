@@ -150,6 +150,16 @@ def r2_partial():
                                                         labs(color='codebook', y='$R^2$ partial')
     ggsave(g, "plot-r2_partial-text.pdf")
 
+    d1 = data[['size', 'codebook', 'r_xonly']].rename(columns={'r_xonly': 'r'})
+    d2 = data[['size', 'codebook', 'r_base']].rename(columns={'r_base': 'r'})
+    d1['reference'] = 'phonemes'
+    d2['reference'] = 'vis-sem'
+    data = d1.merge(d2, how='outer')
+
+    g = ggplot(data, aes(x='size', y='r', color='factor(codebook)', linetype='reference')) + geom_point() + geom_line() + \
+                                                        labs(color='codebook', y="Pearson's r")
+    ggsave(g, "plot-r-control-text.pdf")
+
     data = pd.read_csv("partial_rsa_by_size-vis.csv")
     g = ggplot(data, aes(x='size', y='r2_part', color='factor(codebook)')) + geom_point() + geom_line() + \
                                                         labs(color='codebook', y='$R^2$ partial')
@@ -161,7 +171,7 @@ def main():
     sizewise(rows)
     data = from_records(rows)
     #vars = ['abx', 'abx_lev', 'abx_f', 'abx_fw', 'abx_fr', 'abx_frw', 'ed_rsa', 'ed_rsa_word', 'diag', 'ed_rsa3', 'ed_rsa_F']
-    vars = ['abx_fw', 'ed_rsa', 'ed_rsa3', 'ed_rsaw1', 'ed_rsaw5', 'diag']
+    vars = ['abx_fw', 'ed_rsa', 'ed_rsa3',  'ed_rsa_word', 'diag']
     for var in vars:
 
         p = ggplot(data, aes(x='recall', y=var)) + \
