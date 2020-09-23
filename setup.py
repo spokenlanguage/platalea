@@ -4,7 +4,7 @@ from setuptools import setup
 setup(name='platalea',
       version='0.2',
       description='Understanding visually grounded spoken language via multi-tasking',
-      url='https://github.com/gchrupala/platalea',
+      url='https://github.com/spokenlanguage/platalea',
       author='Grzegorz Chrupała',
       author_email='g.chrupala@uvt.nl',
       license='Apache',
