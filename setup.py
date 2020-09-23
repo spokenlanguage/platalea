@@ -11,6 +11,7 @@ setup(name='platalea',
       zip_safe=False,
       packages=['platalea', 'platalea.audio', 'platalea.utils', 'platalea.experiments',
                 'platalea.experiments.flickr8k', 'platalea.experiments.librispeech_places'],
+      include_package_data=True,
       install_requires=[
           'torch>=1.2.0',
           'torchvision>=0.4.0',
