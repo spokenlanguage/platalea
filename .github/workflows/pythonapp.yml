@@ -17,6 +17,8 @@ jobs:
       run: pip install tox
     - name: Test with tox
       run: tox
+    - name: Debugging with tmate
+      uses: mxschmitt/action-tmate@v3
   run_experiments:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
