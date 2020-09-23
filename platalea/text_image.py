@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from platalea.basic import cyclic_scheduler
+import platalea.schedulers
 import platalea.dataset as D
 from platalea.encoders import TextEncoder, ImageEncoder
 import platalea.loss
@@ -74,8 +74,8 @@ def experiment(net, data, config):
     net.to(_device)
     net.train()
     optimizer = optim.Adam(net.parameters(), lr=1)
-    scheduler = cyclic_scheduler(optimizer, len(data['train']),
-                                 max_lr=config['max_lr'], min_lr=1e-6)
+    scheduler = platalea.schedulers.cyclic(optimizer, len(data['train']),
+                                           max_lr=config['max_lr'], min_lr=1e-6)
     optimizer.zero_grad()
 
     with open("result.json", "w") as out:
