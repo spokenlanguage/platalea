@@ -35,7 +35,7 @@ def run(size=32, level=1, runid=0, device=0):
     
     logging.info('Building model')
     net = M.SpeechImage(config)
-    run_config = dict(max_lr=2 * 1e-4, epochs=1)
+    run_config = dict(max_lr=2 * 1e-4, epochs=32)
     
     logging.info('Training')
     M.experiment(net, data, run_config)
