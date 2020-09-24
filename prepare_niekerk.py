@@ -9,20 +9,13 @@ from prepare_flickr8k import align2ipa, check_nan, good_alignment, \
         load_alignment, make_indexer, phoneme_activations
 
 
-def save_data(indir, outdir, mode):
+def save_data(indir, outdir, mode,
+              alignment_fpath='data/datasets/flickr8k/fa.json'):
     Path(outdir).mkdir(parents=True, exist_ok=True)
     save_global_data(indir, outdir=outdir, mode=mode,
-                     alignment_fpath='data/datasets/flickr8k/fa.json')
+                     alignment_fpath=alignment_fpath)
     save_local_data(outdir=outdir, mode=mode,
-                    alignment_fpath='data/datasets/flickr8k/fa.json')
-
-
-def save_data_trigrams(indir, outdir, mode):
-    Path(outdir).mkdir(parents=True, exist_ok=True)
-    save_global_data_trigrams(indir, outdir=outdir, mode=mode,
-                              alignment_fpath='data/flickr8k_trigrams_fa.json')
-    save_local_data(outdir=outdir, mode=mode,
-                    alignment_fpath="data/flickr8k_trigrams_fa.json")
+                    alignment_fpath=alignment_fpath)
 
 
 def save_global_data_trigrams(indir, outdir, mode, alignment_fpath):

@@ -8,46 +8,17 @@ import torch
 import numpy as np
 
 
-def save_data(nets, directory, batch_size=32):
+def save_data(nets, directory, batch_size=32,
+              alignment_fpath='data/datasets/flickr8k/fa.json'):
     Path(directory).mkdir(parents=True, exist_ok=True)
     save_global_data(nets, directory=directory,
-                     alignment_fpath='data/datasets/flickr8k/fa.json',
+                     alignment_fpath=alignment_fpath,
                      batch_size=batch_size,
-                     audio_exists=True)  
+                     audio_exists=True)
     save_local_data(directory=directory,
-                    alignment_fpath='data/datasets/flickr8k/fa.json')
+                    alignment_fpath=alignment_fpath)
 
-def save_data_trigrams(nets, directory, batch_size=32):
-    Path(directory).mkdir(parents=True, exist_ok=True)
-    json.dump(make_factors(nets[0][1]), open(Path(directory) / "downsampling_factors.json", "w"))
-    save_global_data(nets, directory=directory,
-                     alignment_fpath='data/flickr8k_trigrams_fa.json',
-                     batch_size=batch_size,
-                     audio_exists=False) 
-    save_local_data(directory=directory,
-                    alignment_fpath="data/flickr8k_trigrams_fa.json")
 
-def save_data_fragments(nets, directory, batch_size=32):
-    Path(directory).mkdir(parents=True, exist_ok=True)
-    json.dump(make_factors(nets[0][1]), open(Path(directory) / "downsampling_factors.json", "w"))
-    save_global_data(nets, directory=directory,
-                     alignment_fpath='data/flickr8k_fragments_fa.json',
-                     batch_size=batch_size,
-                     audio_exists=False) 
-    save_local_data(directory=directory,
-                    alignment_fpath="data/flickr8k_fragments_fa.json")
-
-def save_data_wordgrams(nets, directory, n, batch_size=32):
-    Path(directory).mkdir(parents=True, exist_ok=True)
-    json.dump(make_factors(nets[0][1]), open(Path(directory) / "downsampling_factors.json", "w"))
-    save_global_data(nets, directory=directory,
-                     alignment_fpath='data/flickr8k_wordgrams{}_fa.json'.format(n),
-                     batch_size=batch_size,
-                     audio_exists=False) 
-    save_local_data(directory=directory,
-                    alignment_fpath="data/flickr8k_wordgrams{}_fa.json".format(n))
-
-    
 def save_global_data(nets, directory, alignment_fpath, batch_size=32, audio_exists=True):
     """Generate data for training a phoneme decoding model."""
     if audio_exists:
@@ -60,7 +31,7 @@ def save_global_data(nets, directory, alignment_fpath, batch_size=32, audio_exis
         # data
         if dataset.Flickr8KData.le is None:
             dataset.Flickr8KData.init_vocabulary(val)
-    
+
         alignments = [data[sent['audio_id']] for sent in val]
         # Only consider cases where alignement does not fail
         alignments = [item for item in alignments if good_alignment(item)]
@@ -76,9 +47,9 @@ def save_global_data(nets, directory, alignment_fpath, batch_size=32, audio_exis
         try:
             audio = pickle.load(open("{}_cached_audio.pkl".format(alignment_fpath), 'rb'))
         except FileNotFoundError:
-            audio = audio_features(paths, config)     
+            audio = audio_features(paths, config)
             pickle.dump(audio, open("{}_cached_audio.pkl".format(alignment_fpath), 'wb'))
-            
+
     audio_np = [a.numpy() for a in audio]
 
     ## Global data

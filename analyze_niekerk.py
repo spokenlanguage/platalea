@@ -3,7 +3,7 @@ from ABXpy.distance import default_distance
 import logging
 import os
 from pathlib import Path
-from prepare_niekerk import save_data, save_data_trigrams
+from prepare_niekerk import save_data
 from shutil import copyfile
 from vq_eval import local_diag, rsa, rsa_trigrams
 
@@ -40,7 +40,9 @@ for exp, is_trigram in experiments:
                         copyfile(
                             outroot / 'downsampling_factors.json',
                             outdir / 'trigrams' / 'downsampling_factors.json')
-                        save_data_trigrams(encdir, outdir / 'trigrams', mode)
+                        save_data(
+                            encdir, outdir / 'trigrams', mode,
+                            alignment_fpath='data/flickr8k_trigrams_fa.json')
                     else:
                         os.makedirs(outdir, exist_ok=True)
                         copyfile(outroot / 'downsampling_factors.json',

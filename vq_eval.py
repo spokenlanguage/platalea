@@ -87,14 +87,14 @@ def prepare_rsa_on(modeldir, module):
     net_rand.cuda()
     save_data([('trained', net), ('random', net_rand)], modeldir, batch_size=8)
 
-        
+
 def prepare_rsa():
     for modeldir in experiments("ed_rsa.json"):
         prepare_rsa_on(modeldir, module=M)
 
 
 def prepare_rsa_trigrams():
-    from prepare_flickr8k import save_data_trigrams, make_factors
+    from prepare_flickr8k import save_data, make_factors
     for modeldir in experiments("ed_rsa_trigrams.json"):
         result = [ json.loads(line) for line in open(modeldir + "/result.json") ]
         best = sorted(result, key=lambda x: x['recall']['10'], reverse=True)[0]['epoch']
@@ -109,10 +109,12 @@ def prepare_rsa_trigrams():
         net.load_state_dict(oldnet.state_dict())
         net.cuda()
         net_rand.cuda()
-        save_data_trigrams([('trained', net), ('random', net_rand)], "{}/trigrams".format(modeldir), batch_size=8)
+        save_data([('trained', net), ('random', net_rand)],
+                  "{}/trigrams".format(modeldir), batch_size=8,
+                  alignment_fpath='data/flickr8k_trigrams_fa.json')
 
 def prepare_rsa_fragments():
-    from prepare_flickr8k import save_data_fragments, make_factors
+    from prepare_flickr8k import save_data, make_factors
     for modeldir in experiments("ed_rsa_fragments.json"):
         result = [ json.loads(line) for line in open(modeldir + "/result.json") ]
         best = sorted(result, key=lambda x: x['recall']['10'], reverse=True)[0]['epoch']
@@ -127,10 +129,12 @@ def prepare_rsa_fragments():
         net.load_state_dict(oldnet.state_dict())
         net.cuda()
         net_rand.cuda()
-        save_data_fragments([('trained', net), ('random', net_rand)], "{}/fragments".format(modeldir), batch_size=8)
+        save_data([('trained', net), ('random', net_rand)],
+                  "{}/fragments".format(modeldir), batch_size=8,
+                  alignment_fpath='data/flickr8k_fragments_fa.json')
 
 def prepare_rsa_wordgrams(n=1):
-    from prepare_flickr8k import save_data_wordgrams, make_factors
+    from prepare_flickr8k import save_data, make_factors
     for modeldir in experiments("ed_rsa_wordgrams{}.json".format(n)):
         result = [ json.loads(line) for line in open(modeldir + "/result.json") ]
         best = sorted(result, key=lambda x: x['recall']['10'], reverse=True)[0]['epoch']
@@ -145,8 +149,10 @@ def prepare_rsa_wordgrams(n=1):
         net.load_state_dict(oldnet.state_dict())
         net.cuda()
         net_rand.cuda()
-        batch_size = 32 if n > 2 else 128 
-        save_data_wordgrams([('trained', net), ('random', net_rand)], "{}/wordgrams{}".format(modeldir, n), n, batch_size=batch_size)
+        batch_size = 32 if n > 2 else 128
+        save_data([('trained', net), ('random', net_rand)],
+                  "{}/wordgrams{}".format(modeldir, n), batch_size=batch_size,
+                  alignment_fpath='data/flickr8k_wordgrams{}_fa.json'.format(n))
 
 
 def rsa(modeldirs):
@@ -167,7 +173,7 @@ def rsa_trigrams(modeldirs):
         cor = ed_rsa("{}/trigrams".format(modeldir), layers=['codebook'], test_size=1/2)
         logging.info("RSA on trigrams for {}: {}".format(modeldir, json.dumps(cor, indent=2)))
         json.dump(cor, open("{}/ed_rsa_trigrams.json".format(modeldir), "w"))
-        
+
 def rsa_fragments(quantiles=lyz.methods.DECILES):
     from lyz.methods import ed_rsa
     for modeldir in experiments("ed_rsa_fragments.json"):
@@ -215,14 +221,14 @@ def prepare_and_run_compare_rsa(prepared=False):
                       device='cpu',
                       runs=1)
         global_rsa(config)
-        
+
 def prepare_and_run_rsa_wordgrams():
     from abx_trigrams import prepare_wordgrams_fa
     for n in [1, 5]:
         prepare_wordgrams_fa(k=None, n=n)
         prepare_rsa_wordgrams(n=n)
         rsa_wordgrams(n=n)
-        
+
 def local_diag(modeldirs):
     from lyz.methods import local_diagnostic
     for mdldir in modeldirs:

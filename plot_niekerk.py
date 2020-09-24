@@ -46,7 +46,7 @@ def extract_results_niekerk():
             rsa_w=extract_rsa(d / 'ed_rsa.json', 'trained', 'word'),
             abx3_base=extract_abx(d3/ 'random/flickr8k_abx_within_result.json'),
             abx3=extract_abx(d3 / 'trained/flickr8k_abx_within_result.json'),
-            rsa3_base=extract_rsa(d3 / 'ed_rsa.json', 'random', 'phoneme'),
+            rsa3_base=extract_rsa(d3 / 'ed_rsa_trigrams.json', 'random', 'phoneme'),
             rsa3_base_w=extract_rsa(d3 / 'ed_rsa_trigrams.json', 'random', 'word'),
             rsa3=extract_rsa(d3 / 'ed_rsa_trigrams.json', 'trained', 'phoneme'),
             rsa3_w=extract_rsa(d3 / 'ed_rsa_trigrams.json', 'trained', 'word')))
