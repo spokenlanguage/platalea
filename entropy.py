@@ -87,6 +87,17 @@ def compute_metrics(path):
     rsa = select(
         "{}/ed_rsa.json".format(d),
         dict(model='trained', reference='phoneme', by_size=False))['cor']
+    rsaF = select(
+        "{}/ed_rsa_fragments.json".format(d),
+        dict(model='trained', reference='phoneme', by_size=False))['cor']
+    rsa3 = select(
+        "{}/ed_rsa_trigrams.json".format(d),
+        dict(model='trained', reference='phoneme', by_size=False))['cor']
+    diag = select(
+        "{}/local/local_diagnostic.json".format(d),
+        dict(model='trained'))['acc']
+    abx_fw = 100 - json.load(
+        open("{}/abx_within_flickr8k_result.json".format(d)))['avg_abx_error']
     return dict(
         size=size,
         level=level,
@@ -104,7 +115,11 @@ def compute_metrics(path):
         norm_cond_entropy_lab=cond_entropy_lab / log2(40),
         norm_entropy_ind2=entropy_ind / log2(num_uniq_ind),
         norm_cond_entropy_ind2=cond_entropy_ind / log2(num_uniq_ind),
-        rsa=rsa)
+        rsa=rsa,
+        rsaF=rsaF,
+        rsa3=rsa3,
+        diag=diag,
+        abx_fw=abx_fw)
 
 
 def compute_and_save_metrics():
@@ -117,7 +132,11 @@ def compute_and_save_metrics():
             stats = compute_general_statistics(path)
             stats = [list(s.values())[1:] for s in stats]
             np.savetxt('exploration.csv', stats, delimiter=',')
-        metrics = compute_metrics(path)
+        try:
+            metrics = compute_metrics(path)
+        except:
+            print('!!!Skipping experiment {}'.format(path))
+            continue
         results.append(list(metrics.values()))
         expname = d.parts[-1]
         path_out = Path('experiments/{}'.format(expname))
@@ -142,20 +161,18 @@ def read_metrics():
 def plot():
     data = read_metrics()
     data = from_records(data)
-    for v in ['norm_entropy_ind', 'norm_entropy_ind2', 'vmeasure']:
-        p = pn.ggplot(data, pn.aes(x='factor(level)', y=v)) +\
-            pn.geom_point(pn.aes(color='factor(size)'))
-        pn.ggsave(p, 'plot-{}.pdf'.format(v))
-    for v in ['num_uniq_ind', 'norm_cond_entropy_ind', 'norm_cond_entropy_lab',
-              'norm_cond_entropy_ind2']:
+    for v in ['num_uniq_ind', 'norm_cond_entropy_ind2']:
         p = pn.ggplot(data, pn.aes(x='factor(size)', y=v,
                                    shape='factor(level)')) +\
             pn.geom_point()
         pn.ggsave(p, 'plot-{}.pdf'.format(v))
-    for v in ['ami', 'ari', 'rsa']:
-        p = pn.ggplot(data, pn.aes(x='vmeasure', y=v)) + \
-            pn.geom_point(pn.aes(shape='factor(level)', color='factor(size)'))
-        pn.ggsave(p, 'plot-vmeasure-{}.pdf'.format(v))
+    for v, var2 in [('vmeasure', ['ami', 'rsa', 'diag']),
+                    ('abx_fw', ['rsa', 'rsaF', 'rsa3']),
+                    ('rsaF', ['rsa', 'diag'])]:
+        for v2 in var2:
+            p = pn.ggplot(data, pn.aes(x=v, y=v2)) + \
+                pn.geom_point(pn.aes(shape='factor(level)', color='factor(size)'))
+            pn.ggsave(p, 'plot-{}-{}.pdf'.format(v, v2))
     path = '/roaming/gchrupal/verdigris/platalea.vq/experiments/vq-32-q1'
     stats = compute_general_statistics(path)
     stats = from_records(stats)
@@ -164,7 +181,7 @@ def plot():
         pn.geom_hline(stats, pn.aes(yintercept='num_mean_rep',
                                     linetype='level'))
     pn.ggsave(p, 'plot-{}.pdf'.format('num_mean_rep'))
-    plot_distributions()
+    #plot_distributions()
 
 
 def plot_distributions():
