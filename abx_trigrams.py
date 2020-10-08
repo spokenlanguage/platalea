@@ -249,7 +249,7 @@ def prepare_abx_rep(directory, k=1000, within_speaker=False):
     align = {key: value for key, value in load_alignment("data/datasets/flickr8k/fa.json").items() if good_alignment(value)}
     us = random.sample(list(align.values()), k)
     out = Path(directory) / "encoded/flickr8k_val_rep/"
-    speakers = dict(line.split() for line in open("data/datasets/flickr8k/wav2spk.txt"))
+    speakers = dict(line.split() for line in open("data/datasets/flickr8k/flickr_audio/wav2spk.txt"))
     factors = json.load(open("{}/downsampling_factors.json".format(directory), "rb"))
     mode = 'trained'
     layer = 'codebook'

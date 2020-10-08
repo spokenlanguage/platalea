@@ -1,3 +1,4 @@
+from collections import Counter
 import glob
 from itertools import groupby
 import json
@@ -6,21 +7,36 @@ import numpy as np
 import os.path
 from pathlib import Path
 import pickle
-from plot import select
 import plotnine as pn
 from scipy.stats import entropy
-from sklearn.metrics import adjusted_mutual_info_score, adjusted_rand_score, \
-        v_measure_score
+import sklearn.metrics as M
 
-from plot import from_records
+import platalea.dataset as dataset
+from plot import from_records, select
+import prepare_flickr8k as pf
 
 
 def count_repetitions(array):
     return [len(list(v)) for _, v in groupby(array)]
 
 
+def proportion_top1(labels, codes):
+    start = segments_start(labels)
+    segments = split_sequences(codes, start)
+    return [sorted(Counter(s).values())[-1] / len(s) for s in segments]
+
+
 def flatten(xss):
     return [x for xs in xss for x in xs]
+
+
+def split_sequences(array, start):
+    end = start[1:] + [len(array)]
+    return [array[s:e] for s, e in zip(start, end)]
+
+
+def segments_start(array):
+    return [i for i in range(len(array)) if i == 0 or array[i] != array[i-1]]
 
 
 def compute_general_statistics(directory='.'):
@@ -72,18 +88,29 @@ def compute_metrics(path):
     level = int(split[2][1])
     d = Path(path)
     D = pickle.load(open(d / 'local_trained_codebook.pkl', 'rb'))
-    indices = [d.nonzero()[0][0] for d in D['codebook']['features']]
     labels = D['codebook']['labels']
+    indices = [d.nonzero()[0][0] for d in D['codebook']['features']]
+    D_w = pickle.load(open(d / 'global_trained_codebook.pkl', 'rb'))
+    labels_w, activations_w = load_word_alignments(D_w['codebook'])
+    indices_w = [a.nonzero()[0][0] for a in activations_w]
+    cond_word = lambda w: len(w['phones']) > 2
+    #labels_wl, activations_wl = load_word_alignments(D_w['codebook'], cond_word)
+    #indices_wl = [a.nonzero()[0][0] for a in activations_wl]
     num_mean_rep = np.mean(count_repetitions(indices))
+    prop_top_code = np.mean(proportion_top1(labels, indices))
+    prop_top_label = np.mean(proportion_top1(indices, labels))
+    prop_top_code_w = np.mean(proportion_top1(labels_w, indices_w))
+    #prop_top_code_wl = np.mean(proportion_top1(labels_wl, indices_wl))
+    prop_top_label_w = np.mean(proportion_top1(indices_w, labels_w))
     values, counts = np.unique(indices, return_counts=True)
     num_uniq_ind = len(values)
     entropy_ind = entropy(counts, base=2)
     cond_entropy_ind = conditional_entropy(indices, labels)
     cond_entropy_lab = conditional_entropy(labels, indices)
     mutual_info = entropy_ind - cond_entropy_ind
-    ami = adjusted_mutual_info_score(indices, labels)
-    ari = adjusted_rand_score(indices, labels)
-    vmeasure = v_measure_score(indices, labels)
+    ami = M.adjusted_mutual_info_score(indices, labels)
+    ari = M.adjusted_rand_score(indices, labels)
+    vmeasure = M.v_measure_score(indices, labels)
     rsa = select(
         "{}/ed_rsa.json".format(d),
         dict(model='trained', reference='phoneme', by_size=False))['cor']
@@ -98,10 +125,17 @@ def compute_metrics(path):
         dict(model='trained'))['acc']
     abx_fw = 100 - json.load(
         open("{}/abx_within_flickr8k_result.json".format(d)))['avg_abx_error']
+    abx_frw = 100 - json.load(
+        open("{}/flickr8k_abx_rep_within_result.json".format(d)))['avg_abx_error']
     return dict(
         size=size,
         level=level,
         num_mean_rep=num_mean_rep,
+        prop_top_code=prop_top_code,
+        prop_top_label=prop_top_label,
+        prop_top_code_w=prop_top_code_w,
+        #prop_top_code_wl=prop_top_code_wl,
+        prop_top_label_w=prop_top_label_w,
         num_uniq_ind=num_uniq_ind,
         entropy_ind=entropy_ind,
         cond_entropy_ind=cond_entropy_ind,
@@ -119,7 +153,60 @@ def compute_metrics(path):
         rsaF=rsaF,
         rsa3=rsa3,
         diag=diag,
-        abx_fw=abx_fw)
+        abx_fw=abx_fw,
+        abx_frw=abx_frw)
+
+
+def load_word_alignments(activations, cond_word=None):
+    data = pf.load_alignment('data/datasets/flickr8k/fa.json')
+    val = dataset.Flickr8KData(root='data/datasets/flickr8k/', split='val',
+                               feature_fname='mfcc_features.pt')
+    # Vocabulary should be initialized even if we are not going to use text
+    # data
+    if dataset.Flickr8KData.le is None:
+        dataset.Flickr8KData.init_vocabulary(val)
+    alignments = [data[sent['audio_id']] for sent in val]
+    # Only consider cases where alignement does not fail
+    alignments = [item for item in alignments if pf.good_alignment(item)]
+    factors = pf.default_factors()
+    index = pf.make_indexer(factors, 'codebook')
+    labels = []
+    states = []
+    for act, ali in zip(activations, alignments):
+        # extract word labels for current utterance
+        fr = list(word_frames(ali, act, index, cond_word))
+        if len(fr) > 0:
+            y, X = zip(*fr)
+            y = np.array(y)
+            X = np.stack(X)
+            labels.append(y)
+            states.append(X)
+    return np.concatenate(labels), np.concatenate(states)
+
+
+def word_frames(utt, rep, index, cond_word=None):
+    """
+    Return a sequence of pairs (word label, frame), given an alignment object
+    `utt`, a representation array `rep`, and indexing function `index`.
+    """
+    for w, start, end in words(utt, cond_word):
+        assert index(start) < index(end)+1, "Something funny: {} {} {} {}".format(start, end, index(start), index(end))
+        for j in range(index(start), index(end)+1):
+            if j < rep.shape[0]:
+                yield (w, rep[j])
+            else:
+                logging.warning("Index out of bounds: {} {}".format(j, rep.shape))
+
+
+def words(utt, cond=None):
+    """
+    Return sequence of words labels associated with start and end time
+    corresponding to the alignment JSON object `utt`.
+    """
+    for word in utt['words']:
+        label = word['word']
+        if label != 'oov' and (cond is None or cond(word)):
+            yield (label, int(word['start']*1000), int(word['end']*1000))
 
 
 def compute_and_save_metrics():
@@ -134,7 +221,7 @@ def compute_and_save_metrics():
             np.savetxt('exploration.csv', stats, delimiter=',')
         try:
             metrics = compute_metrics(path)
-        except:
+        except FileNotFoundError:
             print('!!!Skipping experiment {}'.format(path))
             continue
         results.append(list(metrics.values()))
@@ -156,32 +243,6 @@ def read_metrics():
         path_out.mkdir(parents=True, exist_ok=True)
         metrics.append(json.load(open(path_out / 'entropy.json')))
     return metrics
-
-
-def plot():
-    data = read_metrics()
-    data = from_records(data)
-    for v in ['num_uniq_ind', 'norm_cond_entropy_ind2']:
-        p = pn.ggplot(data, pn.aes(x='factor(size)', y=v,
-                                   shape='factor(level)')) +\
-            pn.geom_point()
-        pn.ggsave(p, 'plot-{}.pdf'.format(v))
-    for v, var2 in [('vmeasure', ['ami', 'rsa', 'diag']),
-                    ('abx_fw', ['rsa', 'rsaF', 'rsa3']),
-                    ('rsaF', ['rsa', 'diag'])]:
-        for v2 in var2:
-            p = pn.ggplot(data, pn.aes(x=v, y=v2)) + \
-                pn.geom_point(pn.aes(shape='factor(level)', color='factor(size)'))
-            pn.ggsave(p, 'plot-{}-{}.pdf'.format(v, v2))
-    path = '/roaming/gchrupal/verdigris/platalea.vq/experiments/vq-32-q1'
-    stats = compute_general_statistics(path)
-    stats = from_records(stats)
-    p = pn.ggplot(data, pn.aes(x='factor(level)', y='num_mean_rep')) +\
-        pn.geom_point(pn.aes(color='factor(size)')) +\
-        pn.geom_hline(stats, pn.aes(yintercept='num_mean_rep',
-                                    linetype='level'))
-    pn.ggsave(p, 'plot-{}.pdf'.format('num_mean_rep'))
-    #plot_distributions()
 
 
 def plot_distributions():
@@ -234,8 +295,6 @@ def sample_distributions(path):
 
 
 def plot_distributions_3d():
-    distr_ind = []
-    distr_lab = []
     for p in ['/roaming/gchrupal/verdigris/platalea.vq/experiments/vq-32-q1',
               '/roaming/gchrupal/verdigris/platalea.vq/experiments/vq-1024-q1',
               '/roaming/gchrupal/verdigris/platalea.vq/experiments/vq-32-q2',
@@ -289,3 +348,35 @@ def plot_3d(data, fname):
     ax.bar3d(x, y, bottom, width, depth, top, shade=True)
     plt.tight_layout()
     plt.savefig(fname)
+
+
+def plot():
+    data = read_metrics()
+    data = from_records(data)
+    for v in ['num_uniq_ind', 'norm_cond_entropy_ind2']:
+        p = pn.ggplot(data, pn.aes(x='factor(size)', y=v,
+                                   shape='factor(level)')) +\
+            pn.geom_point()
+        pn.ggsave(p, 'plot-{}.pdf'.format(v))
+    for v, var2 in [('vmeasure', ['ami', 'rsa', 'diag']),
+                    ('abx_fw', ['rsa', 'rsaF', 'rsa3']),
+                    ('abx_frw', ['rsa', 'abx_fw', 'diag']),
+                    ('rsaF', ['rsa', 'diag'])]:
+        for v2 in var2:
+            p = pn.ggplot(data, pn.aes(x=v, y=v2)) + \
+                pn.geom_point(pn.aes(shape='factor(level)',
+                                     color='factor(size)'))
+            pn.ggsave(p, 'plot-{}-{}.pdf'.format(v, v2))
+    path = '/roaming/gchrupal/verdigris/platalea.vq/experiments/vq-32-q1'
+    stats = compute_general_statistics(path)
+    stats = from_records(stats)
+    p = pn.ggplot(data, pn.aes(x='factor(level)', y='num_mean_rep')) +\
+        pn.geom_point(pn.aes(color='factor(size)')) +\
+        pn.geom_hline(stats, pn.aes(yintercept='num_mean_rep',
+                                    linetype='level'))
+    pn.ggsave(p, 'plot-num_mean_rep.pdf')
+    for v in ['prop_top_code', 'prop_top_code_w', 'prop_top_label',
+              'prop_top_label_w']:
+        p = pn.ggplot(data, pn.aes(x='factor(level)', y=v)) +\
+            pn.geom_point(pn.aes(color='factor(size)'))
+        pn.ggsave(p, 'plot-{}.pdf'.format(v))
