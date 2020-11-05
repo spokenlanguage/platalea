@@ -40,16 +40,10 @@ data = dict(
         args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
                             args.audio_features_fn, split='train', batch_size=args.batch_size, shuffle=True,
         downsampling_factor=args.downsampling_factor),
-    # val=D.flickr8k_loader(
-    #     args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
-    #                       args.audio_features_fn, split='val', batch_size=args.batch_size, shuffle=False)
     val=D.flickr8k_loader(
         args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
-                            args.audio_features_fn, split='train', batch_size=args.batch_size, shuffle=True,
-        downsampling_factor=args.downsampling_factor),
+                          args.audio_features_fn, split='val', batch_size=args.batch_size, shuffle=False)
 )
-
-wandb.config.comment = "tiny training set == validation set"
 
 
 speech_config = {'conv': dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0, bias=False),
