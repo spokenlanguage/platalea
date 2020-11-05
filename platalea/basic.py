@@ -5,6 +5,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import wandb  # cloud logging
+
 
 from platalea.encoders import SpeechEncoder, ImageEncoder
 import platalea.loss
@@ -95,6 +97,8 @@ def experiment(net, data, config):
                 optimizer.step()
                 scheduler.step()
                 cost += Counter({'cost': loss.item(), 'N': 1})
+
+                # logging
                 if j % 100 == 0:
                     logging.info("train {} {} {}".format(epoch, j, cost['cost']/cost['N']))
                 else:
@@ -103,12 +107,22 @@ def experiment(net, data, config):
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
                 else:
                     logging.debug("valid {} {} {}".format(epoch, j, val_loss()))
+                wandb.log({
+                    "epoch": epoch,
+                    "epoch-step": j,
+                    "last_lr": scheduler.get_last_lr()[0],
+                    "average epoch loss": cost['cost']/cost['N']
+                    })
+
             result = platalea.score.score(net, data['val'].dataset)
             result['epoch'] = epoch
             json.dump(result, out)
             print('', file=out, flush=True)
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
+
+            wandb.log(result)
+
 
 
 DEFAULT_CONFIG = dict(SpeechEncoder=dict(conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0,

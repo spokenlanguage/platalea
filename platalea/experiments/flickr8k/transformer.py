@@ -1,6 +1,8 @@
 import logging
 import random
 import torch
+import wandb  # cloud logging
+wandb.init(project="platalea_transformer", entity="spokenlanguage")
 
 import platalea.basic as M
 import platalea.encoders
@@ -38,9 +40,17 @@ data = dict(
         args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
                             args.audio_features_fn, split='train', batch_size=args.batch_size, shuffle=True,
         downsampling_factor=args.downsampling_factor),
+    # val=D.flickr8k_loader(
+    #     args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
+    #                       args.audio_features_fn, split='val', batch_size=args.batch_size, shuffle=False)
     val=D.flickr8k_loader(
         args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
-                          args.audio_features_fn, split='val', batch_size=args.batch_size, shuffle=False))
+                            args.audio_features_fn, split='train', batch_size=args.batch_size, shuffle=True,
+        downsampling_factor=args.downsampling_factor),
+)
+
+wandb.config.comment = "tiny training set == validation set"
+
 
 speech_config = {'conv': dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0, bias=False),
                  'trafo': dict(d_model=args.trafo_d_model, dim_feedforward=args.trafo_feedforward_dim,
@@ -59,8 +69,12 @@ config = dict(SpeechEncoder=speech_encoder,
 
 logging.info('Building model')
 net = M.SpeechImage(config)
+wandb.watch(net)
 run_config = dict(max_lr=2 * 1e-4, epochs=args.epochs, lr_scheduler=args.lr_scheduler,
                   d_model=args.trafo_d_model)
+
+wandb.config.training_set_size = len(data['train'].dataset)
+wandb.config.validation_set_size = len(data['val'].dataset)
 
 logging.info('Training')
 M.experiment(net, data, run_config)
