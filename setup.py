@@ -18,5 +18,6 @@ setup(name='platalea',
           'numpy>=1.17.2',
           'scipy>=1.3.1',
           'configargparse>=1.0',
-          'nltk>=3.4.5'
+          'nltk>=3.4.5',
+          'soundfile>=0.10.3',
       ])
