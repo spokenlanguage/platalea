@@ -92,6 +92,11 @@ def experiment(net, data, config):
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
             for j, item in enumerate(data['train'], start=1): # check reshuffling
+                wandb_step_output = {
+                    "epoch": epoch,
+                    "epoch-step": j,
+                }
+
                 item = dict_values_to_device(item, _device)
                 loss = net.cost(item)
                 optimizer.zero_grad()
@@ -102,23 +107,26 @@ def experiment(net, data, config):
                 cost += Counter({'cost': loss_value, 'N': 1})
 
                 # logging
+                wandb_step_output["step loss"] = loss_value
+                wandb_step_output["last_lr"] = scheduler.get_last_lr()[0]
+                wandb_step_output["average epoch loss"] = cost['cost'] / cost['N']
+
                 if j % 100 == 0:
-                    logging.info("train %d %d %f", epoch, j, cost['cost']/cost['N'])
+                    logging.info("train %d %d %f", epoch, j, cost['cost'] / cost['N'])
                 else:
                     if debug_logging_active:
-                        logging.debug("train %d %d %f %f", epoch, j, cost['cost']/cost['N'], step_loss)
+                        logging.debug("train %d %d %f %f", epoch, j, cost['cost'] / cost['N'], step_loss)
                 if j % 400 == 0:
-                    logging.info("valid %d %d %f", epoch, j, val_loss())
+                    validation_loss = val_loss()
+                    logging.info("valid %d %d %f", epoch, j, validation_loss)
+                    wandb_step_output["validation loss"] = validation_loss
                 else:
                     if debug_logging_active:
-                        logging.debug("valid %d %d %f", epoch, j, val_loss())
-                wandb.log({
-                    "epoch": epoch,
-                    "epoch-step": j,
-                    "last_lr": scheduler.get_last_lr()[0],
-                    "step loss": loss_value,
-                    "average epoch loss": cost['cost']/cost['N']
-                    })
+                        validation_loss = val_loss()
+                        logging.debug("valid %d %d %f", epoch, j, validation_loss)
+                        wandb_step_output["validation loss"] = validation_loss
+
+                wandb.log(wandb_step_output)
 
             result = platalea.score.score(net, data['val'].dataset)
             result['epoch'] = epoch
