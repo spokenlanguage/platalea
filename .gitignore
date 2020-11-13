@@ -4,6 +4,7 @@
 *.log
 config.yml
 config.ini
+wandb
 
 # vscode
 .vscode
