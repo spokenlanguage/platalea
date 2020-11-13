@@ -86,6 +86,8 @@ def experiment(net, data, config):
         raise Exception("lr_scheduler config value " + configured_scheduler + " is invalid, use cyclic or noam")
     optimizer.zero_grad()
 
+    debug_logging_active = logging.getLogger().isEnabledFor(logging.DEBUG)
+
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
@@ -96,21 +98,25 @@ def experiment(net, data, config):
                 loss.backward()
                 optimizer.step()
                 scheduler.step()
-                cost += Counter({'cost': loss.item(), 'N': 1})
+                loss_value = loss.item()
+                cost += Counter({'cost': loss_value, 'N': 1})
 
                 # logging
                 if j % 100 == 0:
-                    logging.info("train {} {} {}".format(epoch, j, cost['cost']/cost['N']))
+                    logging.info("train %d %d %f", epoch, j, cost['cost']/cost['N'])
                 else:
-                    logging.debug("train {} {} {}".format(epoch, j, cost['cost']/cost['N']))
+                    if debug_logging_active:
+                        logging.debug("train %d %d %f %f", epoch, j, cost['cost']/cost['N'], step_loss)
                 if j % 400 == 0:
-                    logging.info("valid {} {} {}".format(epoch, j, val_loss()))
+                    logging.info("valid %d %d %f", epoch, j, val_loss())
                 else:
-                    logging.debug("valid {} {} {}".format(epoch, j, val_loss()))
+                    if debug_logging_active:
+                        logging.debug("valid %d %d %f", epoch, j, val_loss())
                 wandb.log({
                     "epoch": epoch,
                     "epoch-step": j,
                     "last_lr": scheduler.get_last_lr()[0],
+                    "step loss": loss_value,
                     "average epoch loss": cost['cost']/cost['N']
                     })
 
