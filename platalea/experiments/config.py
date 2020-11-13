@@ -74,6 +74,10 @@ args.add_argument(
     help='factor by which the dataset should be downsampled')
 args.add_argument('--lr_scheduler', default="cyclic", choices=['cyclic', 'noam'],
                   help='The learning rate scheduler to use. WARNING: noam not yet implemented for most experiments!')
+args.add_argument('--cyclic_lr_max', default=2 * 1e-4, type=float,
+                  help='Maximum learning rate for cyclic learning rate scheduler')
+args.add_argument('--cyclic_lr_min', default=1e-6, type=float,
+                  help='Minimum learning rate for cyclic learning rate scheduler')
 
 # Flickr8k specific parameters
 args.add_argument(

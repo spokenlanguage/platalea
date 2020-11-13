@@ -43,7 +43,7 @@ config = dict(
 
 logging.info('Building model')
 net = M.SpeechImage(config)
-run_config = dict(max_lr=2 * 1e-4, epochs=args.epochs)
+run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs)
 
 logging.info('Training')
 M.experiment(net, data, run_config)

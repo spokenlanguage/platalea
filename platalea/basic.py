@@ -79,7 +79,7 @@ def experiment(net, data, config):
     optimizer = optim.Adam(net.parameters(), lr=1)
     configured_scheduler = config.get('lr_scheduler')
     if configured_scheduler is None or configured_scheduler == 'cyclic':
-        scheduler = platalea.schedulers.cyclic(optimizer, len(data['train']), max_lr=config['max_lr'], min_lr=1e-6)
+        scheduler = platalea.schedulers.cyclic(optimizer, len(data['train']), max_lr=config['max_lr'], min_lr=config['min_lr'])
     elif configured_scheduler == 'noam':
         scheduler = platalea.schedulers.noam(optimizer, config['d_model'])
     else:

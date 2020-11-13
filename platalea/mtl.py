@@ -111,7 +111,7 @@ def experiment(net, tasks, config):
         t['optimizer'] = optim.Adam(t['net'].parameters(), lr=lr)
         t['scheduler'] = platalea.schedulers.cyclic(t['optimizer'],
                                                     len(t['data']['train']),
-                                                    max_lr=config['max_lr'], min_lr=1e-6)
+                                                    max_lr=config['max_lr'], min_lr=config['min_lr'])
         t['optimizer'].zero_grad()
 
     with open("result.json", "w") as out:

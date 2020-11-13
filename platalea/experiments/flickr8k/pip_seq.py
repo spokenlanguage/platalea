@@ -47,7 +47,7 @@ else:
     logging.info('Building ASR/SLT model')
     config = M1.get_default_config()
     net = M1.SpeechTranscriber(config)
-    run_config = dict(max_norm=2.0, max_lr=2 * 1e-4, epochs=args.epochs)
+    run_config = dict(max_norm=2.0, max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs)
     logging.info('Training ASR/SLT')
     if data['train'].dataset.is_slt():
         M1.experiment(net, data, run_config, slt=True)
@@ -75,7 +75,7 @@ for set_name in ['train', 'val']:
 
 logging.info('Building model text-image')
 net = M2.TextImage(M2.get_default_config())
-run_config = dict(max_lr=2 * 1e-4, epochs=args.epochs)
+run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs)
 
 logging.info('Training text-image')
 M2.experiment(net, data, run_config)

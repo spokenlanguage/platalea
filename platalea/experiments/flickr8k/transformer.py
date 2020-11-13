@@ -64,7 +64,7 @@ config = dict(SpeechEncoder=speech_encoder,
 logging.info('Building model')
 net = M.SpeechImage(config)
 wandb.watch(net)
-run_config = dict(max_lr=2 * 1e-4, epochs=args.epochs, lr_scheduler=args.lr_scheduler,
+run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs, lr_scheduler=args.lr_scheduler,
                   d_model=args.trafo_d_model)
 
 wandb.config.training_set_size = len(data['train'].dataset)

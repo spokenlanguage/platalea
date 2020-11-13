@@ -3,7 +3,7 @@ import numpy as np
 from torch.optim import lr_scheduler
 
 
-def cyclic(optimizer, n_batches, max_lr, min_lr=1e-6):
+def cyclic(optimizer, n_batches, max_lr, min_lr):
     stepsize = n_batches * 4
     logging.info("Setting stepsize of {}".format(stepsize))
 
