@@ -10,12 +10,12 @@ import numpy as np
 import pathlib
 import PIL.Image
 import platalea.hardware
-from soundfile import read
+import soundfile
 import torch
 import torch.nn as nn
 import torchvision.models as models
 import torchvision.transforms as transforms
-from platalea.config import args
+from platalea.experiments.config import args
 
 
 _device = platalea.hardware.device()
@@ -37,7 +37,7 @@ def preprocess_librispeech(dataset_path):
 
 def flickr8k_audio_features(dataset_path, audio_subdir, feat_config):
     directory = dataset_path / audio_subdir
-    files = [line.split()[0] for line in open(dataset_path / 'flickr_audio' / 'wav2capt.txt')]
+    files = [line.split()[0] for line in open(dataset_path / 'wav2capt.txt')]
     paths = [directory / fn for fn in files]
     features = audio_features(paths, feat_config)
     torch.save(dict(features=features, filenames=files), dataset_path / 'mfcc_features.pt')
@@ -190,11 +190,11 @@ def audio_features(paths, config):
     for cap in paths:
         logging.info("Processing {}".format(cap))
         try:
-            data, fs = read(cap)
+            data, fs = soundfile.read(cap)
         except ValueError:
             # try to repair the file
             path = fix_wav(cap)
-            data, fs = read(path)
+            data, fs = soundfile.read(path)
         # get window and frameshift size in samples
         window_size = int(fs*config['window_size'])
         frame_shift = int(fs*config['frame_shift'])
