@@ -20,4 +20,6 @@ setup(name='platalea',
           'configargparse>=1.0',
           'nltk>=3.4.5',
           'soundfile>=0.10.3',
+          'scikit-learn>=0.21.3',
+          'wandb>=0.10.10',
       ])
