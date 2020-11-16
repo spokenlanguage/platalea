@@ -23,6 +23,17 @@ args.add_argument('--trafo_heads', default=8, type=int,
 args.add_argument('--trafo_feedforward_dim', default=1024, type=int,
                   help='TRANSFORMER: Dimensionality of feedforward layer at the end of the transformer layer stack.')
 
+class unit_float(float):
+    def __new__(cls, value):
+        value = float(value)
+        if 0 <= value <= 1:
+            return super().__new__(cls, value)
+        else:
+            raise ValueError(f"{value} is not a proper unit_float, because it is not between 0 and 1")
+
+args.add_argument('--trafo_dropout', default=0, type=unit_float,
+                  help='TRANSFORMER: Dropout factor, used for regularization.')
+
 args.enable_help()
 args.parse()
 
@@ -48,7 +59,7 @@ data = dict(
 
 speech_config = {'conv': dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0, bias=False),
                  'trafo': dict(d_model=args.trafo_d_model, dim_feedforward=args.trafo_feedforward_dim,
-                               num_encoder_layers=args.trafo_encoder_layers, dropout=0, nhead=args.trafo_heads),
+                               num_encoder_layers=args.trafo_encoder_layers, dropout=args.trafo_dropout, nhead=args.trafo_heads),
                  'upsample': dict(bias=True),
                  'att': dict(in_size=args.trafo_d_model, hidden_size=128),
                  }
