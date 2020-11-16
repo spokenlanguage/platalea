@@ -7,6 +7,7 @@ wandb.init(project="platalea_transformer", entity="spokenlanguage")
 import platalea.basic as M
 import platalea.encoders
 import platalea.dataset as D
+import platalea.hardware
 from platalea.experiments.config import args
 
 
@@ -40,6 +41,7 @@ args.parse()
 # Setting general configuration
 torch.manual_seed(args.seed)
 random.seed(args.seed)
+platalea.hardware.set_device(args.device)
 
 # Logging the arguments
 logging.info('Arguments: {}'.format(args))
