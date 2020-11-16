@@ -142,7 +142,7 @@ def experiment(net, data, config):
                 score_net = net
             result = platalea.score.score(score_net, data['val'].dataset)
 
-            if config.get('score_on_cpu') and platalea.hardware._device is 'cpu' and previous_device != 'cpu':
+            if config.get('score_on_cpu') and platalea.hardware._device == 'cpu' and previous_device != 'cpu':
                 platalea.hardware.set_device(previous_device)
 
             result['epoch'] = epoch
