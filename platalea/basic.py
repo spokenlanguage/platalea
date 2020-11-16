@@ -128,12 +128,26 @@ def experiment(net, data, config):
 
                 wandb.log(wandb_step_output)
 
-            result = platalea.score.score(net, data['val'].dataset)
+            logging.info("Saving model in net.{}.pt".format(epoch))
+            torch.save(net, "net.{}.pt".format(epoch))
+
+            logging.info("Calculating and saving epoch score results")
+            if config.get('score_on_cpu'):
+                score_net = torch.load("net.{}.pt".format(epoch), map_location=torch.device("cpu"))
+                score_net.train()
+                if platalea.hardware._device != 'cpu':
+                    previous_device = platalea.hardware._device
+                    platalea.hardware.set_device('cpu')
+            else:
+                score_net = net
+            result = platalea.score.score(score_net, data['val'].dataset)
+
+            if config.get('score_on_cpu') and platalea.hardware._device is 'cpu' and previous_device != 'cpu':
+                platalea.hardware.set_device(previous_device)
+
             result['epoch'] = epoch
             json.dump(result, out)
             print('', file=out, flush=True)
-            logging.info("Saving model in net.{}.pt".format(epoch))
-            torch.save(net, "net.{}.pt".format(epoch))
 
             wandb.log(result)
 
