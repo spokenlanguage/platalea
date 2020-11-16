@@ -16,9 +16,6 @@ import platalea.hardware
 import platalea.schedulers
 
 
-_device = platalea.hardware.device()
-
-
 class SpeechImage(nn.Module):
     def __init__(self, config):
         super(SpeechImage, self).__init__()
@@ -45,6 +42,7 @@ class SpeechImage(nn.Module):
                                             shuffle=False,
                                             collate_fn=D.batch_image)
         image_e = []
+        _device = platalea.hardware.device()
         for i in image:
             image_e.append(self.ImageEncoder(i.to(_device)).detach().cpu().numpy())
         image_e = np.concatenate(image_e)
@@ -55,6 +53,7 @@ class SpeechImage(nn.Module):
                                             shuffle=False,
                                             collate_fn=D.batch_audio)
         audio_e = []
+        _device = platalea.hardware.device()
         for a, l in audio:
             audio_e.append(self.SpeechEncoder(a.to(_device), l.to(_device)).detach().cpu().numpy())
         audio_e = np.concatenate(audio_e)
@@ -65,6 +64,7 @@ def dict_values_to_device(data, device):
     return {key: value.to(device) for key, value in data.items()}
 
 def experiment(net, data, config):
+    _device = platalea.hardware.device()
     def val_loss():
         net.eval()  # switch to eval mode
         result = []

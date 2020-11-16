@@ -18,9 +18,6 @@ import torchvision.transforms as transforms
 from platalea.experiments.config import args
 
 
-_device = platalea.hardware.device()
-
-
 _audio_feat_config = dict(type='mfcc', delta=True, alpha=0.97, n_filters=40,
                           window_size=0.025, frame_shift=0.010)
 _images_feat_config = dict(model='resnet')
@@ -121,7 +118,7 @@ def image_features(paths, config):
     elif config['model'] == 'vgg19':
         model = models.vgg19_bn(pretrained=True)
         model.classifier = nn.Sequential(*list(model.classifier.children())[:-1])
-    model.to(_device)
+    model.to(platalea.hardware.device())
     for p in model.parameters():
         p.requires_grad = False
     model.eval()

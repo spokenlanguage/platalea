@@ -13,8 +13,6 @@ import platalea.hardware
 # https://github.com/gchrupala/speech2image/blob/master/PyTorch/functions/encoders.py
 
 
-_device = platalea.hardware.device()
-
 
 class ImageEncoder(nn.Module):
     def __init__(self, config):
@@ -196,7 +194,7 @@ class SpeechEncoderTransformer(nn.Module):
         x = x.permute(2, 0, 1)
 
         x = self.scale_conv_to_trafo(x)
-        mask = generate_padding_mask(x.size()[1], lengths).to(_device)
+        mask = generate_padding_mask(x.size()[1], lengths).to(platalea.hardware.device())
         x = self.Transformer(x, src_key_padding_mask=mask)
 
         x = x.transpose(1, 0)

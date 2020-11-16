@@ -14,8 +14,6 @@ import platalea.loss
 import platalea.score
 import platalea.hardware
 
-_device = platalea.hardware.device()
-
 
 class MTLNetASR(nn.Module):
     def __init__(self, config):
@@ -75,6 +73,7 @@ class MTLNetSpeechText(nn.Module):
 
 
 def val_loss(net, data):
+    _device = platalea.hardware.device()
     with torch.no_grad():
         net.eval()
         result = []
@@ -99,6 +98,7 @@ def task_iterator(tasks):
 
 
 def experiment(net, tasks, config):
+    _device = platalea.hardware.device()
     for t in tasks:
         # Preparing nets
         t['net'].to(_device)

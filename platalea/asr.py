@@ -15,8 +15,6 @@ import platalea.loss
 import platalea.score
 import platalea.hardware
 
-_device = platalea.hardware.device()
-
 
 class SpeechTranscriber(nn.Module):
     def __init__(self, config):
@@ -43,6 +41,7 @@ class SpeechTranscriber(nn.Module):
                                             shuffle=False,
                                             collate_fn=D.batch_audio)
         trn = []
+        _device = platalea.hardware.device()
         for a, l in audio:
             if beam_size is None:
                 preds, _ = self.forward(a.to(_device), l.to(_device))
@@ -81,6 +80,7 @@ class SpeechTranscriber(nn.Module):
 
 
 def experiment(net, data, config, slt=False):
+    _device = platalea.hardware.device()
     def val_loss():
         with torch.no_grad():
             net.eval()

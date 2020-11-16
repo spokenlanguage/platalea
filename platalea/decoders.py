@@ -6,8 +6,6 @@ import torch.nn.functional as F
 from platalea.attention import BahdanauAttention
 import platalea.hardware
 
-_device = platalea.hardware.device()
-
 
 class TextDecoder(nn.Module):
     '''
@@ -128,6 +126,7 @@ class TextDecoder(nn.Module):
         predictions = np.empty([encoder_outputs.shape[0],
                                 self.max_output_length], dtype=int)
         # Loop over sequences
+        _device = platalea.hardware.device()
         for i_seq, eo in enumerate(encoder_outputs):
             eo = eo.unsqueeze(0)
             input = eo.new_full((1, 1), self.sos_id, dtype=torch.long)
