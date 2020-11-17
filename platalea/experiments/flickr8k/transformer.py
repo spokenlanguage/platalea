@@ -36,6 +36,7 @@ args.add_argument('--trafo_dropout', default=0, type=unit_float,
                   help='TRANSFORMER: Dropout factor, used for regularization.')
 
 args.add_argument('--score-on-cpu', action='store_true')
+args.add_argument('--validate-on-cpu', action='store_true')
 
 args.enable_help()
 args.parse()
@@ -80,7 +81,7 @@ logging.info('Building model')
 net = M.SpeechImage(config)
 wandb.watch(net)
 run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs, lr_scheduler=args.lr_scheduler,
-                  d_model=args.trafo_d_model, score_on_cpu=args.score_on_cpu)
+                  d_model=args.trafo_d_model, score_on_cpu=args.score_on_cpu, validate_on_cpu=args.validate_on_cpu)
 
 wandb.config.training_set_size = len(data['train'].dataset)
 wandb.config.validation_set_size = len(data['val'].dataset)

@@ -64,8 +64,8 @@ def dict_values_to_device(data, device):
     return {key: value.to(device) for key, value in data.items()}
 
 def experiment(net, data, config):
-    _device = platalea.hardware.device()
-    def val_loss():
+    def val_loss(net):
+        _device = platalea.hardware.device()
         net.eval()  # switch to eval mode
         result = []
         for item in data['val']:
@@ -74,6 +74,7 @@ def experiment(net, data, config):
         net.train()  # back to train mode
         return torch.tensor(result).mean()
 
+    _device = platalea.hardware.device()
     net.to(_device)
     net.train()
     optimizer = optim.Adam(net.parameters(), lr=1)
@@ -116,15 +117,16 @@ def experiment(net, data, config):
                 else:
                     if debug_logging_active:
                         logging.debug("train %d %d %f %f", epoch, j, cost['cost'] / cost['N'], step_loss)
-                if j % 400 == 0:
-                    validation_loss = val_loss()
-                    logging.info("valid %d %d %f", epoch, j, validation_loss)
-                    wandb_step_output["validation loss"] = validation_loss
-                else:
-                    if debug_logging_active:
-                        validation_loss = val_loss()
-                        logging.debug("valid %d %d %f", epoch, j, validation_loss)
+                if not config.get('validate_on_cpu'):
+                    if j % 400 == 0:
+                        validation_loss = val_loss(net)
+                        logging.info("valid %d %d %f", epoch, j, validation_loss)
                         wandb_step_output["validation loss"] = validation_loss
+                    else:
+                        if debug_logging_active:
+                            validation_loss = val_loss(net)
+                            logging.debug("valid %d %d %f", epoch, j, validation_loss)
+                            wandb_step_output["validation loss"] = validation_loss
 
                 wandb.log(wandb_step_output)
 
@@ -132,7 +134,7 @@ def experiment(net, data, config):
             torch.save(net, "net.{}.pt".format(epoch))
 
             logging.info("Calculating and saving epoch score results")
-            if config.get('score_on_cpu'):
+            if config.get('score_on_cpu') or config.get('validate_on_cpu'):
                 score_net = torch.load("net.{}.pt".format(epoch), map_location=torch.device("cpu"))
                 if platalea.hardware._device != 'cpu':
                     previous_device = platalea.hardware._device
@@ -141,7 +143,13 @@ def experiment(net, data, config):
                 score_net = net
 
             score_net.eval()
+
             result = platalea.score.score(score_net, data['val'].dataset)
+            if config.get('validate_on_cpu'):
+                validation_loss = val_loss(score_net)
+                logging.info("valid %d %d %f", epoch, j, validation_loss)
+                result["validation loss"] = validation_loss
+
             score_net.train()
 
             if config.get('score_on_cpu') and platalea.hardware._device == 'cpu' and previous_device != 'cpu':
