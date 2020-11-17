@@ -148,7 +148,6 @@ def experiment(net, data, config):
             if config.get('validate_on_cpu'):
                 validation_loss = val_loss(score_net)
                 logging.info("valid %d %d %f", epoch, j, validation_loss)
-                result["validation loss"] = validation_loss
 
             score_net.train()
 
@@ -159,6 +158,9 @@ def experiment(net, data, config):
             json.dump(result, out)
             print('', file=out, flush=True)
 
+            if config.get('validate_on_cpu'):
+                # only add it here (for wandb), because json.dump doesn't like tensor values
+                result["validation loss"] = validation_loss
             wandb.log(result)
 
 
