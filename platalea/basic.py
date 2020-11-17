@@ -134,13 +134,15 @@ def experiment(net, data, config):
             logging.info("Calculating and saving epoch score results")
             if config.get('score_on_cpu'):
                 score_net = torch.load("net.{}.pt".format(epoch), map_location=torch.device("cpu"))
-                score_net.train()
                 if platalea.hardware._device != 'cpu':
                     previous_device = platalea.hardware._device
                     platalea.hardware.set_device('cpu')
             else:
                 score_net = net
+
+            score_net.eval()
             result = platalea.score.score(score_net, data['val'].dataset)
+            score_net.train()
 
             if config.get('score_on_cpu') and platalea.hardware._device == 'cpu' and previous_device != 'cpu':
                 platalea.hardware.set_device(previous_device)
