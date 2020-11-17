@@ -20,7 +20,6 @@ def device(ordinal: Optional[int] = None):
     
     This function can only be used by models that run on a single device.
     """
-    print("device called")
     global _device
     if _device is not None:
         return torch.device(_device)
