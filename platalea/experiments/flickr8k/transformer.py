@@ -2,7 +2,6 @@ import logging
 import random
 import torch
 import wandb  # cloud logging
-wandb.init(project="platalea_transformer", entity="spokenlanguage")
 
 import platalea.basic as M
 import platalea.encoders
@@ -39,8 +38,9 @@ args.add_argument('--score-on-cpu', action='store_true')
 args.add_argument('--validate-on-cpu', action='store_true')
 
 args.enable_help()
-args.parse()
+general_config = args.parse().copy()
 
+print('args:', args)
 # Setting general configuration
 torch.manual_seed(args.seed)
 random.seed(args.seed)
@@ -78,13 +78,13 @@ config = dict(SpeechEncoder=speech_encoder,
               margin_size=0.2)
 
 logging.info('Building model')
-net = M.SpeechImage(config)
+net = M.SpeechImage(general_config)
 wandb.watch(net)
 run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs, lr_scheduler=args.lr_scheduler,
                   d_model=args.trafo_d_model, score_on_cpu=args.score_on_cpu, validate_on_cpu=args.validate_on_cpu)
 
-wandb.config.training_set_size = len(data['train'].dataset)
-wandb.config.validation_set_size = len(data['val'].dataset)
 
+
+wandb.init(project="platalea_transformer", entity="spokenlanguage", config=config)
 logging.info('Training')
 M.experiment(net, data, run_config)
