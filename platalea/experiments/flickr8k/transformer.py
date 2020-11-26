@@ -38,9 +38,8 @@ args.add_argument('--score-on-cpu', action='store_true')
 args.add_argument('--validate-on-cpu', action='store_true')
 
 args.enable_help()
-general_config = args.parse().copy()
+args.parse()
 
-print('args:', args)
 # Setting general configuration
 torch.manual_seed(args.seed)
 random.seed(args.seed)
@@ -78,13 +77,16 @@ config = dict(SpeechEncoder=speech_encoder,
               margin_size=0.2)
 
 logging.info('Building model')
-net = M.SpeechImage(general_config)
-wandb.watch(net)
+net = M.SpeechImage(config)
 run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs, lr_scheduler=args.lr_scheduler,
                   d_model=args.trafo_d_model, score_on_cpu=args.score_on_cpu, validate_on_cpu=args.validate_on_cpu)
 
+logged_config = dict(run_config=run_config, encoder_config=config, speech_config=speech_config)
+logged_config['encoder_config'].pop('SpeechEncoder')  # Object info is redundant in log.
+print(logged_config)
 
+wandb.init(project="platalea_transformer", entity="spokenlanguage", config=logged_config)
+wandb.watch(net)
 
-wandb.init(project="platalea_transformer", entity="spokenlanguage", config=config)
 logging.info('Training')
 M.experiment(net, data, run_config)
