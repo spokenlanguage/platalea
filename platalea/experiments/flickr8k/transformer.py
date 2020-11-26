@@ -1,20 +1,49 @@
 import logging
 import random
 import torch
+import wandb  # cloud logging
 
 import platalea.basic as M
 import platalea.encoders
 import platalea.dataset as D
+import platalea.hardware
 from platalea.experiments.config import args
 
 
 # Parsing arguments
+args.add_argument('--batch_size', default=32, type=int,
+                  help='How many samples per batch to load.')
+
+args.add_argument('--trafo_d_model', default=512, type=int,
+                  help='TRANSFORMER: The dimensionality of the transformer model.')
+args.add_argument('--trafo_encoder_layers', default=4, type=int,
+                  help='TRANSFORMER: Number of transformer encoder layers.')
+args.add_argument('--trafo_heads', default=8, type=int,
+                  help='TRANSFORMER: Number of attention heads.')
+args.add_argument('--trafo_feedforward_dim', default=1024, type=int,
+                  help='TRANSFORMER: Dimensionality of feedforward layer at the end of the transformer layer stack.')
+
+class unit_float(float):
+    def __new__(cls, value):
+        value = float(value)
+        if 0 <= value <= 1:
+            return super().__new__(cls, value)
+        else:
+            raise ValueError(f"{value} is not a proper unit_float, because it is not between 0 and 1")
+
+args.add_argument('--trafo_dropout', default=0, type=unit_float,
+                  help='TRANSFORMER: Dropout factor, used for regularization.')
+
+args.add_argument('--score-on-cpu', action='store_true')
+args.add_argument('--validate-on-cpu', action='store_true')
+
 args.enable_help()
 args.parse()
 
 # Setting general configuration
 torch.manual_seed(args.seed)
 random.seed(args.seed)
+platalea.hardware.set_device(args.device)
 
 # Logging the arguments
 logging.info('Arguments: {}'.format(args))
@@ -24,22 +53,24 @@ logging.info('Loading data')
 data = dict(
     train=D.flickr8k_loader(
         args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
-        args.audio_features_fn, split='train', batch_size=32, shuffle=True,
+                            args.audio_features_fn, split='train', batch_size=args.batch_size, shuffle=True,
         downsampling_factor=args.downsampling_factor),
     val=D.flickr8k_loader(
         args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
-        args.audio_features_fn, split='val', batch_size=32, shuffle=False))
+                          args.audio_features_fn, split='val', batch_size=args.batch_size, shuffle=False)
+)
 
-trafo_d_model = 512
+
 speech_config = {'conv': dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0, bias=False),
+                 'trafo': dict(d_model=args.trafo_d_model, dim_feedforward=args.trafo_feedforward_dim,
+                               num_encoder_layers=args.trafo_encoder_layers, dropout=args.trafo_dropout, nhead=args.trafo_heads),
                  'upsample': dict(bias=True),
-                 'trafo': dict(d_model=trafo_d_model, dim_feedforward=1024, num_encoder_layers=4, dropout=0, nhead=8),
-                 'att': dict(in_size=trafo_d_model, hidden_size=128),
+                 'att': dict(in_size=args.trafo_d_model, hidden_size=128),
                  }
 speech_encoder = platalea.encoders.SpeechEncoderTransformer(speech_config)
 
 # these must match, otherwise the loss cannot be calculated
-image_encoder_out_size = trafo_d_model
+image_encoder_out_size = args.trafo_d_model
 
 config = dict(SpeechEncoder=speech_encoder,
               ImageEncoder=dict(linear=dict(in_size=2048, out_size=image_encoder_out_size), norm=True),
@@ -47,7 +78,15 @@ config = dict(SpeechEncoder=speech_encoder,
 
 logging.info('Building model')
 net = M.SpeechImage(config)
-run_config = dict(max_lr=2 * 1e-4, epochs=args.epochs)
+run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs, lr_scheduler=args.lr_scheduler,
+                  d_model=args.trafo_d_model, score_on_cpu=args.score_on_cpu, validate_on_cpu=args.validate_on_cpu)
+
+logged_config = dict(run_config=run_config, encoder_config=config, speech_config=speech_config)
+logged_config['encoder_config'].pop('SpeechEncoder')  # Object info is redundant in log.
+print(logged_config)
+
+wandb.init(project="platalea_transformer", entity="spokenlanguage", config=logged_config)
+wandb.watch(net)
 
 logging.info('Training')
 M.experiment(net, data, run_config)

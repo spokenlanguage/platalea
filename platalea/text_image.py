@@ -6,14 +6,12 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from platalea.basic import cyclic_scheduler
+import platalea.schedulers
 import platalea.dataset as D
 from platalea.encoders import TextEncoder, ImageEncoder
 import platalea.loss
 import platalea.score
 import platalea.hardware
-
-_device = platalea.hardware.device()
 
 
 class TextImage(nn.Module):
@@ -43,6 +41,7 @@ class TextImage(nn.Module):
                                             shuffle=False,
                                             collate_fn=D.batch_image)
         image_e = []
+        _device = platalea.hardware.device()
         for i in image:
             image_e.append(self.ImageEncoder(i.to(_device)).detach().cpu().numpy())
         image_e = np.concatenate(image_e)
@@ -54,6 +53,7 @@ class TextImage(nn.Module):
                                            shuffle=False,
                                            collate_fn=D.batch_text)
         text_e = []
+        _device = platalea.hardware.device()
         for t, l in text:
             text_e.append(self.TextEncoder(t.to(_device),
                                            l.to(_device)).detach().cpu().numpy())
@@ -62,6 +62,7 @@ class TextImage(nn.Module):
 
 
 def experiment(net, data, config):
+    _device = platalea.hardware.device()
     def val_loss():
         net.eval()
         result = []
@@ -74,8 +75,8 @@ def experiment(net, data, config):
     net.to(_device)
     net.train()
     optimizer = optim.Adam(net.parameters(), lr=1)
-    scheduler = cyclic_scheduler(optimizer, len(data['train']),
-                                 max_lr=config['max_lr'], min_lr=1e-6)
+    scheduler = platalea.schedulers.cyclic(optimizer, len(data['train']),
+                                           max_lr=config['max_lr'], min_lr=config['min_lr'])
     optimizer.zero_grad()
 
     with open("result.json", "w") as out:

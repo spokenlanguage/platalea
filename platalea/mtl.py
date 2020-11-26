@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from platalea.basic import cyclic_scheduler
+import platalea.schedulers
 from platalea.encoders import SpeechEncoderBottom, SpeechEncoderSplit
 from platalea.basic import SpeechImage
 from platalea.speech_text import SpeechText
@@ -13,8 +13,6 @@ from platalea.asr import SpeechTranscriber
 import platalea.loss
 import platalea.score
 import platalea.hardware
-
-_device = platalea.hardware.device()
 
 
 class MTLNetASR(nn.Module):
@@ -75,6 +73,7 @@ class MTLNetSpeechText(nn.Module):
 
 
 def val_loss(net, data):
+    _device = platalea.hardware.device()
     with torch.no_grad():
         net.eval()
         result = []
@@ -99,6 +98,7 @@ def task_iterator(tasks):
 
 
 def experiment(net, tasks, config):
+    _device = platalea.hardware.device()
     for t in tasks:
         # Preparing nets
         t['net'].to(_device)
@@ -109,9 +109,9 @@ def experiment(net, tasks, config):
         else:
             lr = 1.0
         t['optimizer'] = optim.Adam(t['net'].parameters(), lr=lr)
-        t['scheduler'] = cyclic_scheduler(t['optimizer'],
-                                          len(t['data']['train']),
-                                          max_lr=config['max_lr'], min_lr=1e-6)
+        t['scheduler'] = platalea.schedulers.cyclic(t['optimizer'],
+                                                    len(t['data']['train']),
+                                                    max_lr=config['max_lr'], min_lr=config['min_lr'])
         t['optimizer'].zero_grad()
 
     with open("result.json", "w") as out:

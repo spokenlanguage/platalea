@@ -8,8 +8,6 @@ import platalea.loss
 import platalea.score
 import platalea.hardware
 
-_device = platalea.hardware.device()
-
 
 class SpeechText(nn.Module):
     def __init__(self, config):
@@ -39,6 +37,7 @@ class SpeechText(nn.Module):
                                            shuffle=False,
                                            collate_fn=D.batch_text)
         text_e = []
+        _device = platalea.hardware.device()
         for t, l in text:
             text_e.append(self.TextEncoder(t.to(_device),
                                            l.to(_device)).detach().cpu().numpy())
@@ -50,6 +49,7 @@ class SpeechText(nn.Module):
                                             shuffle=False,
                                             collate_fn=D.batch_audio)
         audio_e = []
+        _device = platalea.hardware.device()
         for a, l in audio:
             audio_e.append(self.SpeechEncoder(a.to(_device),
                                               l.to(_device)).detach().cpu().numpy())

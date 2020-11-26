@@ -7,15 +7,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from platalea.basic import cyclic_scheduler
+import platalea.schedulers
 import platalea.dataset as D
 from platalea.decoders import TextDecoder
 from platalea.encoders import SpeechEncoder
 import platalea.loss
 import platalea.score
 import platalea.hardware
-
-_device = platalea.hardware.device()
 
 
 class SpeechTranscriber(nn.Module):
@@ -43,6 +41,7 @@ class SpeechTranscriber(nn.Module):
                                             shuffle=False,
                                             collate_fn=D.batch_audio)
         trn = []
+        _device = platalea.hardware.device()
         for a, l in audio:
             if beam_size is None:
                 preds, _ = self.forward(a.to(_device), l.to(_device))
@@ -81,6 +80,7 @@ class SpeechTranscriber(nn.Module):
 
 
 def experiment(net, data, config, slt=False):
+    _device = platalea.hardware.device()
     def val_loss():
         with torch.no_grad():
             net.eval()
@@ -101,8 +101,8 @@ def experiment(net, data, config, slt=False):
         optimizer = optim.Adadelta(net.parameters(), lr=lr, rho=0.95, eps=1e-8)
     else:
         optimizer = optim.Adam(net.parameters(), lr=lr)
-        scheduler = cyclic_scheduler(optimizer, len(data['train']),
-                                     max_lr=config['max_lr'], min_lr=1e-6)
+        scheduler = platalea.schedulers.cyclic(optimizer, len(data['train']),
+                                               max_lr=config['max_lr'], min_lr=config['min_lr'])
     optimizer.zero_grad()
 
     with open("result.json", "w") as out:

@@ -20,7 +20,7 @@ class PlataleaConfig:
     def __init__(self):
         self._args = {}
         self._parser = configargparse.ArgParser(default_config_files=default_config_files,
-                                                add_help=False)
+                                                add_help=False, formatter_class=configargparse.DefaultsFormatter)
         self._help = False
 
     def add_argument(self, *args, **kwargs):
@@ -72,6 +72,14 @@ args.add_argument(
     '--downsampling-factor', default=None, type=float,
     dest='downsampling_factor',
     help='factor by which the dataset should be downsampled')
+args.add_argument('--lr_scheduler', default="cyclic", choices=['cyclic', 'noam'],
+                  help='The learning rate scheduler to use. WARNING: noam not yet implemented for most experiments!')
+args.add_argument('--cyclic_lr_max', default=2 * 1e-4, type=float,
+                  help='Maximum learning rate for cyclic learning rate scheduler')
+args.add_argument('--cyclic_lr_min', default=1e-6, type=float,
+                  help='Minimum learning rate for cyclic learning rate scheduler')
+args.add_argument('--device', type=str, default=None,
+                  help="Device to train on. Can be passed on to platalea.hardware.device in experiments.")
 
 # Flickr8k specific parameters
 args.add_argument(

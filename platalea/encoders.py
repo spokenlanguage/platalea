@@ -3,6 +3,7 @@ import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.utils.checkpoint
 
 import platalea.introspect
 from platalea.attention import Attention
@@ -12,8 +13,6 @@ import platalea.hardware
 # Includes code adapted from
 # https://github.com/gchrupala/speech2image/blob/master/PyTorch/functions/encoders.py
 
-
-_device = platalea.hardware.device()
 
 
 class ImageEncoder(nn.Module):
@@ -196,8 +195,9 @@ class SpeechEncoderTransformer(nn.Module):
         x = x.permute(2, 0, 1)
 
         x = self.scale_conv_to_trafo(x)
-        mask = generate_padding_mask(x.size()[1], lengths).to(_device)
-        x = self.Transformer(x, src_key_padding_mask=mask)
+        mask = generate_padding_mask(x.size()[1], lengths).to(platalea.hardware.device())
+        x = torch.utils.checkpoint.checkpoint(lambda a, b: self.Transformer(a, src_key_padding_mask=b),
+                                              x, mask)
 
         x = x.transpose(1, 0)
         x = nn.functional.normalize(self.att(x), p=2, dim=1)
