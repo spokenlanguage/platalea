@@ -46,6 +46,16 @@ def get_best_score(result_fpath='result.json', experiment_type='retrieval'):
     return best
 
 
+def get_best_full(result_fpath='result.json', experiment_type='retrieval'):
+    res = read_results(result_fpath)
+    metric_accessor = get_metric_accessor(experiment_type)
+    if experiment_type == 'asr':
+        i_best = np.argmin([metric_accessor(r) for r in res])
+    else:
+        i_best = np.argmax([metric_accessor(r) for r in res])
+    return res[i_best]
+
+
 if __name__ == '__main__':
     # Parsing command line
     doc = __doc__.strip("\n").split("\n", 1)

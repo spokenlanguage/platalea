@@ -24,6 +24,32 @@ def get_score_fn_speech_transcriber(is_slt, use_beam_decoding):
         score_fn = lambda x, y: score_fn(x, y, beam_size=10)
     return score_fn
 
+
+def get_evaluation_tasks(net):
+    if type(net) == SpeechImage:
+        return [dict(net=net, score_fn=platalea.score.score)]
+    elif type(net) == TextImage:
+        return [dict(net=net, score_fn=platalea.score.score_text_image)]
+    elif type(net) == SpeechText:
+        return [dict(net=net, score_fn=platalea.score.score_speech_text)]
+    elif type(net) == SpeechTranscriber:
+        score_fn = get_score_fn_speech_transcriber(data.dataset.is_slt(),
+                                                   args.use_beam_decoding)
+        return [dict(net=net, score_fn=score_fn)]
+    elif type(net) == MTLNetASR:
+        score_fn = get_score_fn_speech_transcriber(data.dataset.is_slt(),
+                                                   args.use_beam_decoding)
+        return [dict(name='SI', net=net.SpeechImage,
+                     score_fn=platalea.score.score),
+                dict(name='ASR', net=net.SpeechTranscriber,
+                     score_fn=score_fn)]
+    elif type(net) == MTLNetSpeechText:
+        return [dict(name='SI', net=net.SpeechImage,
+                     score_fn=platalea.score.score),
+                dict(name='ST', net=net.SpeechText,
+                     score_fn=platalea.score.score_speech_text)]
+
+
 # Parsing arguments
 args.add_argument('path', metavar='path', help='Model\'s path')
 args.add_argument('-b', help='Use beam decoding (for ASR and SLT experiments)',
@@ -54,29 +80,7 @@ logging.info('Loading model')
 net = torch.load(args.path)
 logging.info('Evaluating')
 with torch.no_grad():
-    if type(net) == SpeechImage:
-        tasks = [dict(net=net, score_fn=platalea.score.score)]
-    elif type(net) == TextImage:
-        tasks = [dict(net=net, score_fn=platalea.score.score_text_image)]
-    elif type(net) == SpeechText:
-        tasks = [dict(net=net, score_fn=platalea.score.score_speech_text)]
-    elif type(net) == SpeechTranscriber:
-        score_fn = get_score_fn_speech_transcriber(data.dataset.is_slt(),
-                                                   args.use_beam_decoding)
-        tasks = [dict(net=net, score_fn=score_fn)]
-    elif type(net) == MTLNetASR:
-        score_fn = get_score_fn_speech_transcriber(data.dataset.is_slt(),
-                                                   args.use_beam_decoding)
-        tasks = [dict(name='SI', net=net.SpeechImage,
-                      score_fn=platalea.score.score),
-                 dict(name='ASR', net=net.SpeechTranscriber,
-                      score_fn=score_fn)]
-    elif type(net) == MTLNetSpeechText:
-        tasks = [dict(name='SI', net=net.SpeechImage,
-                      score_fn=platalea.score.score),
-                 dict(name='ST', net=net.SpeechText,
-                      score_fn=platalea.score.score_speech_text)]
-
+    tasks = get_evaluation_tasks(net)
     net.eval()
     results = {}
     for t in tasks:
