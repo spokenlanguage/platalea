@@ -116,7 +116,7 @@ def experiment(net, data, config):
                     logging.info("train %d %d %f", epoch, j, cost['cost'] / cost['N'])
                 else:
                     if debug_logging_active:
-                        logging.debug("train %d %d %f %f", epoch, j, cost['cost'] / cost['N'], step_loss)
+                        logging.debug("train %d %d %f %f", epoch, j, cost['cost'] / cost['N'], loss_value)
                 if not config.get('validate_on_cpu'):
                     if j % 400 == 0:
                         validation_loss = val_loss(net)
