@@ -1,0 +1,35 @@
+program: platalea\experiments\flickr8k\transformer.py
+method: grid
+metric:
+  goal: "hello world wrt wandb sweep function"
+  name: "sweep hello world"
+parameters:
+  cyclic_lr_max:
+    values: [0.001, 0.005, 0.0005]
+  cyclic_lr_min:
+    value: 0.0005
+  batch_size:
+    value: 32
+  trafo_d_model:
+    value: 512
+  trafo_encoder_layers:
+    value: 4
+  trafo_heads:
+    value: 8
+  trafo_feedforward_dim:
+    value: 1024
+  trafo_dropout:
+    value: 0
+  epochs:
+    value: 27
+  flickr8k_root:
+    value: "../flickr1d/flickr1d"
+  flickr8k_meta:
+    value: "dataset.json"
+  audio_features_fn:
+    value: "mfcc_features.pt"
+early_terminate:
+  type: hyperband
+  s: 2
+  eta: 3
+  max_iter: 27
