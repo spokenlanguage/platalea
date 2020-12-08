@@ -39,7 +39,8 @@ jobs:
     - run: conda --version
     - run: which python
     - run: conda install pytorch -c pytorch
-    - run: pip install torchvision
+    - run: pip install torchvision wandb
+    - run: wandb off
     - name: install dependencies for tests
       run: pip install sklearn python-Levenshtein coverage
 

@@ -1,7 +1,6 @@
 import logging
 import random
 import torch
-import wandb  # cloud logging
 
 import platalea.basic as M
 import platalea.encoders
@@ -83,10 +82,6 @@ run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=a
 
 logged_config = dict(run_config=run_config, encoder_config=config, speech_config=speech_config)
 logged_config['encoder_config'].pop('SpeechEncoder')  # Object info is redundant in log.
-print(logged_config)
-
-wandb.init(project="platalea_transformer", entity="spokenlanguage", config=logged_config)
-wandb.watch(net)
 
 logging.info('Training')
-M.experiment(net, data, run_config)
+M.experiment(net, data, run_config, wandb_project='platalea_transformer', wandb_log=logged_config)
