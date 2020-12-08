@@ -8,7 +8,6 @@ import platalea.dataset as D
 import platalea.hardware
 from platalea.experiments.config import args
 
-
 # Parsing arguments
 args.add_argument('--batch_size', default=32, type=int,
                   help='How many samples per batch to load.')
