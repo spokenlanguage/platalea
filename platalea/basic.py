@@ -63,7 +63,15 @@ class SpeechImage(nn.Module):
 def dict_values_to_device(data, device):
     return {key: value.to(device) for key, value in data.items()}
 
-def experiment(net, data, config):
+
+def experiment(net, data, config,
+               wandb_log=None,
+               wandb_project="platalea",
+               wandb_entity="spokenlanguage"):
+    """
+
+    :type wandb_log: (nested) dict with complete config to be logged by wandb
+    """
     def val_loss(net):
         _device = platalea.hardware.device()
         net.eval()  # switch to eval mode
@@ -73,6 +81,11 @@ def experiment(net, data, config):
             result.append(net.cost(item).item())
         net.train()  # back to train mode
         return torch.tensor(result).mean()
+
+    if not wandb_log:
+        wandb_log = config
+    wandb.init(project=wandb_project, entity=wandb_entity, config=wandb_log)
+    wandb.watch(net)
 
     _device = platalea.hardware.device()
     net.to(_device)
