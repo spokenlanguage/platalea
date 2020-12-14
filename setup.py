@@ -22,5 +22,7 @@ setup(name='platalea',
           'soundfile>=0.10.3',
           'scikit-learn>=0.21.3',
           'wandb>=0.10.10',
-          'python-Levenshtein>=0.12.0',
-      ])
+          'python-Levenshtein>=0.12.0'],
+      use_scm_version=True,
+      setup_requires=['setuptools_scm'],
+)

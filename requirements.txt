@@ -28,6 +28,7 @@ torch==1.2.0
 torchvision==0.4.0
 traitlets==4.3.3
 tqdm==4.46.0
+wandb==0.10.10
 wcwidth==0.1.9
 git+https://github.com/gchrupala/ursa#egg=ursa
 soundfile==0.10.3.post1
