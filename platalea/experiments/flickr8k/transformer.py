@@ -11,7 +11,6 @@ from platalea.experiments.config import args
 # Parsing arguments
 args.add_argument('--batch_size', default=32, type=int,
                   help='How many samples per batch to load.')
-
 args.add_argument('--trafo_d_model', default=512, type=int,
                   help='TRANSFORMER: The dimensionality of the transformer model.')
 args.add_argument('--trafo_encoder_layers', default=4, type=int,
