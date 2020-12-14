@@ -3,22 +3,22 @@ name: install and run tests
 on: [push]
 
 jobs:
-  tox:
-    runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
-    steps:
-    - name: checkout
-      uses: actions/checkout@v2
-    - name: Debugging with tmate
-      uses: mxschmitt/action-tmate@v3
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.8
-    - name: Install tox
-      run: pip install tox
-    - name: Test with tox
-      run: tox
+    #  tox:
+    #    runs-on: ubuntu-latest
+    #    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    #    steps:
+    #    - name: checkout
+    #      uses: actions/checkout@v2
+    #    - name: Debugging with tmate
+    #      uses: mxschmitt/action-tmate@v3
+    #    - name: Set up Python 3.8
+    #      uses: actions/setup-python@v2
+    #      with:
+    #        python-version: 3.8
+    #    - name: Install tox
+    #      run: pip install tox
+    #    - name: Test with tox
+    #      run: tox
   run_experiments:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
