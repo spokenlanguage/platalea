@@ -34,3 +34,18 @@ def noam(optimizer, d_model, warmup_steps=4000):
 
     scheduler = lr_scheduler.LambdaLR(optimizer, learning_rate)
     return scheduler
+
+
+def constant(optimizer, lr):
+    """
+    Constant learning rate scheduler. The most trivial kind of scheduler, that keeps the learning rate constant.
+    :param optimizer:
+    :param lr:
+    :return:
+    """
+    logging.info("Using constant learning rate of {}".format(lr))
+
+    def learning_rate(_iteration):
+        return lr
+
+    return lr_scheduler.LambdaLR(optimizer, learning_rate, last_epoch=-1)
