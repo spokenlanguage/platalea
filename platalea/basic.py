@@ -96,6 +96,8 @@ def experiment(net, data, config,
         scheduler = platalea.schedulers.cyclic(optimizer, len(data['train']), max_lr=config['max_lr'], min_lr=config['min_lr'])
     elif configured_scheduler == 'noam':
         scheduler = platalea.schedulers.noam(optimizer, config['d_model'])
+    elif configured_scheduler == 'constant':
+        scheduler = platalea.schedulers.constant(optimizer, config['constant_lr'])
     else:
         raise Exception("lr_scheduler config value " + configured_scheduler + " is invalid, use cyclic or noam")
     optimizer.zero_grad()

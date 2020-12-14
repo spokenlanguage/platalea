@@ -76,7 +76,9 @@ config = dict(SpeechEncoder=speech_encoder,
 logging.info('Building model')
 net = M.SpeechImage(config)
 run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs, lr_scheduler=args.lr_scheduler,
-                  d_model=args.trafo_d_model, score_on_cpu=args.score_on_cpu, validate_on_cpu=args.validate_on_cpu)
+                  d_model=args.trafo_d_model, score_on_cpu=args.score_on_cpu, validate_on_cpu=args.validate_on_cpu,
+                  constant_lr=args.constant_lr,
+                  )
 
 logged_config = dict(run_config=run_config, encoder_config=config, speech_config=speech_config)
 logged_config['encoder_config'].pop('SpeechEncoder')  # Object info is redundant in log.
