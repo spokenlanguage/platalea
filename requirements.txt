@@ -24,8 +24,8 @@ six==1.14.0
 sortedcontainers==2.1.0
 tables==3.6.1
 tdev2 @ git+https://github.com/bootphon/tdev2.git@a72467faf209a4f4ee90e81406a07dbfebe51e00
-torch==1.2.0
-torchvision==0.4.0
+torch==1.7.1
+torchvision==0.8.2
 traitlets==4.3.3
 tqdm==4.46.0
 wandb==0.10.10
