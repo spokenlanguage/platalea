@@ -68,9 +68,8 @@ class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
         self.language = language
         root_path = pathlib.Path(root)
         # Loading label encoder
-        # module_path = pathlib.Path(__file__).parent
-        # with open(module_path / 'label_encoders.pkl', 'rb') as f:
-        with open(root_path / 'label_encoders.pkl', 'rb') as f:
+        module_path = pathlib.Path(__file__).parent
+        with open(module_path / 'label_encoders.pkl', 'rb') as f:
             self.__class__.le = pickle.load(f)[language]
         # Loading metadata
         with open(root_path / meta_fname) as fmeta:

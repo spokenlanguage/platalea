@@ -124,7 +124,7 @@ def experiment(net, data, config,
 
                 # logging
                 wandb_step_output["step loss"] = loss_value
-                wandb_step_output["last_lr"] = scheduler.get_last_lr()[0]
+                #wandb_step_output["last_lr"] = scheduler.get_last_lr()[0]
                 wandb_step_output["average epoch loss"] = cost['cost'] / cost['N']
 
                 if j % 100 == 0:

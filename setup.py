@@ -2,7 +2,6 @@
 from setuptools import setup, find_packages
 
 setup(name='platalea',
-      version='0.2',
       description='Understanding visually grounded spoken language via multi-tasking',
       url='https://github.com/spokenlanguage/platalea',
       author='Grzegorz Chrupała',
@@ -22,5 +21,7 @@ setup(name='platalea',
           'soundfile>=0.10.3',
           'scikit-learn>=0.21.3',
           'wandb>=0.10.10',
-          'python-Levenshtein>=0.12.0',
-      ])
+          'python-Levenshtein>=0.12.0'],
+      use_scm_version=True,
+      setup_requires=['setuptools_scm'],
+)
