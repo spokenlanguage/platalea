@@ -2,7 +2,6 @@
 from setuptools import setup, find_packages
 
 setup(name='platalea',
-      version='0.2',
       description='Understanding visually grounded spoken language via multi-tasking',
       url='https://github.com/spokenlanguage/platalea',
       author='Grzegorz Chrupała',
@@ -13,8 +12,8 @@ setup(name='platalea',
                 'platalea.experiments.flickr8k', 'platalea.experiments.librispeech_places'],
       include_package_data=True,
       install_requires=[
-          'torch>=1.7.1',
-          'torchvision>=0.8.2',
+          'torch>=1.2.0',
+          'torchvision>=0.4.0',
           'numpy>=1.17.2',
           'scipy>=1.3.1',
           'configargparse>=1.0',
