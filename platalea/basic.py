@@ -84,6 +84,9 @@ def experiment(net, data, config,
 
     if not wandb_log:
         wandb_log = config
+
+    logging.getLogger().info(
+        "Run 'wandb disabled' if you don't want to use wandb cloud logging.")
     wandb.init(project=wandb_project, entity=wandb_entity, config=wandb_log)
     wandb.watch(net)
 

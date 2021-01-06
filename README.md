@@ -49,3 +49,8 @@ Then finally, run the experiment:
 ```sh
 python experiments/basic-stack/run.py
 ```
+
+### Weights and Biases (wandb)
+If you don't want to use cloud logging of learning curves using wandb, you can 
+disable it by running:
+```wandb disabled```
