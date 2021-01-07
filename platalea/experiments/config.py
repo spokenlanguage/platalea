@@ -80,7 +80,7 @@ args.add_argument('--cyclic_lr_min', default=1e-6, type=float,
                   help='Minimum learning rate for cyclic learning rate scheduler')
 args.add_argument('--constant_lr', default=1e-4, type=float,
                   help='Learning rate for constant learning rate scheduler')
-args.add_argument('--device', type=str, default=None,
+args.add_argument('--device', type=str, default=None, env_var="PLATALEA_DEVICE",
                   help="Device to train on. Can be passed on to platalea.hardware.device in experiments.")
 
 # Flickr8k specific parameters
