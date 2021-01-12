@@ -102,7 +102,7 @@ jobs:
       env:
         FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
         PLATALEA_EPOCHS: 1
-      run: coverage run --append -m platalea.experiments.flickr8k.pip_seq -c $FLICKR8K_ROOT/config.yml --asr_model_dir=${{ github.workspace }}/asr_out --hidden_size_factor=4
+      run: coverage run --append -m platalea.experiments.flickr8k.pip_seq -c $FLICKR8K_ROOT/config.yml --asr_model_dir=${{ github.workspace }}/asr_out --hidden_size_factor=4 --pip_seq_no_beam_decoding
 
     - name: Collect coverage information
       run: coverage xml

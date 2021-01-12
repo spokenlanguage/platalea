@@ -18,6 +18,9 @@ args.add_argument(
     '--asr_model_dir',
     help='Path to the directory where the pretrained ASR/SLT model is stored',
     dest='asr_model_dir', type=str, action='store')
+
+args.add_argument('--pip_seq_use_beam_decoding', default=True, action='store_true')
+args.add_argument('--pip_seq_no_beam_decoding', dest='pip_seq_use_beam_decoding', action='store_false')
 args.enable_help()
 args.parse()
 
@@ -64,7 +67,7 @@ for set_name in ['train', 'val']:
     ds = data[set_name].dataset
     # cProfile.run("extract_trn(net, ds, use_beam_decoding=False)")
     # raise SystemExit
-    hyp_asr, ref_asr = extract_trn(net, ds, use_beam_decoding=True)
+    hyp_asr, ref_asr = extract_trn(net, ds, use_beam_decoding=args.pip_seq_use_beam_decoding)
     # Replacing original transcriptions with ASR/SLT's output
     for i in range(len(hyp_asr)):
         item = ds.split_data[i]
