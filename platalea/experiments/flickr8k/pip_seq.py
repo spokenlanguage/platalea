@@ -64,7 +64,7 @@ for set_name in ['train', 'val']:
     ds = data[set_name].dataset
     # cProfile.run("extract_trn(net, ds, use_beam_decoding=False)")
     # raise SystemExit
-    hyp_asr, ref_asr = extract_trn(net, ds, use_beam_decoding=True)
+    hyp_asr, ref_asr = extract_trn(net, ds, use_beam_decoding=False)
     # Replacing original transcriptions with ASR/SLT's output
     for i in range(len(hyp_asr)):
         item = ds.split_data[i]
