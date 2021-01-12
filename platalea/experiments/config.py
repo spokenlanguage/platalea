@@ -82,6 +82,8 @@ args.add_argument('--constant_lr', default=1e-4, type=float,
                   help='Learning rate for constant learning rate scheduler')
 args.add_argument('--device', type=str, default=None, env_var="PLATALEA_DEVICE",
                   help="Device to train on. Can be passed on to platalea.hardware.device in experiments.")
+args.add_argument('--hidden_size_factor', type=int, default=1024,
+                  help='The experiment models by default have a factor 1024 in their hidden size layers. With this parameter you can change that. For testing purposes only!')
 
 # Flickr8k specific parameters
 args.add_argument(

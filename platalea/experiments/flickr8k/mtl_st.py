@@ -22,7 +22,7 @@ logging.info('Arguments: {}'.format(args))
 
 
 batch_size = 8
-hidden_size = 1024
+hidden_size = args.hidden_size_factor
 dropout = 0.0
 
 logging.info('Loading data')
@@ -56,9 +56,9 @@ config = dict(
     TextEncoder=dict(
         emb=dict(num_embeddings=D.Flickr8KData.vocabulary_size(),
                  embedding_dim=128),
-        rnn=dict(input_size=128, hidden_size=1024, num_layers=1,
+        rnn=dict(input_size=128, hidden_size=hidden_size, num_layers=1,
                  bidirectional=True, dropout=0),
-        att=dict(in_size=1024 * 2, hidden_size=128)),
+        att=dict(in_size=hidden_size * 2, hidden_size=128)),
     margin_size=0.2,
     lmbd=0.5)
 

@@ -33,7 +33,7 @@ data = dict(
         shuffle=False))
 
 logging.info('Building model')
-net = M.SpeechTranscriber(M.get_default_config())
+net = M.SpeechTranscriber(M.get_default_config(hidden_size_factor=args.hidden_size_factor))
 run_config = dict(max_norm=2.0, max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs)
 
 logging.info('Training')

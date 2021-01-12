@@ -22,7 +22,7 @@ logging.info('Arguments: {}'.format(args))
 
 
 batch_size = 8
-hidden_size = 1024 * 3 // 4
+hidden_size = args.hidden_size_factor * 3 // 4
 dropout = 0.0
 
 logging.info('Loading data')

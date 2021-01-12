@@ -64,28 +64,28 @@ jobs:
         CONDA_PREFIX: /usr/share/miniconda
         FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
         PLATALEA_EPOCHS: 1
-      run: coverage run -m platalea.experiments.flickr8k.basic_default -c $FLICKR8K_ROOT/config.yml
+      run: coverage run -m platalea.experiments.flickr8k.basic_default -c $FLICKR8K_ROOT/config.yml --hidden_size_factor=4
 
     - name: Run transformer experiment, including coverage
       env:
         CONDA_PREFIX: /usr/share/miniconda
         FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
         PLATALEA_EPOCHS: 1
-      run: coverage run -m platalea.experiments.flickr8k.transformer -c $FLICKR8K_ROOT/config.yml
+      run: coverage run -m platalea.experiments.flickr8k.transformer -c $FLICKR8K_ROOT/config.yml --trafo_heads=4 --trafo_d_model=4 --trafo_feedforward_dim=4
 
     - name: Run mtl_asr experiment, including coverage
       env:
         CONDA_PREFIX: /usr/share/miniconda
         FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
         PLATALEA_EPOCHS: 1
-      run: coverage run -m platalea.experiments.flickr8k.mtl_asr -c $FLICKR8K_ROOT/config.yml
+      run: coverage run -m platalea.experiments.flickr8k.mtl_asr -c $FLICKR8K_ROOT/config.yml --hidden_size_factor=4
 
     - name: Run mtl_st experiment, including coverage
       env:
         CONDA_PREFIX: /usr/share/miniconda
         FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
         PLATALEA_EPOCHS: 1
-      run: coverage run -m platalea.experiments.flickr8k.mtl_st -c $FLICKR8K_ROOT/config.yml
+      run: coverage run -m platalea.experiments.flickr8k.mtl_st -c $FLICKR8K_ROOT/config.yml --hidden_size_factor=4
 
     - name: Run asr experiment, including coverage
       env:
@@ -93,7 +93,7 @@ jobs:
         FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
         PLATALEA_EPOCHS: 1
       run: |
-        coverage run -m platalea.experiments.flickr8k.asr -c $FLICKR8K_ROOT/config.yml
+        coverage run -m platalea.experiments.flickr8k.asr -c $FLICKR8K_ROOT/config.yml --hidden_size_factor=4
         mkdir -p ${{ github.workspace }}/asr_out
         mv net.1.pt ${{ github.workspace }}/asr_out/net.best.pt
 
@@ -103,7 +103,7 @@ jobs:
         FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
         PLATALEA_EPOCHS: 1
       run: |
-        coverage run -m platalea.experiments.flickr8k.text_image -c $FLICKR8K_ROOT/config.yml
+        coverage run -m platalea.experiments.flickr8k.text_image -c $FLICKR8K_ROOT/config.yml --hidden_size_factor=4
         mkdir -p ${{ github.workspace }}/text_image_out
         mv net.1.pt ${{ github.workspace }}/text_image_out/net.best.pt
 
@@ -112,14 +112,14 @@ jobs:
         CONDA_PREFIX: /usr/share/miniconda
         FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
         PLATALEA_EPOCHS: 1
-      run: coverage run -m platalea.experiments.flickr8k.pip_ind -c $FLICKR8K_ROOT/config.yml --asr_model_dir=${{ github.workspace }}/asr_out --text_image_model_dir=${{ github.workspace }}/text_image_out
+      run: coverage run -m platalea.experiments.flickr8k.pip_ind -c $FLICKR8K_ROOT/config.yml --asr_model_dir=${{ github.workspace }}/asr_out --text_image_model_dir=${{ github.workspace }}/text_image_out --hidden_size_factor=4
 
     - name: Run pip_seq experiment, including coverage
       env:
         CONDA_PREFIX: /usr/share/miniconda
         FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
         PLATALEA_EPOCHS: 1
-      run: coverage run -m platalea.experiments.flickr8k.pip_seq -c $FLICKR8K_ROOT/config.yml --asr_model_dir=${{ github.workspace }}/asr_out
+      run: coverage run -m platalea.experiments.flickr8k.pip_seq -c $FLICKR8K_ROOT/config.yml --asr_model_dir=${{ github.workspace }}/asr_out --hidden_size_factor=4
 
     - name: Collect coverage information
       env:
