@@ -34,8 +34,7 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.8
-    - run: which python
-    - run: pip install torch==1.7.1+cpu torchvision==0.8.2+cpu wandb -f https://download.pytorch.org/whl/torch_stable.html
+    - run: pip install wheel torch==1.7.1+cpu wandb -f https://download.pytorch.org/whl/torch_stable.html
     - run: wandb off
     - name: install additional dependencies for tests
       run: pip install sklearn python-Levenshtein coverage flake8
