@@ -113,7 +113,6 @@ def experiment(net, data, config,
             for j, item in enumerate(data['train'], start=1): # check reshuffling
                 wandb_step_output = {
                     "epoch": epoch,
-                    "epoch-step": j,
                 }
 
                 item = dict_values_to_device(item, _device)
@@ -128,8 +127,6 @@ def experiment(net, data, config,
                 # logging
                 wandb_step_output["step loss"] = loss_value
                 #wandb_step_output["last_lr"] = scheduler.get_last_lr()[0]
-                wandb_step_output["average epoch loss"] = cost['cost'] / cost['N']
-
                 if j % 100 == 0:
                     logging.info("train %d %d %f", epoch, j, cost['cost'] / cost['N'])
                 else:
