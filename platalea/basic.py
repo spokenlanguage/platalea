@@ -93,17 +93,9 @@ def experiment(net, data, config,
     _device = platalea.hardware.device()
     net.to(_device)
     net.train()
-    optimizer = optim.Adam(net.parameters(), lr=1)
-    configured_scheduler = config.get('lr_scheduler')
-    if configured_scheduler is None or configured_scheduler == 'cyclic':
-        scheduler = platalea.schedulers.cyclic(optimizer, len(data['train']), max_lr=config['max_lr'], min_lr=config['min_lr'])
-    elif configured_scheduler == 'noam':
-        scheduler = platalea.schedulers.noam(optimizer, config['d_model'])
-    elif configured_scheduler == 'constant':
-        scheduler = platalea.schedulers.constant(optimizer, config['constant_lr'])
-    else:
-        raise Exception("lr_scheduler config value " + configured_scheduler + " is invalid, use cyclic or noam")
-    optimizer.zero_grad()
+    net_parameters = net.parameters()
+    optimizer = create_optimizer(net_parameters)
+    scheduler = create_scheduler(config, optimizer, data)
 
     debug_logging_active = logging.getLogger().isEnabledFor(logging.DEBUG)
 
@@ -181,6 +173,26 @@ def experiment(net, data, config,
                 result["validation loss"] = validation_loss
             wandb.log(result)
 
+
+def create_scheduler(config, optimizer, data):
+    configured_scheduler = config.get('lr_scheduler')
+    if configured_scheduler is None or configured_scheduler == 'cyclic':
+        scheduler = platalea.schedulers.cyclic(optimizer, len(data['train']), max_lr=config['max_lr'],
+                                               min_lr=config['min_lr'])
+    elif configured_scheduler == 'noam':
+        scheduler = platalea.schedulers.noam(optimizer, config['d_model'])
+    elif configured_scheduler == 'constant':
+        scheduler = platalea.schedulers.constant(optimizer, config['constant_lr'])
+    else:
+        raise Exception(
+            "lr_scheduler config value " + configured_scheduler + " is invalid, use cyclic or noam or constant")
+    return scheduler
+
+
+def create_optimizer(net_parameters):
+    optimizer = optim.Adam(net_parameters, lr=1)
+    optimizer.zero_grad()
+    return optimizer
 
 
 DEFAULT_CONFIG = dict(SpeechEncoder=dict(conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0,
