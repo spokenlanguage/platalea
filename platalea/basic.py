@@ -64,7 +64,7 @@ def dict_values_to_device(data, device):
     return {key: value.to(device) for key, value in data.items()}
 
 
-def experiment(net, data, config, optimizer, scheduler,
+def experiment(net, data, config,
                wandb_log=None,
                wandb_project="platalea",
                wandb_entity="spokenlanguage"):
