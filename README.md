@@ -2,7 +2,7 @@
 Understanding visually grounded spoken language via multi-tasking
 
 [![DOI](https://zenodo.org/badge/239750248.svg)](https://zenodo.org/badge/latestdoi/239750248)
-![install and run in conda env](https://github.com/egpbos/platalea/workflows/install%20and%20run%20in%20conda%20env/badge.svg?branch=master)
+![install and run tests](https://github.com/egpbos/platalea/workflows/install%20and%20run%20tests/badge.svg?branch=master)
 [![codecov](https://codecov.io/gh/spokenlanguage/platalea/branch/master/graph/badge.svg)](https://codecov.io/gh/spokenlanguage/platalea)
 
 

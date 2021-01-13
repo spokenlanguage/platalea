@@ -157,9 +157,9 @@ def experiment(net, data, config, slt=False):
         torch.save(net, 'net.best.pt')
 
 
-def get_default_config():
+def get_default_config(hidden_size_factor=1024):
     fd = D.Flickr8KData
-    hidden_size = 1024 * 3 // 4
+    hidden_size = hidden_size_factor * 3 // 4
     return dict(
         SpeechEncoder=dict(
             conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,

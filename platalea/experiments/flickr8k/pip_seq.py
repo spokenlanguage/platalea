@@ -11,12 +11,16 @@ from platalea.utils.copy_best import copy_best
 from platalea.utils.extract_transcriptions import extract_trn
 from platalea.experiments.config import args
 
+# import cProfile
 
 # Parsing arguments
 args.add_argument(
     '--asr_model_dir',
     help='Path to the directory where the pretrained ASR/SLT model is stored',
     dest='asr_model_dir', type=str, action='store')
+
+args.add_argument('--pip_seq_use_beam_decoding', default=True, action='store_true')
+args.add_argument('--pip_seq_no_beam_decoding', dest='pip_seq_use_beam_decoding', action='store_false')
 args.enable_help()
 args.parse()
 
@@ -45,7 +49,7 @@ if args.asr_model_dir:
     net = torch.load(os.path.join(args.asr_model_dir, 'net.best.pt'))
 else:
     logging.info('Building ASR/SLT model')
-    config = M1.get_default_config()
+    config = M1.get_default_config(hidden_size_factor=args.hidden_size_factor)
     net = M1.SpeechTranscriber(config)
     run_config = dict(max_norm=2.0, max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs)
     logging.info('Training ASR/SLT')
@@ -61,7 +65,9 @@ else:
 logging.info('Extracting ASR/SLT transcriptions')
 for set_name in ['train', 'val']:
     ds = data[set_name].dataset
-    hyp_asr, ref_asr = extract_trn(net, ds, use_beam_decoding=True)
+    # cProfile.run("extract_trn(net, ds, use_beam_decoding=False)")
+    # raise SystemExit
+    hyp_asr, ref_asr = extract_trn(net, ds, use_beam_decoding=args.pip_seq_use_beam_decoding)
     # Replacing original transcriptions with ASR/SLT's output
     for i in range(len(hyp_asr)):
         item = ds.split_data[i]
@@ -74,7 +80,7 @@ for set_name in ['train', 'val']:
             logging.warning(msg)
 
 logging.info('Building model text-image')
-net = M2.TextImage(M2.get_default_config())
+net = M2.TextImage(M2.get_default_config(hidden_size_factor=args.hidden_size_factor))
 run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs)
 
 logging.info('Training text-image')

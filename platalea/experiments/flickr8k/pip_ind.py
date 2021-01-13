@@ -53,7 +53,7 @@ if args.asr_model_dir:
     net = torch.load(os.path.join(args.asr_model_dir, 'net.best.pt'))
 else:
     logging.info('Building ASR/SLT model')
-    config = M1.get_default_config()
+    config = M1.get_default_config(hidden_size_factor=args.hidden_size_factor)
     net = M1.SpeechTranscriber(config)
     run_config = dict(max_norm=2.0, max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs)
     logging.info('Training ASR/SLT')
@@ -75,7 +75,7 @@ if args.text_image_model_dir:
                                   'net.best.pt'))
 else:
     logging.info('Building model text-image')
-    net = M2.TextImage(M2.get_default_config())
+    net = M2.TextImage(M2.get_default_config(hidden_size_factor=args.hidden_size_factor))
     run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs)
     logging.info('Training text-image')
     M2.experiment(net, data, run_config)
