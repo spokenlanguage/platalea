@@ -94,7 +94,7 @@ def experiment(net, data, config,
     net.to(_device)
     net.train()
     net_parameters = net.parameters()
-    optimizer = create_optimizer(net_parameters)
+    optimizer = create_optimizer(net_parameters, config['l2_regularization'])
     scheduler = create_scheduler(config, optimizer, data)
 
     debug_logging_active = logging.getLogger().isEnabledFor(logging.DEBUG)
@@ -189,8 +189,8 @@ def create_scheduler(config, optimizer, data):
     return scheduler
 
 
-def create_optimizer(net_parameters):
-    optimizer = optim.Adam(net_parameters, lr=1)
+def create_optimizer(net_parameters, regularization):
+    optimizer = optim.Adam(net_parameters, lr=1, weight_decay=regularization)
     optimizer.zero_grad()
     return optimizer
 
