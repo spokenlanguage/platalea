@@ -55,7 +55,8 @@ else:
     logging.info('Building ASR/SLT model')
     config = M1.get_default_config(hidden_size_factor=args.hidden_size_factor)
     net = M1.SpeechTranscriber(config)
-    run_config = dict(max_norm=2.0, max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs)
+    run_config = dict(max_norm=2.0, max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs,
+                      l2_regularization=args.l2_regularization,)
     logging.info('Training ASR/SLT')
     if data['train'].dataset.is_slt():
         M1.experiment(net, data, run_config, slt=True)
