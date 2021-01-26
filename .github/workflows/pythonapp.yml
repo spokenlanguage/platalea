@@ -17,7 +17,10 @@ jobs:
         python-version: 3.8
     - name: Install tox
       run: pip install tox
-    - run: wandb off
+    - name: Install wandb and turn it off in current directory
+      run: |
+        pip install wandb
+        wandb off
     - name: Test with tox
       run: tox
   run_experiments:
