@@ -6,9 +6,10 @@ import platalea.basic as M
 import platalea.encoders
 import platalea.dataset as D
 import platalea.hardware
-from platalea.experiments.config import args
+from platalea.experiments.config import get_argument_parser
 
-# Parsing arguments
+
+args = get_argument_parser()# Parsing arguments
 args.add_argument('--batch_size', default=32, type=int,
                   help='How many samples per batch to load.')
 args.add_argument('--trafo_d_model', default=512, type=int,

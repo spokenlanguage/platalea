@@ -4,9 +4,10 @@ import random
 import torch
 
 import platalea.dataset as D
-from platalea.experiments.config import args
+from platalea.experiments.config import get_argument_parser
 
 
+args = get_argument_parser()
 def extract_trn(net, dataset, use_beam_decoding=False):
     d = dataset.evaluation()
     ref = d['text']

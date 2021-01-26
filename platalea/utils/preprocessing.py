@@ -15,9 +15,10 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 import torchvision.transforms as transforms
-from platalea.experiments.config import args
+from platalea.experiments.config import get_argument_parser
 
 
+args = get_argument_parser()
 _audio_feat_config = dict(type='mfcc', delta=True, alpha=0.97, n_filters=40,
                           window_size=0.025, frame_shift=0.010)
 _images_feat_config = dict(model='resnet')

@@ -9,8 +9,9 @@ def test_config():
                                         '--audio_features_fn=mfcc_features.pt',
                                         f'--flickr8k_root={flickr1d_path}',
                                         '--lr_scheduler=noam', '-v']):
-        from platalea.experiments.config import args
+        from platalea.experiments.config import get_argument_parser
 
+        args = get_argument_parser()
         args.parse()
 
         assert args.epochs == 2

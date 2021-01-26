@@ -4,9 +4,10 @@ import torch
 
 import platalea.basic as M
 import platalea.dataset as D
-from platalea.experiments.config import args
+from platalea.experiments.config import get_argument_parser
 
 
+args = get_argument_parser()
 # Parsing arguments
 args.enable_help()
 args.parse()

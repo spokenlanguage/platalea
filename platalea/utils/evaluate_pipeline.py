@@ -7,9 +7,10 @@ import torch
 import platalea.dataset as D
 import platalea.rank_eval as E
 from utils.extract_transcriptions import extract_trn
-from platalea.experiments.config import args
+from platalea.experiments.config import get_argument_parser
 
 
+args = get_argument_parser()
 logging.basicConfig(level=logging.INFO)
 
 # Parsing arguments
