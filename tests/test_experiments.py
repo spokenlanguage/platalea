@@ -21,9 +21,37 @@ def test_config():
 
 def test_transformer_experiment():
     with unittest.mock.patch('sys.argv', ['[this gets ignored]',
-                                          '--epochs=2',
+                                          '--epochs=1',
                                           '-c', f'{flickr1d_path}/config.yml',
                                           f'--flickr8k_root={flickr1d_path}',
-                                          '--lr_scheduler=noam',
-                                          '-v']):
+                                          '--trafo_heads=4',
+                                          '--trafo_d_model=4',
+                                          '--trafo_feedforward_dim=4']):
         import platalea.experiments.flickr8k.transformer
+
+
+def test_basic_default_experiment():
+    with unittest.mock.patch('sys.argv', ['[this gets ignored]',
+                                          '--epochs=1',
+                                          '-c', f'{flickr1d_path}/config.yml',
+                                          f'--flickr8k_root={flickr1d_path}',
+                                          '--hidden_size_factor=4']):
+        import platalea.experiments.flickr8k.basic_default
+
+
+def test_mtl_asr_experiment():
+    with unittest.mock.patch('sys.argv', ['[this gets ignored]',
+                                          '--epochs=1',
+                                          '-c', f'{flickr1d_path}/config.yml',
+                                          f'--flickr8k_root={flickr1d_path}',
+                                          '--hidden_size_factor=4']):
+        import platalea.experiments.flickr8k.mtl_asr
+
+
+def test_mtl_st_experiment():
+    with unittest.mock.patch('sys.argv', ['[this gets ignored]',
+                                          '--epochs=1',
+                                          '-c', f'{flickr1d_path}/config.yml',
+                                          f'--flickr8k_root={flickr1d_path}',
+                                          '--hidden_size_factor=4']):
+        import platalea.experiments.flickr8k.mtl_st

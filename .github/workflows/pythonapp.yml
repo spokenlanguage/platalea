@@ -9,18 +9,12 @@ jobs:
     steps:
     - name: checkout
       uses: actions/checkout@v2
-    # - name: Debugging with tmate
-    #   uses: mxschmitt/action-tmate@v3
     - name: Set up Python 3.8
       uses: actions/setup-python@v2
       with:
         python-version: 3.8
     - name: Install tox
       run: pip install tox
-    - name: Install wandb and turn it off in current directory
-      run: |
-        pip install wandb
-        wandb off
     - name: Test with tox
       run: tox
   run_experiments:
