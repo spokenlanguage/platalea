@@ -86,4 +86,11 @@ logged_config = dict(run_config=run_config, encoder_config=config, speech_config
 logged_config['encoder_config'].pop('SpeechEncoder')  # Object info is redundant in log.
 
 logging.info('Training')
-M.experiment(net, data, run_config, wandb_project='platalea_transformer', wandb_log=logged_config)
+
+import torchprof
+
+with torchprof.Profile(net, profile_memory=True) as prof:
+    M.experiment(net, data, run_config, wandb_project='platalea_transformer', wandb_log=logged_config,
+                 dump_net=False)
+
+print(prof.display(show_events=False))

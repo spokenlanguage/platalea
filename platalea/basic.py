@@ -73,7 +73,8 @@ import torchinfo
 def experiment(net, data, config,
                wandb_log=None,
                wandb_project="platalea",
-               wandb_entity="spokenlanguage"):
+               wandb_entity="spokenlanguage",
+               dump_net=True):
     """
 
     :type wandb_log: (nested) dict with complete config to be logged by wandb
@@ -115,9 +116,9 @@ def experiment(net, data, config,
 
                 item = dict_values_to_device(item, _device)
 
-                torchinfo.summary(net.SpeechEncoder, input_data=[item['audio'], item['audio_len']], depth=10)
-                torchinfo.summary(net.ImageEncoder, input_data=item['image'])
-                raise SystemExit
+                # torchinfo.summary(net.SpeechEncoder, input_data=[item['audio'], item['audio_len']], depth=10)
+                # torchinfo.summary(net.ImageEncoder, input_data=item['image'])
+                # raise SystemExit
 
                 loss = net.cost(item)
                 optimizer.zero_grad()
@@ -149,7 +150,8 @@ def experiment(net, data, config,
                 wandb.log(wandb_step_output)
 
             logging.info("Saving model in net.{}.pt".format(epoch))
-            torch.save(net, "net.{}.pt".format(epoch))
+            if dump_net:
+                torch.save(net, "net.{}.pt".format(epoch))
 
             logging.info("Calculating and saving epoch score results")
             if config.get('score_on_cpu') or config.get('validate_on_cpu'):
