@@ -12,9 +12,10 @@ from platalea.basic import SpeechImage
 from platalea.mtl import MTLNetASR, MTLNetSpeechText
 from platalea.speech_text import SpeechText
 from platalea.text_image import TextImage
-from platalea.experiments.config import args
+from platalea.experiments.config import get_argument_parser
 
 
+args = get_argument_parser()
 def get_score_fn_speech_transcriber(is_slt, use_beam_decoding):
     if is_slt:
         score_fn = platalea.score.score_slt

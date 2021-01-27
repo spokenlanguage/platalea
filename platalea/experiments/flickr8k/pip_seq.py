@@ -9,9 +9,10 @@ import platalea.dataset as D
 import platalea.text_image as M2
 from platalea.utils.copy_best import copy_best
 from platalea.utils.extract_transcriptions import extract_trn
-from platalea.experiments.config import args
+from platalea.experiments.config import get_argument_parser
 
-# import cProfile
+
+args = get_argument_parser()# import cProfile
 
 # Parsing arguments
 args.add_argument(

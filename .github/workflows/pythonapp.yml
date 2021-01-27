@@ -3,107 +3,20 @@ name: install and run tests
 on: [push]
 
 jobs:
-    #  tox:
-    #    runs-on: ubuntu-latest
-    #    if: "!contains(github.event.head_commit.message, '[skip ci]')"
-    #    steps:
-    #    - name: checkout
-    #      uses: actions/checkout@v2
-    #    - name: Debugging with tmate
-    #      uses: mxschmitt/action-tmate@v3
-    #    - name: Set up Python 3.8
-    #      uses: actions/setup-python@v2
-    #      with:
-    #        python-version: 3.8
-    #    - name: Install tox
-    #      run: pip install tox
-    #    - name: Test with tox
-    #      run: tox
-  run_experiments:
+  tox:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
     - name: checkout
       uses: actions/checkout@v2
-    - name: checkout flickr1d dataset
-      uses: actions/checkout@v2
-      with:
-        repository: spokenlanguage/flickr1d
-        path: data
     - name: Set up Python 3.8
       uses: actions/setup-python@v2
       with:
         python-version: 3.8
-    - run: pip install --upgrade pip wheel setuptools_scm
-    - run: pip install torch==1.7.1+cpu wandb -f https://download.pytorch.org/whl/torch_stable.html
-    - run: wandb off
-    - name: install additional dependencies for tests
-      run: pip install sklearn python-Levenshtein coverage flake8
-
-    - name: Install the package
-      run: pip install -e ${{ github.workspace }}
-
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 ${{ github.workspace }} --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 ${{ github.workspace }} --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
-    - name: Run basic experiment, including coverage
-      env:
-        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
-        PLATALEA_EPOCHS: 1
-      run: coverage run --append -m platalea.experiments.flickr8k.basic_default -c $FLICKR8K_ROOT/config.yml --hidden_size_factor=4
-
-    - name: Run transformer experiment, including coverage
-      env:
-        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
-        PLATALEA_EPOCHS: 1
-      run: coverage run --append -m platalea.experiments.flickr8k.transformer -c $FLICKR8K_ROOT/config.yml --trafo_heads=4 --trafo_d_model=4 --trafo_feedforward_dim=4
-
-    - name: Run mtl_asr experiment, including coverage
-      env:
-        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
-        PLATALEA_EPOCHS: 1
-      run: coverage run --append -m platalea.experiments.flickr8k.mtl_asr -c $FLICKR8K_ROOT/config.yml --hidden_size_factor=4
-
-    - name: Run mtl_st experiment, including coverage
-      env:
-        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
-        PLATALEA_EPOCHS: 1
-      run: coverage run --append -m platalea.experiments.flickr8k.mtl_st -c $FLICKR8K_ROOT/config.yml --hidden_size_factor=4
-
-    - name: Run asr experiment, including coverage
-      env:
-        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
-        PLATALEA_EPOCHS: 1
-      run: |
-        coverage run --append -m platalea.experiments.flickr8k.asr -c $FLICKR8K_ROOT/config.yml --hidden_size_factor=4
-        mkdir -p ${{ github.workspace }}/asr_out
-        mv net.1.pt ${{ github.workspace }}/asr_out/net.best.pt
-
-    - name: Run text_image experiment, including coverage
-      env:
-        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
-        PLATALEA_EPOCHS: 1
-      run: |
-        coverage run --append -m platalea.experiments.flickr8k.text_image -c $FLICKR8K_ROOT/config.yml --hidden_size_factor=4
-        mkdir -p ${{ github.workspace }}/text_image_out
-        mv net.1.pt ${{ github.workspace }}/text_image_out/net.best.pt
-
-    - name: Run pip_ind experiment, including coverage
-      env:
-        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
-        PLATALEA_EPOCHS: 1
-      run: coverage run --append -m platalea.experiments.flickr8k.pip_ind -c $FLICKR8K_ROOT/config.yml --asr_model_dir=${{ github.workspace }}/asr_out --text_image_model_dir=${{ github.workspace }}/text_image_out --hidden_size_factor=4
-
-    - name: Run pip_seq experiment, including coverage
-      env:
-        FLICKR8K_ROOT: ${{ github.workspace }}/data/flickr1d
-        PLATALEA_EPOCHS: 1
-      run: coverage run --append -m platalea.experiments.flickr8k.pip_seq -c $FLICKR8K_ROOT/config.yml --asr_model_dir=${{ github.workspace }}/asr_out --hidden_size_factor=4 --pip_seq_no_beam_decoding
-
+    - name: Install tox and coverage
+      run: pip install tox coverage
+    - name: Test with tox
+      run: tox
     - name: Collect coverage information
       run: coverage xml
     - name: Upload coverage to Codecov
