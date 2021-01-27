@@ -49,7 +49,7 @@ class TextEncoder(nn.Module):
         x = self.Embed(text)
         # create a packed_sequence object. The padding will be excluded from
         # the update step thereby training on the original sequence length only
-        x = nn.utils.rnn.pack_padded_sequence(x, length, batch_first=True,
+        x = nn.utils.rnn.pack_padded_sequence(x, length.cpu(), batch_first=True,
                                               enforce_sorted=False)
         x, _ = self.RNN(x)
         # unpack again as at the moment only rnn layers except packed_sequence
@@ -71,7 +71,7 @@ class TextEncoder(nn.Module):
 
         # Computing full stack of RNN states
         embed_padded = nn.utils.rnn.pack_padded_sequence(
-            embed, length, batch_first=True, enforce_sorted=False)
+            embed, length.cpu(), batch_first=True, enforce_sorted=False)
         rnn = self.IntrospectRNN.introspect(embed_padded)
         for l in range(self.RNN.num_layers):
             name = 'rnn{}'.format(l)
@@ -107,7 +107,7 @@ class SpeechEncoder(nn.Module):
         # create a packed_sequence object. The padding will be excluded from
         # the update step thereby training on the original sequence length only
         x = nn.utils.rnn.pack_padded_sequence(
-            x.transpose(2, 1), length, batch_first=True, enforce_sorted=False)
+            x.transpose(2, 1), length.cpu(), batch_first=True, enforce_sorted=False)
         x, _ = self.RNN(x)
         # unpack again as at the moment only rnn layers except packed_sequence
         # objects
@@ -129,7 +129,7 @@ class SpeechEncoder(nn.Module):
 
         # Computing full stack of RNN states
         conv_padded = nn.utils.rnn.pack_padded_sequence(
-            conv, length, batch_first=True, enforce_sorted=False)
+            conv, length.cpu(), batch_first=True, enforce_sorted=False)
         rnn = self.IntrospectRNN.introspect(conv_padded)
         for l in range(self.RNN.num_layers):
             name = 'rnn{}'.format(l)
@@ -234,7 +234,7 @@ class SpeechEncoderMultiConv(nn.Module):
         # create a packed_sequence object. The padding will be excluded from
         # the update step thereby training on the original sequence length only
         x = nn.utils.rnn.pack_padded_sequence(
-            x.transpose(2, 1), length, batch_first=True, enforce_sorted=False)
+            x.transpose(2, 1), length.cpu(), batch_first=True, enforce_sorted=False)
         x, _ = self.RNN(x)
         # unpack again as at the moment only rnn layers except packed_sequence
         # objects
@@ -261,7 +261,7 @@ class SpeechEncoderMultiConv(nn.Module):
 
         # Computing full stack of RNN states
         x_packed = nn.utils.rnn.pack_padded_sequence(
-            x.transpose(2, 1), length, batch_first=True, enforce_sorted=False)
+            x.transpose(2, 1), length.cpu(), batch_first=True, enforce_sorted=False)
         rnn = self.IntrospectRNN.introspect(x_packed)
         for l in range(self.RNN.num_layers):
             name = 'rnn{}'.format(l)
@@ -310,7 +310,7 @@ class SpeechEncoderVGG(nn.Module):
         # the update step thereby training on the original sequence length only
         x = x.view(x.shape[0], x.shape[1], x.shape[2] * x.shape[3])
         x = nn.utils.rnn.pack_padded_sequence(
-            x.transpose(2, 1), length, batch_first=True, enforce_sorted=False)
+            x.transpose(2, 1), length.cpu(), batch_first=True, enforce_sorted=False)
         x, _ = self.RNN(x)
         # unpack again as at the moment only rnn layers except packed_sequence
         # objects
@@ -345,7 +345,7 @@ class SpeechEncoderVGG(nn.Module):
 
         # Computing full stack of RNN states
         x_packed = nn.utils.rnn.pack_padded_sequence(
-            x.transpose(2, 1), length, batch_first=True, enforce_sorted=False)
+            x.transpose(2, 1), length.cpu(), batch_first=True, enforce_sorted=False)
         rnn = self.IntrospectRNN.introspect(x_packed)
         for l in range(self.RNN.num_layers):
             name = 'rnn{}'.format(l)
@@ -384,7 +384,7 @@ class SpeechEncoderBottom(nn.Module):
         # the update step thereby training on the original sequence length
         # only.  Expecting a SpeechEncoderTop to unpack the sequence
         x = nn.utils.rnn.pack_padded_sequence(
-            x.transpose(2, 1), length, batch_first=True, enforce_sorted=False)
+            x.transpose(2, 1), length.cpu(), batch_first=True, enforce_sorted=False)
         if self.RNN is not None:
             x, _ = self.RNN(x)
         return x
@@ -401,7 +401,7 @@ class SpeechEncoderBottom(nn.Module):
         result['conv'] = [conv[i, :length[i], :] for i in range(len(conv))]
         # Computing full stack of RNN states
         x = nn.utils.rnn.pack_padded_sequence(
-            conv, length, batch_first=True, enforce_sorted=False)
+            conv, length.cpu(), batch_first=True, enforce_sorted=False)
         if self.RNN is not None:
             rnn = self.IntrospectRNN.introspect(x)
             for l in range(self.RNN.num_layers):
@@ -437,7 +437,7 @@ class SpeechEncoderMiddle(nn.Module):
         result = {}
         # Computing full stack of RNN states
         x = nn.utils.rnn.pack_padded_sequence(
-            input, length, batch_first=True, enforce_sorted=False)
+            input, length.cpu(), batch_first=True, enforce_sorted=False)
         if self.RNN is not None:
             rnn = self.IntrospectRNN.introspect(x)
             for l in range(self.RNN.num_layers):
