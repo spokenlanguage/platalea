@@ -85,6 +85,8 @@ def get_argument_parser():
                     help="Device to train on. Can be passed on to platalea.hardware.device in experiments.")
     args.add_argument('--hidden_size_factor', type=int, default=1024,
                     help='The experiment models by default have a factor 1024 in their hidden size layers. With this parameter you can change that. For testing purposes only!')
+    args.add_argument('--l2_regularization', default=0, type=float,
+                    help='L2 regularization using weight decay in the optimizer.')
 
     # Flickr8k specific parameters
     args.add_argument(

@@ -78,7 +78,8 @@ config = dict(
 
 logging.info('Building model')
 net = M.MTLNetASR(config)
-run_config = dict(max_norm=2.0, max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs)
+run_config = dict(max_norm=2.0, max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs,
+                  l2_regularization=args.l2_regularization,)
 
 if data['train'].dataset.is_slt():
     scorer = score_slt

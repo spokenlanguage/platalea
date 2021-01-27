@@ -94,7 +94,7 @@ def experiment(net, data, config,
     net.to(_device)
     net.train()
     net_parameters = net.parameters()
-    optimizer = create_optimizer(net_parameters)
+    optimizer = create_optimizer(net_parameters, config['l2_regularization'])
     scheduler = create_scheduler(config, optimizer, data)
 
     debug_logging_active = logging.getLogger().isEnabledFor(logging.DEBUG)
@@ -105,7 +105,6 @@ def experiment(net, data, config,
             for j, item in enumerate(data['train'], start=1): # check reshuffling
                 wandb_step_output = {
                     "epoch": epoch,
-                    "epoch-step": j,
                 }
 
                 item = dict_values_to_device(item, _device)
@@ -120,8 +119,6 @@ def experiment(net, data, config,
                 # logging
                 wandb_step_output["step loss"] = loss_value
                 #wandb_step_output["last_lr"] = scheduler.get_last_lr()[0]
-                wandb_step_output["average epoch loss"] = cost['cost'] / cost['N']
-
                 if j % 100 == 0:
                     logging.info("train %d %d %f", epoch, j, cost['cost'] / cost['N'])
                 else:
@@ -189,8 +186,8 @@ def create_scheduler(config, optimizer, data):
     return scheduler
 
 
-def create_optimizer(net_parameters):
-    optimizer = optim.Adam(net_parameters, lr=1)
+def create_optimizer(net_parameters, regularization):
+    optimizer = optim.Adam(net_parameters, lr=1, weight_decay=regularization)
     optimizer.zero_grad()
     return optimizer
 
