@@ -30,10 +30,14 @@ class SpeechImage(nn.Module):
         else:
             self.ImageEncoder = ImageEncoder(config['ImageEncoder'])
 
+    def forward(self, item):
+        speech_encoding = self.SpeechEncoder(item['audio'], item['audio_len'])
+        image_encoding = self.ImageEncoder(item['image'])
+        return speech_encoding, image_encoding
+
     def cost(self, item):
-        speech_enc = self.SpeechEncoder(item['audio'], item['audio_len'])
-        image_enc = self.ImageEncoder(item['image'])
-        scores = platalea.loss.cosine_matrix(speech_enc, image_enc)
+        speech_encoding, image_encoding = self.forward(item)
+        scores = platalea.loss.cosine_matrix(speech_encoding, image_encoding)
         loss = platalea.loss.contrastive(scores, margin=self.config['margin_size'])
         return loss
 
@@ -63,6 +67,8 @@ class SpeechImage(nn.Module):
 def dict_values_to_device(data, device):
     return {key: value.to(device) for key, value in data.items()}
 
+
+import torchinfo
 
 def experiment(net, data, config,
                wandb_log=None,
@@ -108,6 +114,11 @@ def experiment(net, data, config,
                 }
 
                 item = dict_values_to_device(item, _device)
+
+                torchinfo.summary(net.SpeechEncoder, input_data=[item['audio'], item['audio_len']], depth=10)
+                torchinfo.summary(net.ImageEncoder, input_data=item['image'])
+                raise SystemExit
+
                 loss = net.cost(item)
                 optimizer.zero_grad()
                 loss.backward()
