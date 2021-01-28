@@ -602,4 +602,4 @@ def inout(layer, L):
         L = L.ceil()
     else:
         L = L.floor()
-    return L.long()
+    return L.long().clamp(min=0)
