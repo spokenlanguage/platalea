@@ -159,8 +159,22 @@ class SpeechEncoderTransformer(nn.Module):
     def __init__(self, config):
         super(SpeechEncoderTransformer, self).__init__()
 
-        conv = config['conv']
-        self.Conv = nn.Conv1d(**conv)
+        conv = config['conv2d']
+        in_channels = conv.pop('in_channels')
+        conv['in_channels'] = 1
+        self.Conv1 = nn.Conv2d(**conv)
+
+        self.ReLU1 = nn.ReLU()
+
+        conv['in_channels'] = conv['out_channels']
+        self.Conv2 = nn.Conv2d(**conv)
+
+        self.ReLU2 = nn.ReLU()
+
+        # determine size of the scaling layer between convolutional layers and transformer stack
+        after_first_conv = inout(self.Conv1, torch.tensor([in_channels]))[0]
+        after_second_conv = inout(self.Conv2, torch.tensor([after_first_conv]))[0]
+        self.conv_out_dim = after_second_conv * conv['out_channels']
 
         trafo = config['trafo']
         num_layers = trafo.pop('num_encoder_layers', 6)
@@ -171,11 +185,8 @@ class SpeechEncoderTransformer(nn.Module):
         self.Transformer = trafo_layer_type(**trafo)
 
         upsample = config['upsample']
-        if trafo['d_model'] == conv['out_channels']:
-            self.scale_conv_to_trafo = nn.Identity()
-        else:
-            self.scale_conv_to_trafo = nn.Linear(in_features=conv['out_channels'],
-                                                 out_features=trafo['d_model'], **upsample)
+        self.scale_conv_to_trafo = nn.Linear(in_features=self.conv_out_dim,
+                                             out_features=trafo['d_model'], **upsample)
 
         att = config.get('att', None)
         if att is not None:
@@ -184,15 +195,20 @@ class SpeechEncoderTransformer(nn.Module):
             self.att = None
 
     def forward(self, src, lengths):
-        x = self.Conv(src)
+        x = self.Conv1(src[:, None])
+        x = self.ReLU1(x)
+        x = self.Conv2(x)
+        x = self.ReLU2(x)
 
         # update the lengths to compensate for the convolution subsampling
-        lengths = inout(self.Conv, lengths)
+        lengths = inout(self.Conv1, lengths)
+        lengths = inout(self.Conv2, lengths)
 
         # # source sequence dimension must be first (but is last in input),
         # # batch dimension in the middle (was first in input), feature dimension last
         # x = x.permute(2, 0, 1)
-        x = x.permute(0, 2, 1)
+        x_size = x.size()
+        x = x.permute(0, 3, 1, 2).reshape((x_size[0], x_size[3], self.conv_out_dim))
 
         x = self.scale_conv_to_trafo(x)
 
