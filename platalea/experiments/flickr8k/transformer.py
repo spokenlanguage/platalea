@@ -61,11 +61,20 @@ data = dict(
 )
 
 
-speech_config = {'conv': dict(in_channels=39, out_channels=64, kernel_size=6, stride=args.conv_stride, padding=0, bias=False),
-                 'trafo': dict(d_model=args.trafo_d_model, dim_feedforward=args.trafo_feedforward_dim,
-                               num_encoder_layers=args.trafo_encoder_layers, dropout=args.trafo_dropout, nhead=args.trafo_heads),
+speech_config = {'conv': dict(in_channels=39,
+                              out_channels=64,
+                              kernel_size=6,
+                              stride=args.conv_stride,
+                              padding=0,
+                              bias=False),
+                 'trafo': dict(d_model=args.trafo_d_model,
+                               dim_feedforward=args.trafo_feedforward_dim,
+                               num_encoder_layers=args.trafo_encoder_layers,
+                               dropout=args.trafo_dropout,
+                               nhead=args.trafo_heads),
                  'upsample': dict(bias=True),
-                 'att': dict(in_size=args.trafo_d_model, hidden_size=128),
+                 'att': dict(in_size=args.trafo_d_model,
+                             hidden_size=128),
                  }
 speech_encoder = platalea.encoders.SpeechEncoderTransformer(speech_config)
 
