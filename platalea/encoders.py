@@ -163,7 +163,7 @@ class SpeechEncoderTransformer(nn.Module):
         self.Conv = nn.Conv1d(**conv)
 
         trafo = config['trafo']
-        num_layers = trafo.pop('num_encoder_layers', 6)
+        num_layers = trafo.pop('num_encoder_layers')
 
         def default_transformer_layer(**config):
             return nn.TransformerEncoder(nn.TransformerEncoderLayer(**config), num_layers)
