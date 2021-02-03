@@ -12,6 +12,8 @@ from platalea.experiments.config import get_argument_parser
 args = get_argument_parser()# Parsing arguments
 args.add_argument('--batch_size', default=32, type=int,
                   help='How many samples per batch to load.')
+args.add_argument('--conv_stride', default=2, type=int,
+                  help='Stride in convolution layer.')
 args.add_argument('--trafo_d_model', default=512, type=int,
                   help='TRANSFORMER: The dimensionality of the transformer model.')
 args.add_argument('--trafo_encoder_layers', default=4, type=int,
@@ -59,7 +61,7 @@ data = dict(
 )
 
 
-speech_config = {'conv': dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0, bias=False),
+speech_config = {'conv': dict(in_channels=39, out_channels=64, kernel_size=6, stride=args.conv_stride, padding=0, bias=False),
                  'trafo': dict(d_model=args.trafo_d_model, dim_feedforward=args.trafo_feedforward_dim,
                                num_encoder_layers=args.trafo_encoder_layers, dropout=args.trafo_dropout, nhead=args.trafo_heads),
                  'upsample': dict(bias=True),
