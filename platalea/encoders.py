@@ -189,11 +189,15 @@ class SpeechEncoderTransformer(nn.Module):
         # update the lengths to compensate for the convolution subsampling
         lengths = inout(self.Conv, lengths)
 
-        # source sequence dimension must be first (but is last in input),
-        # batch dimension in the middle (was first in input), feature dimension last
-        x = x.permute(2, 0, 1)
+        # # source sequence dimension must be first (but is last in input),
+        # # batch dimension in the middle (was first in input), feature dimension last
+        # x = x.permute(2, 0, 1)
+        x = x.permute(0, 2, 1)
 
         x = self.scale_conv_to_trafo(x)
+
+        x = x.permute(1, 0, 2)
+
         mask = generate_padding_mask(x.size()[1], lengths).to(platalea.hardware.device())
         x = torch.utils.checkpoint.checkpoint(lambda a, b: self.Transformer(a, src_key_padding_mask=b),
                                               x, mask)
