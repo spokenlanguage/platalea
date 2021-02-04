@@ -159,22 +159,31 @@ class SpeechEncoderTransformer(nn.Module):
     def __init__(self, config):
         super(SpeechEncoderTransformer, self).__init__()
 
-        conv = config['conv']
-        self.Conv = nn.Conv1d(**conv)
+        conv_config = config['conv']
+
+        n_conv_layers = conv_config.pop('layers')
+        conv_configs = [conv_config]
+        for _ in range(n_conv_layers - 1):
+            current_conv_config = conv_config.copy()
+            current_conv_config['in_channels'] = conv_configs[-1]['out_channels']
+            conv_configs.append(current_conv_config)
+
+        self.conv_layers = [nn.Conv1d(**conv_config) for conv_config in conv_configs]
 
         trafo = config['trafo']
         num_layers = trafo.pop('num_encoder_layers')
 
         def default_transformer_layer(**config):
             return nn.TransformerEncoder(nn.TransformerEncoderLayer(**config), num_layers)
+
         trafo_layer_type = config.get('trafo_layer_type', default_transformer_layer)
         self.Transformer = trafo_layer_type(**trafo)
 
         upsample = config['upsample']
-        if trafo['d_model'] == conv['out_channels']:
+        if trafo['d_model'] == conv_configs[-1]['out_channels']:
             self.scale_conv_to_trafo = nn.Identity()
         else:
-            self.scale_conv_to_trafo = nn.Linear(in_features=conv['out_channels'],
+            self.scale_conv_to_trafo = nn.Linear(in_features=conv_configs[-1]['out_channels'],
                                                  out_features=trafo['d_model'], **upsample)
 
         att = config.get('att', None)
@@ -184,10 +193,11 @@ class SpeechEncoderTransformer(nn.Module):
             self.att = None
 
     def forward(self, src, lengths):
-        x = self.Conv(src)
-
-        # update the lengths to compensate for the convolution subsampling
-        lengths = inout(self.Conv, lengths)
+        x = src
+        for conv_layer in self.conv_layers:
+            x = conv_layer(x)
+            # update the lengths to compensate for the convolution subsampling
+            lengths = inout(conv_layer, lengths)
 
         # # source sequence dimension must be first (but is last in input),
         # # batch dimension in the middle (was first in input), feature dimension last
