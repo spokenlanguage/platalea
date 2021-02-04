@@ -163,7 +163,7 @@ class SpeechEncoderTransformer(nn.Module):
         self.Conv = nn.Conv1d(**conv)
 
         trafo = config['trafo']
-        num_layers = trafo.pop('num_encoder_layers', 6)
+        num_layers = trafo.pop('num_encoder_layers')
 
         def default_transformer_layer(**config):
             return nn.TransformerEncoder(nn.TransformerEncoderLayer(**config), num_layers)
@@ -579,7 +579,7 @@ class SpeechEncoderVQ2(nn.Module):
         return result
 
 
-def inout(layer, L):
+def inout(layer, input_length):
     """Mapping from size of input to the size of the output of a 1D
     convolutional layer.
     https://pytorch.org/docs/stable/nn.html#torch.nn.Conv1d
@@ -601,9 +601,10 @@ def inout(layer, L):
     ksize = fn(layer.kernel_size)
     stride = fn(layer.stride)
     dilation = fn(layer.dilation)
-    L = ((L.float() + 2 * pad - dilation * (ksize - 1) - 1) / stride + 1)
+    input_length = ((input_length.float() + 2 * pad - dilation * (ksize - 1) - 1) / stride + 1)
     if maxpool and layer.ceil_mode:
-        L = L.ceil()
+        input_length = input_length.ceil()
     else:
-        L = L.floor()
-    return L.long().clamp(min=0)
+        input_length = input_length.floor()
+    output_length = input_length.long().clamp(min=0)
+    return output_length
