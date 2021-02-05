@@ -1,6 +1,8 @@
 import configargparse
-from pathlib import Path
 import logging
+import os
+from pathlib import Path
+from wandb.sdk import wandb_setup
 
 home = Path.home()
 # Looking at the home folder, then at current folder (later ones in list override previous ones)
@@ -57,11 +59,14 @@ def get_argument_parser():
 
     args.add_argument(
         '-c', '--config', is_config_file=True, help='config file path')
-    args.add_argument("-v", "--verbose", help="increase output verbosity", action="store_true")
-    args.add_argument("--silent", help="decrease output verbosity", action="store_true")
+    args.add_argument(
+        "-v", "--verbose", help="increase output verbosity",
+        action="store_true")
+    args.add_argument(
+        "--silent", help="decrease output verbosity", action="store_true")
     args.add_argument(
         '--audio_features_fn', env_var='PLATALEA_AUDIO_FEATURES_FN',
-        default='mfcc_delta_features.pt',
+        default='mfcc_features.pt',
         help='filename of the MFCC audio features file relative to the dataset \
         location')
     args.add_argument(
@@ -73,29 +78,41 @@ def get_argument_parser():
         '--downsampling-factor', default=None, type=float,
         dest='downsampling_factor',
         help='factor by which the dataset should be downsampled')
-    args.add_argument('--lr_scheduler', default="cyclic", choices=['cyclic', 'noam', 'constant'],
-                    help='The learning rate scheduler to use. WARNING: noam not yet implemented for most experiments!')
-    args.add_argument('--cyclic_lr_max', default=2 * 1e-4, type=float,
-                    help='Maximum learning rate for cyclic learning rate scheduler')
-    args.add_argument('--cyclic_lr_min', default=1e-6, type=float,
-                    help='Minimum learning rate for cyclic learning rate scheduler')
-    args.add_argument('--constant_lr', default=1e-4, type=float,
-                    help='Learning rate for constant learning rate scheduler')
-    args.add_argument('--device', type=str, default=None, env_var="PLATALEA_DEVICE",
-                    help="Device to train on. Can be passed on to platalea.hardware.device in experiments.")
-    args.add_argument('--hidden_size_factor', type=int, default=1024,
-                    help='The experiment models by default have a factor 1024 in their hidden size layers. With this parameter you can change that. For testing purposes only!')
-    args.add_argument('--l2_regularization', default=0, type=float,
-                    help='L2 regularization using weight decay in the optimizer.')
+    args.add_argument(
+        '--lr_scheduler', default="cyclic",
+        choices=['cyclic', 'noam', 'constant'],
+        help='The learning rate scheduler to use. WARNING: noam not yet \
+        implemented for most experiments!')
+    args.add_argument(
+        '--cyclic_lr_max', default=2 * 1e-4, type=float,
+        help='Maximum learning rate for cyclic learning rate scheduler')
+    args.add_argument(
+        '--cyclic_lr_min', default=1e-6, type=float,
+        help='Minimum learning rate for cyclic learning rate scheduler')
+    args.add_argument(
+        '--constant_lr', default=1e-4, type=float,
+        help='Learning rate for constant learning rate scheduler')
+    args.add_argument(
+        '--device', type=str, default=None, env_var="PLATALEA_DEVICE",
+        help="Device to train on. Can be passed on to platalea.hardware.device \
+        in experiments.")
+    args.add_argument(
+        '--hidden_size_factor', type=int, default=1024,
+        help='The experiment models by default have a factor 1024 in their \
+        hidden size layers. With this parameter you can change that. For \
+        testing purposes only!')
+    args.add_argument(
+        '--l2_regularization', default=0, type=float,
+        help='L2 regularization using weight decay in the optimizer.')
 
     # Flickr8k specific parameters
     args.add_argument(
         '--flickr8k_root', env_var='FLICKR8K_ROOT',
-        default='/roaming/gchrupal/datasets/flickr8k/',
+        default='/corpora/flickr8k/',
         help='location of the flickr8k dataset')
     args.add_argument(
         '--flickr8k_meta', env_var='FLICKR8K_METADATA_JSON',
-        default='dataset_multilingual.json',
+        default='dataset.json',
         help='filename of the metadata file (dataset.json or similar) relative to \
         the dataset location')
     args.add_argument(
@@ -105,7 +122,7 @@ def get_argument_parser():
         dataset location')
     args.add_argument(
         '--flickr8k_image_subdir', env_var='FLICKR8K_IMAGE_SUBDIR',
-        default='Flickr8k_Dataset/Flicker8k_Dataset/',
+        default='Flicker8k_Dataset/',
         help='directory containing the flickr8k image files, relative to the \
         dataset location')
     args.add_argument(
