@@ -2,7 +2,6 @@ import configargparse
 import logging
 import os
 from pathlib import Path
-from wandb.sdk import wandb_setup
 
 home = Path.home()
 # Looking at the home folder, then at current folder (later ones in list override previous ones)
