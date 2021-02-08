@@ -5,7 +5,7 @@ import torch
 import platalea.basic as M
 import platalea.dataset as D
 
-from egs.config import get_argument_parser
+from platalea.experiments.config import get_argument_parser
 
 
 args = get_argument_parser()
