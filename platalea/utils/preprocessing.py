@@ -193,6 +193,9 @@ def audio_features(paths, config):
             # try to repair the file
             path = fix_wav(cap)
             data, fs = soundfile.read(path)
+        # limit size
+        if 'max_size_seq' in config:
+            data = data[:config['max_size_seq']
         # get window and frameshift size in samples
         window_size = int(fs*config['window_size'])
         frame_shift = int(fs*config['frame_shift'])
