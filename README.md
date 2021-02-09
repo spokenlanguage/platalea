@@ -80,9 +80,8 @@ You can now train a model using one of the examples provided under
 ```sh
 cd platalea/experiments/flickr8k
 mkdir -p runs/test
-cp basic.py runs/test
 cd runs/test
-python basic.py
+python -m platalea.experiments.flickr8k.basic
 ```
 
 After the model is trained, results are available in `results.json`.

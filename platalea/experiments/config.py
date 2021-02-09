@@ -1,6 +1,5 @@
 import configargparse
 import logging
-import os
 from pathlib import Path
 
 home = Path.home()
