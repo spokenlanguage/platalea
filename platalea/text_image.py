@@ -76,7 +76,7 @@ def experiment(net, data, config):
     net.to(_device)
     net.train()
     net_parameters = net.parameters()
-    optimizer = create_optimizer(net_parameters, regularization=0)
+    optimizer = create_optimizer(net_parameters, config)
     scheduler = create_scheduler(config, optimizer, data)
 
     with open("result.json", "w") as out:
