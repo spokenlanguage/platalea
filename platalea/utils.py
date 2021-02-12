@@ -1,10 +1,14 @@
-from torch import optim as optim
+from torch import optim
 
 import platalea.schedulers
 
 
 def create_scheduler(config, optimizer, data):
+    if 'lr' in config.keys():
+        raise KeyError('Illegal keyword "lr" used in config. Use keyword "constant_lr" instead.')
+
     configured_scheduler = config.get('lr_scheduler')
+
     if configured_scheduler is None or configured_scheduler == 'cyclic':
         scheduler = platalea.schedulers.cyclic(optimizer, len(data['train']), max_lr=config['max_lr'],
                                                min_lr=config['min_lr'])
@@ -18,7 +22,10 @@ def create_scheduler(config, optimizer, data):
     return scheduler
 
 
-def create_optimizer(net_parameters, regularization):
-    optimizer = optim.Adam(net_parameters, lr=1, weight_decay=regularization)
+def create_optimizer(net_parameters, regularization, config={}):
+    if 'opt' in config.keys() and config['opt'] == 'adadelta':
+        optimizer = optim.Adadelta(net_parameters, lr=1, rho=0.95, eps=1e-8)
+    else:
+        optimizer = optim.Adam(net_parameters, lr=1, weight_decay=regularization)
     optimizer.zero_grad()
     return optimizer

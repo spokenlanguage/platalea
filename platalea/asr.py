@@ -14,6 +14,7 @@ from platalea.encoders import SpeechEncoder
 import platalea.loss
 import platalea.score
 import platalea.hardware
+from platalea.utils import create_optimizer, create_scheduler
 
 
 class SpeechTranscriber(nn.Module):
@@ -93,17 +94,9 @@ def experiment(net, data, config, slt=False):
 
     net.to(_device)
     net.train()
-    if 'lr' in config.keys():
-        lr = config['lr']
-    else:
-        lr = 1.0
-    if 'opt' in config.keys() and config['opt'] == 'adadelta':
-        optimizer = optim.Adadelta(net.parameters(), lr=lr, rho=0.95, eps=1e-8)
-    else:
-        optimizer = optim.Adam(net.parameters(), lr=lr)
-        scheduler = platalea.schedulers.cyclic(optimizer, len(data['train']),
-                                               max_lr=config['max_lr'], min_lr=config['min_lr'])
-    optimizer.zero_grad()
+    net_parameters = net.parameters()
+    optimizer = create_optimizer(net_parameters, regularization=0, config=config)
+    scheduler = create_scheduler(config, optimizer, data)
 
     with open("result.json", "w") as out:
         best_score = -np.inf
