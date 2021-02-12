@@ -89,9 +89,8 @@ After the model is trained, results are available in `results.json`.
 ### Weights and Biases (wandb)
 
 Some experiments support the use of wandb for cloud logging of results.
-If you don't want to use cloud logging of learning curves using wandb, you can
-disable it by running:
-```wandb disabled```
+In the examples we provide under `platalea/experiments`, this option is disabled by default.
+To enable it, the call to `experiment()` should be changed from `experiment(..., wandb_mode='disabled')` to experiment(..., wandb_mode='online'). To default back to wandb normal behavior (where the mode can be set through command line or environment variable), use `wandb_mode=None` (or ignore the parameter).
 
 ## References
 

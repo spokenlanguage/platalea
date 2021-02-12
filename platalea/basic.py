@@ -67,7 +67,8 @@ def dict_values_to_device(data, device):
 def experiment(net, data, config,
                wandb_log=None,
                wandb_project="platalea",
-               wandb_entity="spokenlanguage"):
+               wandb_entity="spokenlanguage",
+               wandb_mode=None):
     """
 
     :type wandb_log: (nested) dict with complete config to be logged by wandb
@@ -84,10 +85,8 @@ def experiment(net, data, config,
 
     if not wandb_log:
         wandb_log = config
-
-    logging.getLogger().info(
-        "Run 'wandb disabled' if you don't want to use wandb cloud logging.")
-    wandb.init(project=wandb_project, entity=wandb_entity, config=wandb_log)
+    wandb.init(project=wandb_project, entity=wandb_entity, config=wandb_log,
+               mode=wandb_mode)
     wandb.watch(net)
 
     _device = platalea.hardware.device()
