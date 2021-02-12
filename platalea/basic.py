@@ -4,7 +4,6 @@ import json
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import wandb  # cloud logging
 
 
@@ -14,6 +13,7 @@ import platalea.dataset as D
 import platalea.score
 import platalea.hardware
 import platalea.schedulers
+from platalea.utils import create_scheduler, create_optimizer
 
 
 class SpeechImage(nn.Module):
@@ -169,27 +169,6 @@ def experiment(net, data, config,
                 # only add it here (for wandb), because json.dump doesn't like tensor values
                 result["validation loss"] = validation_loss
             wandb.log(result)
-
-
-def create_scheduler(config, optimizer, data):
-    configured_scheduler = config.get('lr_scheduler')
-    if configured_scheduler is None or configured_scheduler == 'cyclic':
-        scheduler = platalea.schedulers.cyclic(optimizer, len(data['train']), max_lr=config['max_lr'],
-                                               min_lr=config['min_lr'])
-    elif configured_scheduler == 'noam':
-        scheduler = platalea.schedulers.noam(optimizer, config['d_model'])
-    elif configured_scheduler == 'constant':
-        scheduler = platalea.schedulers.constant(optimizer, config['constant_lr'])
-    else:
-        raise Exception(
-            "lr_scheduler config value " + configured_scheduler + " is invalid, use cyclic or noam or constant")
-    return scheduler
-
-
-def create_optimizer(net_parameters, regularization):
-    optimizer = optim.Adam(net_parameters, lr=1, weight_decay=regularization)
-    optimizer.zero_grad()
-    return optimizer
 
 
 DEFAULT_CONFIG = dict(SpeechEncoder=dict(conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0,
