@@ -11,6 +11,9 @@ import platalea.dataset as D
 import platalea.score
 import json
 
+from platalea.utils import create_optimizer, create_scheduler
+
+
 class SpeechImage(nn.Module):
     def __init__(self, config):
         super(SpeechImage, self).__init__()
@@ -65,17 +68,6 @@ class SpeechImage(nn.Module):
                 audio_e.append(code)
         return audio_e
 
-    
-def cyclic_scheduler(optimizer, n_batches, max_lr, min_lr=1e-6):
-    stepsize = n_batches * 4
-    logging.info("Setting stepsize of {}".format(stepsize))
-    lr_lambda = lambda iteration: (max_lr - min_lr)*(0.5 * (np.cos(np.pi * (1 + (3 - 1) / stepsize * iteration)) + 1))+min_lr
-    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda, last_epoch=-1)
-    # lambda function which uses the cosine function to cycle the learning rate between the given min and max rates
-    # the function operates between 1 and 3 (so the cos cycles from -1 to -1 ) normalise between 0 and 1 and then press between
-    # min and max lr
-    return scheduler
-
 
 def experiment(net, data, config):
     def val_loss():
@@ -89,9 +81,9 @@ def experiment(net, data, config):
 
     net.cuda()
     net.train()
-    optimizer = optim.Adam(net.parameters(), lr=1)
-    scheduler = cyclic_scheduler(optimizer, len(data['train']), max_lr = config['max_lr'], min_lr = 1e-6)
-    optimizer.zero_grad()
+    optimizer = create_optimizer(net.parameters(), regularization=0)
+    config['min_lr'] = 1e-6
+    scheduler = create_scheduler(config, optimizer, data)
 
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
