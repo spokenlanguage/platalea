@@ -4,7 +4,6 @@ import logging
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 
 import platalea.schedulers
 import platalea.dataset as D
@@ -12,7 +11,8 @@ from platalea.encoders import TextEncoder, ImageEncoder
 import platalea.loss
 import platalea.score
 import platalea.hardware
-from platalea.utils import create_optimizer, create_scheduler
+from platalea.optimizers import create_optimizer
+from platalea.schedulers import create_scheduler
 
 
 class TextImage(nn.Module):

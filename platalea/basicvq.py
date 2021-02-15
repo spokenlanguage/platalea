@@ -1,18 +1,16 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from platalea.encoders import SpeechEncoderVQ, SpeechEncoderVQ2, ImageEncoder, inout
 import platalea.loss
 from collections import Counter
 import logging
-from torch.optim import lr_scheduler
 import platalea.dataset as D
 import platalea.score
 import json
 
-from platalea.utils import create_optimizer, create_scheduler
-
+from platalea.optimizers import create_optimizer
+from platalea.schedulers import create_scheduler
 
 class SpeechImage(nn.Module):
     def __init__(self, config):

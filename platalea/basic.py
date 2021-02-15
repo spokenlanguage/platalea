@@ -6,14 +6,14 @@ import torch
 import torch.nn as nn
 import wandb  # cloud logging
 
-
 from platalea.encoders import SpeechEncoder, ImageEncoder
 import platalea.loss
 import platalea.dataset as D
 import platalea.score
 import platalea.hardware
 import platalea.schedulers
-from platalea.utils import create_scheduler, create_optimizer
+from platalea.optimizers import create_optimizer
+from platalea.schedulers import create_scheduler
 
 
 class SpeechImage(nn.Module):
