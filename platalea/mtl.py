@@ -104,7 +104,7 @@ def experiment(net, tasks, config):
         # Preparing nets
         t['net'].to(_device)
         t['net'].train()
-        t['optimizer'] = create_optimizer(t['net'].parameters(), config)
+        t['optimizer'] = create_optimizer(config, t['net'].parameters())
         t['scheduler'] = create_scheduler(config, t['optimizer'], t['data'])
         
     with open("result.json", "w") as out:

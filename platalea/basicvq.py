@@ -79,7 +79,7 @@ def experiment(net, data, config):
 
     net.cuda()
     net.train()
-    optimizer = create_optimizer(net.parameters(), config)
+    optimizer = create_optimizer(config, net.parameters())
     config['min_lr'] = 1e-6
     scheduler = create_scheduler(config, optimizer, data)
 
