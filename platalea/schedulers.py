@@ -52,18 +52,25 @@ def constant(optimizer, lr):
 
 
 def create_scheduler(config, optimizer, data):
+    """
+    Create learning rate scheduler given the settings in the config dict, optimizer and data.
+    :param config: configuration dict
+    :param optimizer: pytorch optimizer object
+    :param data: dict containing the dataset
+    :return: learning rate scheduler
+    """
     if 'lr' in config.keys():
         raise KeyError('Illegal keyword "lr" used in config. Use keyword "constant_lr" instead.')
 
     configured_scheduler = config.get('lr_scheduler')
 
     if configured_scheduler is None or configured_scheduler == 'cyclic':
-        scheduler = platalea.schedulers.cyclic(optimizer, len(data['train']), max_lr=config['max_lr'],
+        scheduler = cyclic(optimizer, len(data['train']), max_lr=config['max_lr'],
                                                min_lr=config['min_lr'])
     elif configured_scheduler == 'noam':
-        scheduler = platalea.schedulers.noam(optimizer, config['d_model'])
+        scheduler = noam(optimizer, config['d_model'])
     elif configured_scheduler == 'constant':
-        scheduler = platalea.schedulers.constant(optimizer, config['constant_lr'])
+        scheduler = constant(optimizer, config['constant_lr'])
     else:
         raise Exception(
             "lr_scheduler config value " + configured_scheduler + " is invalid, use cyclic or noam or constant")
