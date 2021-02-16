@@ -144,3 +144,5 @@ def experiment(net, tasks, config):
             # Saving model
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
+
+    return result

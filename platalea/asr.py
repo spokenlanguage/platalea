@@ -148,7 +148,7 @@ def experiment(net, data, config, slt=False):
     if 'epsilon_decay' in config.keys():
         # Save full model for inference
         torch.save(net, 'net.best.pt')
-
+    return {'validation loss': val_loss().item()}
 
 def get_default_config(hidden_size_factor=1024):
     fd = D.Flickr8KData

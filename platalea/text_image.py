@@ -79,6 +79,7 @@ def experiment(net, data, config):
     optimizer = create_optimizer(config, net_parameters)
     scheduler = create_scheduler(config, optimizer, data)
 
+    result = None
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
@@ -101,6 +102,7 @@ def experiment(net, data, config):
             print('', file=out, flush=True)
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
+    return result
 
 
 def get_default_config(hidden_size_factor=1024):

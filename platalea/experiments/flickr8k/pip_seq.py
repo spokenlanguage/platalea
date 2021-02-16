@@ -87,6 +87,6 @@ run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=a
                   l2_regularization=args.l2_regularization)
 
 logging.info('Training text-image')
-M2.experiment(net, data, run_config)
+result = M2.experiment(net, data, run_config)
 copyfile('result.json', 'result_text_image.json')
 copy_best('.', 'result_text_image.json', 'ti.best.pt')

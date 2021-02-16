@@ -99,6 +99,7 @@ def experiment(net, data, config,
 
     debug_logging_active = logging.getLogger().isEnabledFor(logging.DEBUG)
 
+    loss_value = None
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
@@ -169,6 +170,9 @@ def experiment(net, data, config,
                 # only add it here (for wandb), because json.dump doesn't like tensor values
                 result["validation loss"] = validation_loss
             wandb.log(result)
+
+    # Return loss of the final model for automated testing
+    return {'final_loss': loss_value}
 
 
 DEFAULT_CONFIG = dict(SpeechEncoder=dict(conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0,

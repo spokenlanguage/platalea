@@ -73,4 +73,4 @@ tasks = [
     dict(name='ST', net=net.SpeechText, data=data, eval=score_speech_text)]
 
 logging.info('Training')
-M.experiment(net, tasks, run_config)
+result = M.experiment(net, tasks, run_config)
