@@ -4,6 +4,8 @@ import json
 import numpy as np
 import torch
 import torch.nn as nn
+import shutil
+import os
 import wandb  # cloud logging
 
 from platalea.encoders import SpeechEncoder, ImageEncoder
@@ -31,11 +33,15 @@ class SpeechImage(nn.Module):
             self.ImageEncoder = ImageEncoder(config['ImageEncoder'])
 
     def cost(self, item):
+        scores = self.forward(item)
+        loss = platalea.loss.contrastive(scores, margin=self.config['margin_size'])
+        return loss
+
+    def forward(self, item):
         speech_enc = self.SpeechEncoder(item['audio'], item['audio_len'])
         image_enc = self.ImageEncoder(item['image'])
         scores = platalea.loss.cosine_matrix(speech_enc, image_enc)
-        loss = platalea.loss.contrastive(scores, margin=self.config['margin_size'])
-        return loss
+        return scores
 
     def embed_image(self, images):
         image = torch.utils.data.DataLoader(dataset=images, batch_size=32,
@@ -119,7 +125,6 @@ def experiment(net, data, config,
 
                 # logging
                 wandb_step_output["step loss"] = loss_value
-                #wandb_step_output["last_lr"] = scheduler.get_last_lr()[0]
                 if j % 100 == 0:
                     logging.info("train %d %d %f", epoch, j, cost['cost'] / cost['N'])
                 else:
@@ -138,12 +143,12 @@ def experiment(net, data, config,
 
                 wandb.log(wandb_step_output)
 
-            logging.info("Saving model in net.{}.pt".format(epoch))
-            torch.save(net, "net.{}.pt".format(epoch))
+            net_file_name = "net.{}.pt".format(epoch)
+            save_model(net, net_file_name)
 
             logging.info("Calculating and saving epoch score results")
             if config.get('score_on_cpu') or config.get('validate_on_cpu'):
-                score_net = torch.load("net.{}.pt".format(epoch), map_location=torch.device("cpu"))
+                score_net = torch.load(net_file_name, map_location=torch.device("cpu"))
                 if platalea.hardware._device != 'cpu':
                     previous_device = platalea.hardware._device
                     platalea.hardware.set_device('cpu')
@@ -173,6 +178,15 @@ def experiment(net, data, config,
 
     # Return loss of the final model for automated testing
     return {'final_loss': loss_value}
+
+
+def save_model(net, net_file_name):
+    logging.info("Saving model in {}".format(net_file_name))
+    torch.save(net, net_file_name)
+
+    # log it to the cloud
+    shutil.copy(net_file_name, os.path.join(wandb.run.dir, net_file_name))
+    wandb.save(net_file_name)
 
 
 DEFAULT_CONFIG = dict(SpeechEncoder=dict(conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0,
