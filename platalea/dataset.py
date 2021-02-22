@@ -1,3 +1,4 @@
+from collections import namedtuple
 import json
 import numpy as np
 import pathlib
@@ -8,80 +9,34 @@ import torch
 import torch.utils.data
 
 
-class TranscribedDataset():
-    le = None
-    sos = '<sos>'
-    eos = '<eos>'
-    pad = '<pad>'
-    unk = '<unk>'
+tokenizer = None
 
-    @classmethod
-    def init_vocabulary(cls, transcriptions):
-        cls.le = LabelEncoder()
-        tokens = [cls.sos, cls.eos, cls.unk, cls.pad] + \
-                 [c for t in transcriptions for c in t]
-        cls.le.fit(tokens)
-
-    @classmethod
-    def get_label_encoder(cls):
-        if cls.le is None:
-            raise ValueError('Vocabulary not initialized.')
-        return cls.le
-
-    @classmethod
-    def get_token_id(cls, token):
-        return cls.get_label_encoder().transform([token])[0]
-
-    @classmethod
-    def vocabulary_size(cls):
-        return len(cls.get_label_encoder().classes_)
-
-    @classmethod
-    def caption2tensor(cls, capt):
-        le = cls.get_label_encoder()
-        capt = [c if c in le.classes_ else cls.unk for c in capt]
-        capt = [cls.sos] + capt + [cls.eos]
-        return torch.Tensor(le.transform(capt))
-
-    @classmethod
-    def batch_text(cls, texts):
-        """Merge captions, (from tuple of 1D tensor to 2D tensor). Pad with
-        pad token."""
-        char_lengths = [len(cap) for cap in texts]
-        chars = torch.Tensor(len(texts), max(char_lengths)).long()
-        chars.fill_(cls.get_token_id(cls.pad))
-        for i, cap in enumerate(texts):
-            end = char_lengths[i]
-            chars[i, :end] = cap[:end]
-        return chars, torch.tensor(char_lengths)
-
-    @classmethod
-    def collate_fn(cls, data, max_frames=2048):
-        images, texts, audios = zip(* [(datum['image'],
-                                        datum['text'],
-                                        datum['audio']) for datum in data])
-        # Merge images (from tuple of 3D tensor to 4D tensor).
-        images = batch_image(images)
-        mfcc, mfcc_lengths = batch_audio(audios, max_frames=max_frames)
-        chars, char_lengths = cls.batch_text(texts)
-        return dict(image=images, audio=mfcc, text=chars, audio_len=mfcc_lengths,
-                    text_len=char_lengths)
-
-    @classmethod
-    def collate_fn_speech(cls, data, max_frames=2048):
-        texts, audios = zip(* [(datum['text'],
-                                datum['audio']) for datum in data])
-        mfcc, mfcc_lengths = batch_audio(audios, max_frames=max_frames)
-        chars, char_lengths = cls.batch_text(texts)
-        return dict(audio=mfcc, text=chars, audio_len=mfcc_lengths,
-                    text_len=char_lengths)
+SpecialTokens = namedtuple('SpecialTokens', ['eos', 'pad', 'sos', 'unk'])
+special_tokens = SpecialTokens('<eos>', '<pad>', '<sos>', '<unk>')
 
 
-class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
+def init_vocabulary(transcriptions):
+    global tokenizer
+    tokenizer = LabelEncoder()
+    tokens = list(special_tokens) + [c for t in transcriptions for c in t]
+    tokenizer.fit(tokens)
+
+
+def get_token_id(token):
+    return tokenizer.transform([token])[0]
+
+
+def caption2tensor(capt):
+    capt = [c if c in tokenizer.classes_ else special_tokens.unk for c in capt]
+    capt = [special_tokens.sos] + capt + [special_tokens.eos]
+    return torch.Tensor(tokenizer.transform(capt))
+
+
+class Flickr8KData(torch.utils.data.Dataset):
     @classmethod
     def init_vocabulary(cls, dataset):
         transcriptions = [sd[2] for sd in dataset.split_data]
-        TranscribedDataset.init_vocabulary(transcriptions)
+        init_vocabulary(transcriptions)
 
     def __init__(self, root, feature_fname, meta_fname, split='train', language='en',
                  downsampling_factor=None):
@@ -102,7 +57,8 @@ class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
         # Loading label encoder
         module_path = pathlib.Path(__file__).parent
         with open(module_path / 'label_encoders.pkl', 'rb') as f:
-            self.__class__.le = pickle.load(f)[language]
+            global tokenizer
+            tokenizer = pickle.load(f)[language]
         # Loading metadata
         with open(root_path / meta_fname) as fmeta:
             metadata = json.load(fmeta)['images']
@@ -147,7 +103,7 @@ class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
         sd = self.split_data[index]
         image = self.image[sd[0]]
         audio = self.audio[sd[1]]
-        text = self.caption2tensor(sd[2])
+        text = caption2tensor(sd[2])
         return dict(image_id=sd[0],
                     audio_id=sd[1],
                     image=image,
@@ -198,11 +154,11 @@ class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
             return [s.split() for s in sentences]
 
 
-class LibriSpeechData(torch.utils.data.Dataset, TranscribedDataset):
+class LibriSpeechData(torch.utils.data.Dataset):
     @classmethod
     def init_vocabulary(cls, dataset):
         transcriptions = [m['trn'] for m in dataset.metadata]
-        TranscribedDataset.init_vocabulary(transcriptions)
+        init_vocabulary(transcriptions)
 
     def __init__(self, root, feature_fname, meta_fname, split='train',
                  downsampling_factor=None):
@@ -232,7 +188,7 @@ class LibriSpeechData(torch.utils.data.Dataset, TranscribedDataset):
     def __getitem__(self, index):
         sd = self.metadata[index]
         audio = torch.from_numpy(self.audio[sd['audio_start']:sd['audio_end']])
-        text = self.caption2tensor(sd['trn'])
+        text = caption2tensor(sd['trn'])
         return dict(audio_id=sd['fileid'], text=text, audio=audio)
 
     def __len__(self):
@@ -253,11 +209,11 @@ class LibriSpeechData(torch.utils.data.Dataset, TranscribedDataset):
         return dict(audio=audio, text=text)
 
 
-class SpokenCOCOData(torch.utils.data.Dataset, TranscribedDataset):
+class SpokenCOCOData(torch.utils.data.Dataset):
     @classmethod
     def init_vocabulary(cls, dataset):
         transcriptions = [sd[2] for sd in dataset.split_data]
-        TranscribedDataset.init_vocabulary(transcriptions)
+        init_vocabulary(transcriptions)
 
     def __init__(self, root, feature_fname, meta_fname, split='train',
                  downsampling_factor=None, debug=False):
@@ -271,7 +227,8 @@ class SpokenCOCOData(torch.utils.data.Dataset, TranscribedDataset):
         # Loading label encoder
         module_path = pathlib.Path(__file__).parent
         with open(module_path / 'label_encoders.pkl', 'rb') as f:
-            self.__class__.le = pickle.load(f)[self.language]
+            global tokenizer
+            tokenizer = pickle.load(f)[self.language]
 
         if split != "train":
             if split == "val":
@@ -317,7 +274,7 @@ class SpokenCOCOData(torch.utils.data.Dataset, TranscribedDataset):
         sd = self.split_data[index]
         image = self.image[sd[0]]
         audio = self.audio[sd[1]]
-        text = self.caption2tensor(sd[2])
+        text = caption2tensor(sd[2])
         return dict(image_id=sd[0],
                     audio_id=sd[1],
                     image=image,
@@ -371,8 +328,41 @@ def batch_audio(audios, max_frames=2048):
     return mfcc.permute(0, 2, 1), torch.tensor(mfcc_lengths)
 
 
+def batch_text(texts):
+    """Merge captions, (from tuple of 1D tensor to 2D tensor). Pad with
+    pad token."""
+    char_lengths = [len(cap) for cap in texts]
+    chars = torch.Tensor(len(texts), max(char_lengths)).long()
+    chars.fill_(get_token_id(special_tokens.pad))
+    for i, cap in enumerate(texts):
+        end = char_lengths[i]
+        chars[i, :end] = cap[:end]
+    return chars, torch.tensor(char_lengths)
+
+
 def batch_image(images):
     return torch.stack(images, 0)
+
+
+def collate_fn(data, max_frames=2048):
+    images, texts, audios = zip(* [(datum['image'],
+                                    datum['text'],
+                                    datum['audio']) for datum in data])
+    # Merge images (from tuple of 3D tensor to 4D tensor).
+    images = batch_image(images)
+    mfcc, mfcc_lengths = batch_audio(audios, max_frames=max_frames)
+    chars, char_lengths = batch_text(texts)
+    return dict(image=images, audio=mfcc, text=chars, audio_len=mfcc_lengths,
+                text_len=char_lengths)
+
+
+def collate_fn_speech(data, max_frames=2048):
+    texts, audios = zip(* [(datum['text'],
+                            datum['audio']) for datum in data])
+    mfcc, mfcc_lengths = batch_audio(audios, max_frames=max_frames)
+    chars, char_lengths = batch_text(texts)
+    return dict(audio=mfcc, text=chars, audio_len=mfcc_lengths,
+                text_len=char_lengths)
 
 
 def flickr8k_loader(root, meta_fname, language, feature_fname,
@@ -389,7 +379,7 @@ def flickr8k_loader(root, meta_fname, language, feature_fname,
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=0,
-        collate_fn=lambda x: Flickr8KData.collate_fn(x, max_frames=max_frames))
+        collate_fn=lambda x: collate_fn(x, max_frames=max_frames))
 
 
 def librispeech_loader(root, meta_fname, feature_fname,
@@ -405,7 +395,7 @@ def librispeech_loader(root, meta_fname, feature_fname,
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=0,
-        collate_fn=lambda x: LibriSpeechData.collate_fn_speech(x, max_frames=max_frames))
+        collate_fn=lambda x: collate_fn_speech(x, max_frames=max_frames))
 
 
 def spokencoco_loader(root, meta_fname, feature_fname,
@@ -423,4 +413,4 @@ def spokencoco_loader(root, meta_fname, feature_fname,
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=0,
-        collate_fn=lambda x: SpokenCOCOData.collate_fn(x, max_frames=max_frames))
+        collate_fn=lambda x: collate_fn(x, max_frames=max_frames))

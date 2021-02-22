@@ -35,7 +35,7 @@ class SpeechText(nn.Module):
         texts = [D.TranscribedDataset.caption2tensor(t) for t in texts]
         text = torch.utils.data.DataLoader(dataset=texts, batch_size=32,
                                            shuffle=False,
-                                           collate_fn=D.TranscribedDataset.batch_text)
+                                           collate_fn=D.batch_text)
         text_e = []
         _device = platalea.hardware.device()
         for t, l in text:
