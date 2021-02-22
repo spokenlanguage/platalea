@@ -29,6 +29,11 @@ def preprocess_flickr8k(dataset_path, audio_subdir, image_subdir):
     flickr8k_image_features(pathlib.Path(dataset_path), image_subdir, _images_feat_config)
 
 
+def preprocess_spokencoco(dataset_path, audio_subdir, debug=False):
+    spokencoco_audio_features(pathlib.Path(dataset_path), audio_subdir, _audio_feat_config, debug)
+    spokencoco_image_features(pathlib.Path(dataset_path), audio_subdir, _images_feat_config, debug)
+
+
 def preprocess_librispeech(dataset_path):
     librispeech_audio_features(pathlib.Path(dataset_path), _audio_feat_config)
 
@@ -49,6 +54,39 @@ def flickr8k_image_features(dataset_path, images_subdir, feat_config):
     features = torch.stack(image_features(paths, feat_config)).cpu()
     torch.save(dict(features=features, filenames=files), dataset_path / 'resnet_features.pt')
 
+
+def spokencoco_audio_features(dataset_path, audio_subdir, feat_config, debug=False):
+    directory = dataset_path / audio_subdir
+    json_files = ['SpokenCOCO_train.json', 'SpokenCOCO_val.json']
+
+    data = [json.load(open(directory / json_file)) for json_file in json_files]
+    output_bn = 'mfcc_features.pt'
+    if debug:
+        data[0]["data"] = data[0]["data"][:100]
+        data[1]["data"] = data[1]["data"][:100]
+        output_bn = 'mfcc_features_debug.pt'
+    files = []
+    for split in data:
+        for sample in split["data"]:
+            for capt in sample["captions"]:
+                files.append(capt["wav"])
+    paths = [directory / fn for fn in files]
+    features = audio_features(paths, feat_config)
+    torch.save(dict(features=features, filenames=files), dataset_path / output_bn)
+
+
+def spokencoco_image_features(dataset_path, audio_subdir, feat_config, debug=False):
+    json_files = ['SpokenCOCO_train.json', 'SpokenCOCO_val.json']
+    data = [json.load(open(dataset_path / audio_subdir / json_file)) for json_file in json_files]
+    output_bn = 'resnet_features.pt'
+    if debug:
+        data[0]["data"] = data[0]["data"][:100]
+        data[1]["data"] = data[1]["data"][:100]
+        output_bn = 'resnet_features_debug.pt'
+    files = [sample['image'] for split in data for sample in split['data']]
+    paths = [dataset_path / fn for fn in files]
+    features = torch.stack(image_features(paths, feat_config)).cpu()
+    torch.save(dict(features=features, filenames=files), dataset_path / output_bn)
 
 def librispeech_audio_features(dataset_path, feat_config):
     metadata = []
@@ -226,11 +264,13 @@ if __name__ == '__main__':
     args._parser.description = doc[0]
     args.add_argument(
         'dataset_name', help='Name of the dataset to preprocess.',
-        type=str, choices=['flickr8k', 'librispeech'])
+        type=str, choices=['flickr8k', 'spokencoco', 'librispeech'])
     args.enable_help()
     args.parse()
 
     if args.dataset_name == "flickr8k":
         preprocess_flickr8k(args.flickr8k_root, args.flickr8k_audio_subdir, args.flickr8k_image_subdir)
+    elif args.dataset_name == "spokencoco":
+        preprocess_spokencoco(args.spokencoco_root, args.spokencoco_audio_subdir, args.debug)
     elif args.dataset_name == "librispeech":
         preprocess_librispeech(args.librispeech_root)

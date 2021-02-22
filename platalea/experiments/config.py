@@ -127,6 +127,25 @@ def get_argument_parser():
         '--flickr8k_language', env_var='FLICKR8K_LANGUAGE', default='en',
         help='language to use for the transcriptions/translations')
 
+    # SpokenCOCO specific parameters
+    args.add_argument(
+        '--spokencoco_root', env_var='SPOKENCOCO_ROOT',
+        default='/corpora/spokencoco/',
+        help='location of the spokencoco dataset')
+    args.add_argument(
+        '--spokencoco_meta', env_var='SPOKENCOCO_METADATA_JSON',
+        default='SpokenCOCO/SpokenCOCO_train.json',
+        help='filename of the metadata file (dataset.json or similar) relative to \
+            the dataset location')
+    args.add_argument(
+        '--spokencoco_audio_subdir', env_var='SPOKENCOCO_AUDIO_SUBDIR',
+        default='SpokenCOCO/wavs',
+        help='directory containing the SpokenCOCO wav files, relative to the \
+            dataset location')
+    args.add_argument(
+        '--debug', action='store_true',
+        help='If activated, will only consider 100 images.')
+
     # Librispeech specific parameters
     args.add_argument(
         '--librispeech_root', env_var='LIBRISPEECH_ROOT',
