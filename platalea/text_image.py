@@ -107,7 +107,7 @@ def experiment(net, data, config):
 def get_default_config(hidden_size_factor=1024):
     return dict(
         TextEncoder=dict(
-            emb=dict(num_embeddings=D.Flickr8KData.vocabulary_size(),
+            emb=dict(num_embeddings=len(D.tokenizer.classes_),
                      embedding_dim=128),
             rnn=dict(input_size=128, hidden_size=hidden_size_factor, num_layers=2,
                      bidirectional=True, dropout=0),

@@ -38,6 +38,7 @@ data = dict(
         shuffle=False))
 fd = D.Flickr8KData
 
+num_tokens = len(D.tokenizer.classes_)
 config = dict(
     SharedEncoder=dict(
         conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,
@@ -58,7 +59,7 @@ config = dict(
         linear=dict(in_size=2048, out_size=hidden_size * 2),
         norm=True),
     TextDecoder=dict(
-        emb=dict(num_embeddings=fd.vocabulary_size(),
+        emb=dict(num_embeddings=num_tokens,
                  embedding_dim=hidden_size),
         drop=dict(p=dropout),
         att=dict(in_size_enc=hidden_size * 2, in_size_state=hidden_size,
@@ -66,13 +67,9 @@ config = dict(
         rnn=dict(input_size=hidden_size * 3, hidden_size=hidden_size,
                  num_layers=1, dropout=dropout),
         out=dict(in_features=hidden_size * 3,
-                 out_features=fd.vocabulary_size()),
+                 out_features=num_tokens),
         rnn_layer_type=nn.GRU,
-        max_output_length=400,  # max length for flickr annotations is 199
-        sos_id=fd.get_token_id(fd.sos),
-        eos_id=fd.get_token_id(fd.eos),
-        pad_id=fd.get_token_id(fd.pad)),
-    inverse_transform_fn=fd.get_label_encoder().inverse_transform,
+        max_output_length=400),  # max length for flickr annotations is 199
     margin_size=0.2,
     lmbd=0.5)
 
