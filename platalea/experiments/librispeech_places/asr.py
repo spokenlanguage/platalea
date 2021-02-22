@@ -57,7 +57,7 @@ config = dict(
         out=dict(in_features=hidden_size * 3,
                  out_features=num_tokens),
         rnn_layer_type=nn.GRU,
-        max_output_length=400)  # max length for flickr annotations is 199
+        max_output_length=400))  # max length for flickr annotations is 199
 
 logging.info('Building model')
 net = M.SpeechTranscriber(config)
