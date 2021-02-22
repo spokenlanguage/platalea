@@ -32,7 +32,7 @@ class SpeechText(nn.Module):
         return loss
 
     def embed_text(self, texts):
-        texts = [D.TranscribedDataset.caption2tensor(t) for t in texts]
+        texts = [D.caption2tensor(t) for t in texts]
         text = torch.utils.data.DataLoader(dataset=texts, batch_size=32,
                                            shuffle=False,
                                            collate_fn=D.batch_text)
