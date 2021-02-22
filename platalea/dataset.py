@@ -81,6 +81,7 @@ class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
                 audio_id, image_id, text_id = line.split()
                 text_id = int(text_id[1:])
                 self.image_captions[image_id] = self.image_captions.get(image_id, []) + [(text_id, audio_id)]
+
         # Creating image, caption pairs
         self.split_data = []
         for image in metadata:
@@ -220,6 +221,114 @@ class LibriSpeechData(torch.utils.data.Dataset, TranscribedDataset):
         return dict(audio=audio, text=text)
 
 
+class SpokenCOCOData(torch.utils.data.Dataset, TranscribedDataset):
+    @classmethod
+    def init_vocabulary(cls, dataset):
+        transcriptions = [sd[2] for sd in dataset.split_data]
+        TranscribedDataset.init_vocabulary(transcriptions)
+
+    def __init__(self, root, feature_fname, meta_fname, split='train',
+                 downsampling_factor=None, debug=False):
+        self.root = root
+        self.split = split
+        self.feature_fname = feature_fname
+        self.language = 'en'
+        self.root = root
+        self.split = split
+        root_path = pathlib.Path(root)
+        # Loading label encoder
+        module_path = pathlib.Path(__file__).parent
+        with open(module_path / 'label_encoders.pkl', 'rb') as f:
+            self.__class__.le = pickle.load(f)[self.language]
+
+        if split != "train":
+            if split == "val":
+                meta_fname = meta_fname.replace('train', 'val')
+            else:
+                raise ValueError("Split == %s not defined for SpokenCOCO" % split)
+
+        # Loading metadata
+        with open(root_path / meta_fname) as fmeta:
+            metadata = json.load(fmeta)['data']
+
+        image_feature_fname = 'resnet_features.pt'
+        if debug:
+            print("Debug mode activated.")
+            image_feature_fname = 'resnet_features_debug.pt'
+            feature_fname = 'mfcc_features_debug.pt'
+            metadata = metadata[0:100]
+
+        # Loading mapping from image id to list of caption id
+        self.image_captions = {}
+        # And creating image, caption pairs
+        self.split_data = []
+        for sample in metadata:
+            img_id = sample['image']
+            caption_list = []
+            for caption in sample['captions']:
+                caption_list.append((caption['uttid'], caption['wav']))
+                self.split_data.append((img_id, caption['wav'], caption['text']))
+            self.image_captions[img_id] = caption_list
+
+        # Downsampling
+        if downsampling_factor is not None:
+            num_examples = int(len(self.split_data) // downsampling_factor)
+            self.split_data = random.sample(self.split_data, num_examples)
+
+        # image and audio feature data
+        image = torch.load(root_path / 'resnet_features.pt')
+        self.image = dict(zip(image['filenames'], image['features']))
+        audio = torch.load(root_path / feature_fname)
+        self.audio = dict(zip(audio['filenames'], audio['features']))
+
+    def __getitem__(self, index):
+        sd = self.split_data[index]
+        image = self.image[sd[0]]
+        audio = self.audio[sd[1]]
+        text = self.caption2tensor(sd[2])
+        return dict(image_id=sd[0],
+                    audio_id=sd[1],
+                    image=image,
+                    text=text,
+                    audio=audio,
+                    gloss=sd[2])
+
+    def __len__(self):
+        return len(self.split_data)
+
+    def get_config(self):
+        return dict(feature_fname=self.feature_fname,
+                    label_encoder=self.get_label_encoder())
+
+    def evaluation(self):
+        """Returns image features, audio features, caption features, and a
+        boolean array specifying whether a caption goes with an image."""
+        audio = []
+        text = []
+        image = []
+        matches = []
+        image2idx = {}
+        for sd in self.split_data:
+            # Add image
+            if sd[0] in image2idx:
+                image_idx = image2idx[sd[0]]
+            else:
+                image_idx = len(image)
+                image2idx[sd[0]] = image_idx
+                image.append(self.image[sd[0]])
+            # Add audio and text
+            audio.append(self.audio[sd[1]])
+            text.append(sd[2])
+            matches.append((len(audio) - 1, image_idx))
+        correct = torch.zeros(len(audio), len(image)).bool()
+        for i, j in matches:
+            correct[i, j] = True
+        return dict(image=image, audio=audio, text=text, correct=correct)
+
+    #def split_sentences(self, sentences):
+    #    return [s.split() for s in sentences]
+
+
 def batch_audio(audios, max_frames=2048):
     """Merge audio captions. Truncate to max_frames. Pad with 0s."""
     mfcc_lengths = [len(cap[:max_frames, :]) for cap in audios]
@@ -230,12 +339,12 @@ def batch_audio(audios, max_frames=2048):
     return mfcc.permute(0, 2, 1), torch.tensor(mfcc_lengths)
 
 
-def batch_text(texts):
-    """Merge captions (from tuple of 1D tensor to 2D tensor). Pad with
+def batch_text(texts, cls):
+    """Merge captions, (from tuple of 1D tensor to 2D tensor). Pad with
     pad token."""
     char_lengths = [len(cap) for cap in texts]
     chars = torch.Tensor(len(texts), max(char_lengths)).long()
-    chars.fill_(Flickr8KData.get_token_id(Flickr8KData.pad))
+    chars.fill_(cls.get_token_id(cls.pad))
     for i, cap in enumerate(texts):
         end = char_lengths[i]
         chars[i, :end] = cap[:end]
@@ -246,14 +355,14 @@ def batch_image(images):
     return torch.stack(images, 0)
 
 
-def collate_fn(data, max_frames=2048):
+def collate_fn(data, cls, max_frames=2048):
     images, texts, audios = zip(* [(datum['image'],
                                     datum['text'],
                                     datum['audio']) for datum in data])
     # Merge images (from tuple of 3D tensor to 4D tensor).
     images = batch_image(images)
     mfcc, mfcc_lengths = batch_audio(audios, max_frames=max_frames)
-    chars, char_lengths = batch_text(texts)
+    chars, char_lengths = batch_text(texts, cls=cls)
     return dict(image=images, audio=mfcc, text=chars, audio_len=mfcc_lengths,
                 text_len=char_lengths)
 
@@ -281,7 +390,7 @@ def flickr8k_loader(root, meta_fname, language, feature_fname,
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=0,
-        collate_fn=lambda x: collate_fn(x, max_frames=max_frames))
+        collate_fn=lambda x: collate_fn(x, cls=Flickr8KData, max_frames=max_frames))
 
 
 def librispeech_loader(root, meta_fname, feature_fname,
@@ -298,3 +407,21 @@ def librispeech_loader(root, meta_fname, feature_fname,
         shuffle=shuffle,
         num_workers=0,
         collate_fn=lambda x: collate_fn_speech(x, max_frames=max_frames))
+
+
+def spokencoco_loader(root, meta_fname, feature_fname,
+                      split='train', batch_size=32, shuffle=False,
+                      max_frames=2048,
+                      downsampling_factor=None,
+                      debug=False):
+    return torch.utils.data.DataLoader(
+        dataset=SpokenCOCOData(root=root,
+                               feature_fname=feature_fname,
+                               meta_fname=meta_fname,
+                               split=split,
+                               downsampling_factor=downsampling_factor,
+                               debug=debug),
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=0,
+        collate_fn=lambda x: collate_fn(x, cls=SpokenCOCOData, max_frames=max_frames))
