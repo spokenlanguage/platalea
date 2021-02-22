@@ -3,7 +3,6 @@ import json
 import logging
 import torch
 import torch.nn as nn
-import torch.optim as optim
 
 import platalea.schedulers
 from platalea.encoders import SpeechEncoderBottom, SpeechEncoderSplit
@@ -13,6 +12,8 @@ from platalea.asr import SpeechTranscriber
 import platalea.loss
 import platalea.score
 import platalea.hardware
+from platalea.optimizers import create_optimizer
+from platalea.schedulers import create_scheduler
 
 
 class MTLNetASR(nn.Module):
@@ -103,17 +104,9 @@ def experiment(net, tasks, config):
         # Preparing nets
         t['net'].to(_device)
         t['net'].train()
-        # Preparing optimizer
-        if 'lr' in config.keys():
-            lr = config['lr']
-        else:
-            lr = 1.0
-        t['optimizer'] = optim.Adam(t['net'].parameters(), lr=lr)
-        t['scheduler'] = platalea.schedulers.cyclic(t['optimizer'],
-                                                    len(t['data']['train']),
-                                                    max_lr=config['max_lr'], min_lr=config['min_lr'])
-        t['optimizer'].zero_grad()
-
+        t['optimizer'] = create_optimizer(config, t['net'].parameters())
+        t['scheduler'] = create_scheduler(config, t['optimizer'], t['data'])
+        
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
             for t in tasks:

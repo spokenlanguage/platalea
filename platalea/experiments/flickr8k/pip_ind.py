@@ -78,7 +78,8 @@ if args.text_image_model_dir:
 else:
     logging.info('Building model text-image')
     net = M2.TextImage(M2.get_default_config(hidden_size_factor=args.hidden_size_factor))
-    run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs)
+    run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs,
+                      l2_regularization=args.l2_regularization)
     logging.info('Training text-image')
     M2.experiment(net, data, run_config)
     copyfile('result.json', 'result_text_image.json')

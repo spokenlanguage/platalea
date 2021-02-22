@@ -4,7 +4,6 @@ import logging
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 
 import platalea.schedulers
 import platalea.dataset as D
@@ -12,6 +11,8 @@ from platalea.encoders import TextEncoder, ImageEncoder
 import platalea.loss
 import platalea.score
 import platalea.hardware
+from platalea.optimizers import create_optimizer
+from platalea.schedulers import create_scheduler
 
 
 class TextImage(nn.Module):
@@ -74,10 +75,9 @@ def experiment(net, data, config):
 
     net.to(_device)
     net.train()
-    optimizer = optim.Adam(net.parameters(), lr=1)
-    scheduler = platalea.schedulers.cyclic(optimizer, len(data['train']),
-                                           max_lr=config['max_lr'], min_lr=config['min_lr'])
-    optimizer.zero_grad()
+    net_parameters = net.parameters()
+    optimizer = create_optimizer(config, net_parameters)
+    scheduler = create_scheduler(config, optimizer, data)
 
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
