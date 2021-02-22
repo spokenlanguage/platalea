@@ -1,5 +1,4 @@
 import json
-import logging
 import numpy as np
 import pathlib
 import pickle
@@ -43,6 +42,39 @@ class TranscribedDataset():
         capt = [c if c in le.classes_ else cls.unk for c in capt]
         capt = [cls.sos] + capt + [cls.eos]
         return torch.Tensor(le.transform(capt))
+
+    @classmethod
+    def batch_text(cls, texts):
+        """Merge captions, (from tuple of 1D tensor to 2D tensor). Pad with
+        pad token."""
+        char_lengths = [len(cap) for cap in texts]
+        chars = torch.Tensor(len(texts), max(char_lengths)).long()
+        chars.fill_(cls.get_token_id(cls.pad))
+        for i, cap in enumerate(texts):
+            end = char_lengths[i]
+            chars[i, :end] = cap[:end]
+        return chars, torch.tensor(char_lengths)
+
+    @classmethod
+    def collate_fn(cls, data, max_frames=2048):
+        images, texts, audios = zip(* [(datum['image'],
+                                        datum['text'],
+                                        datum['audio']) for datum in data])
+        # Merge images (from tuple of 3D tensor to 4D tensor).
+        images = batch_image(images)
+        mfcc, mfcc_lengths = batch_audio(audios, max_frames=max_frames)
+        chars, char_lengths = cls.batch_text(texts)
+        return dict(image=images, audio=mfcc, text=chars, audio_len=mfcc_lengths,
+                    text_len=char_lengths)
+
+    @classmethod
+    def collate_fn_speech(cls, data, max_frames=2048):
+        texts, audios = zip(* [(datum['text'],
+                                datum['audio']) for datum in data])
+        mfcc, mfcc_lengths = batch_audio(audios, max_frames=max_frames)
+        chars, char_lengths = cls.batch_text(texts)
+        return dict(audio=mfcc, text=chars, audio_len=mfcc_lengths,
+                    text_len=char_lengths)
 
 
 class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
@@ -276,7 +308,7 @@ class SpokenCOCOData(torch.utils.data.Dataset, TranscribedDataset):
             self.split_data = random.sample(self.split_data, num_examples)
 
         # image and audio feature data
-        image = torch.load(root_path / 'resnet_features.pt')
+        image = torch.load(root_path / image_feature_fname)
         self.image = dict(zip(image['filenames'], image['features']))
         audio = torch.load(root_path / feature_fname)
         self.audio = dict(zip(audio['filenames'], audio['features']))
@@ -339,41 +371,8 @@ def batch_audio(audios, max_frames=2048):
     return mfcc.permute(0, 2, 1), torch.tensor(mfcc_lengths)
 
 
-def batch_text(texts, cls):
-    """Merge captions, (from tuple of 1D tensor to 2D tensor). Pad with
-    pad token."""
-    char_lengths = [len(cap) for cap in texts]
-    chars = torch.Tensor(len(texts), max(char_lengths)).long()
-    chars.fill_(cls.get_token_id(cls.pad))
-    for i, cap in enumerate(texts):
-        end = char_lengths[i]
-        chars[i, :end] = cap[:end]
-    return chars, torch.tensor(char_lengths)
-
-
 def batch_image(images):
     return torch.stack(images, 0)
-
-
-def collate_fn(data, cls, max_frames=2048):
-    images, texts, audios = zip(* [(datum['image'],
-                                    datum['text'],
-                                    datum['audio']) for datum in data])
-    # Merge images (from tuple of 3D tensor to 4D tensor).
-    images = batch_image(images)
-    mfcc, mfcc_lengths = batch_audio(audios, max_frames=max_frames)
-    chars, char_lengths = batch_text(texts, cls=cls)
-    return dict(image=images, audio=mfcc, text=chars, audio_len=mfcc_lengths,
-                text_len=char_lengths)
-
-
-def collate_fn_speech(data, max_frames=2048):
-    texts, audios = zip(* [(datum['text'],
-                            datum['audio']) for datum in data])
-    mfcc, mfcc_lengths = batch_audio(audios, max_frames=max_frames)
-    chars, char_lengths = batch_text(texts)
-    return dict(audio=mfcc, text=chars, audio_len=mfcc_lengths,
-                text_len=char_lengths)
 
 
 def flickr8k_loader(root, meta_fname, language, feature_fname,
@@ -390,7 +389,7 @@ def flickr8k_loader(root, meta_fname, language, feature_fname,
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=0,
-        collate_fn=lambda x: collate_fn(x, cls=Flickr8KData, max_frames=max_frames))
+        collate_fn=lambda x: Flickr8KData.collate_fn(x, max_frames=max_frames))
 
 
 def librispeech_loader(root, meta_fname, feature_fname,
@@ -406,7 +405,7 @@ def librispeech_loader(root, meta_fname, feature_fname,
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=0,
-        collate_fn=lambda x: collate_fn_speech(x, max_frames=max_frames))
+        collate_fn=lambda x: LibriSpeechData.collate_fn_speech(x, max_frames=max_frames))
 
 
 def spokencoco_loader(root, meta_fname, feature_fname,
@@ -424,4 +423,4 @@ def spokencoco_loader(root, meta_fname, feature_fname,
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=0,
-        collate_fn=lambda x: collate_fn(x, cls=SpokenCOCOData, max_frames=max_frames))
+        collate_fn=lambda x: SpokenCOCOData.collate_fn(x, max_frames=max_frames))
