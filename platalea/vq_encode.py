@@ -1,5 +1,5 @@
 import glob
-from platalea.preprocessing import audio_features
+from platalea.utils.preprocessing import audio_features
 from zerospeech2020.evaluation import evaluation_2019
 import logging
 import os

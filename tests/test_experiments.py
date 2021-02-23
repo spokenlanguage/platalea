@@ -32,14 +32,15 @@ def test_transformer_experiment():
         assert platalea.experiments.flickr8k.transformer.result == {'final_loss': 0.5153712034225464}
 
 
-def test_basic_default_experiment():
+def test_basic_experiment():
     with unittest.mock.patch('sys.argv', ['[this gets ignored]',
                                           '--epochs=1',
                                           '-c', f'{flickr1d_path}/config.yml',
                                           f'--flickr8k_root={flickr1d_path}',
                                           '--hidden_size_factor=4']):
-        import platalea.experiments.flickr8k.basic_default
-        assert platalea.experiments.flickr8k.basic_default.result == {'final_loss': 0.41894787549972534}
+
+        import platalea.experiments.flickr8k.basic
+        assert platalea.experiments.flickr8k.basic.result == {'final_loss': 0.41894787549972534}
 
 
 def test_mtl_asr_experiment():
