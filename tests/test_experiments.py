@@ -40,6 +40,15 @@ def test_basic_experiment():
         import platalea.experiments.flickr8k.basic
 
 
+def test_basicvq_experiment():
+    with unittest.mock.patch('sys.argv', ['[this gets ignored]',
+                                          '--epochs=1',
+                                          '-c', f'{flickr1d_path}/config.yml',
+                                          f'--flickr8k_root={flickr1d_path}',
+                                          '--hidden_size_factor=4']):
+        import platalea.experiments.flickr8k.basic_vq
+
+
 def test_mtl_asr_experiment():
     with unittest.mock.patch('sys.argv', ['[this gets ignored]',
                                           '--epochs=1',
