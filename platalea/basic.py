@@ -118,7 +118,7 @@ def experiment(net, data, config,
 
                 # logging
                 wandb_step_output["step loss"] = loss_value
-                #wandb_step_output["last_lr"] = scheduler.get_last_lr()[0]
+                wandb_step_output["last_lr"] = scheduler.get_last_lr()[0]
                 if j % 100 == 0:
                     logging.info("train %d %d %f", epoch, j, cost['cost'] / cost['N'])
                 else:
