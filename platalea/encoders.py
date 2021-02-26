@@ -523,6 +523,7 @@ class SpeechEncoderSplit(nn.Module):
 
 
 class SpeechEncoderVQ(nn.Module):
+    ''' Speech encoder with a VQ layer '''
     def __init__(self, config):
         super(SpeechEncoderVQ, self).__init__()
         self.Bottom = SpeechEncoderBottom(config['SpeechEncoderBottom'])
@@ -546,6 +547,7 @@ class SpeechEncoderVQ(nn.Module):
 
 
 class SpeechEncoderVQ2(nn.Module):
+    ''' Speech encoder with two VQ layers '''
     def __init__(self, config):
         super(SpeechEncoderVQ2, self).__init__()
         self.Bottom = SpeechEncoderBottom(config['SpeechEncoderBottom'])

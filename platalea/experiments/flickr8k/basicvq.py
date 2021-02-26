@@ -2,8 +2,9 @@ import logging
 import random
 import torch
 
-import platalea.basicvq as M
+import platalea.basic as M
 import platalea.dataset as D
+from platalea.encoders import SpeechEncoderVQ
 from platalea.experiments.config import get_argument_parser
 
 
@@ -31,20 +32,22 @@ data = dict(
         args.audio_features_fn, split='val', batch_size=32, shuffle=False))
 
 bidi = True
+speech_config = dict(
+    SpeechEncoderBottom=dict(
+        conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,
+                  padding=0, bias=False),
+        rnn=dict(input_size=64, hidden_size=args.hidden_size_factor,
+                 num_layers=1, bidirectional=bidi, dropout=0)),
+    VQEmbedding=dict(num_codebook_embeddings=1024,
+                     embedding_dim=2 * args.hidden_size_factor if bidi else args.hidden_size_factor,
+                     jitter=0.12),
+    SpeechEncoderTop=dict(
+        rnn=dict(input_size=2 * args.hidden_size_factor if bidi else args.hidden_size_factor,
+                 hidden_size=args.hidden_size_factor, num_layers=3,
+                 bidirectional=bidi, dropout=0),
+        att=dict(in_size=2 * args.hidden_size_factor, hidden_size=128)))
 config = dict(
-    SpeechEncoder=dict(
-        SpeechEncoderBottom=dict(
-            conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,
-                      padding=0, bias=False),
-            rnn=dict(input_size=64, hidden_size=args.hidden_size_factor,
-                     num_layers=1, bidirectional=bidi, dropout=0)),
-        VQEmbedding=dict(num_codebook_embeddings=1024,
-                         embedding_dim=2 * args.hidden_size_factor if bidi else args.hidden_size_factor,
-                         jitter=0.12),
-        SpeechEncoderTop=dict(
-            rnn=dict(input_size=2 * args.hidden_size_factor if bidi else args.hidden_size_factor,
-                     hidden_size=args.hidden_size_factor, num_layers=3, bidirectional=bidi, dropout=0),
-            att=dict(in_size=2 * args.hidden_size_factor, hidden_size=128))),
+    SpeechEncoder=SpeechEncoderVQ(speech_config),
     ImageEncoder=dict(
         linear=dict(in_size=2048, out_size=2 * args.hidden_size_factor),
         norm=True),
@@ -53,7 +56,8 @@ config = dict(
 
 logging.info('Building model')
 net = M.SpeechImage(config)
-run_config = dict(max_lr=2 * 1e-4, epochs=32)
+run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min,
+                  epochs=args.epochs, l2_regularization=args.l2_regularization)
 
 logging.info('Training')
 M.experiment(net, data, run_config)

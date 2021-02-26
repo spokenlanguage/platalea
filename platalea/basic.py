@@ -6,12 +6,12 @@ import torch
 import torch.nn as nn
 import wandb  # cloud logging
 
-from platalea.encoders import SpeechEncoder, ImageEncoder
+from platalea.encoders import SpeechEncoder, SpeechEncoderVQ, SpeechEncoderVQ2, \
+        ImageEncoder, inout
 import platalea.loss
 import platalea.dataset as D
 import platalea.score
 import platalea.hardware
-import platalea.schedulers
 from platalea.optimizers import create_optimizer
 from platalea.schedulers import create_scheduler
 
@@ -59,6 +59,29 @@ class SpeechImage(nn.Module):
         audio_e = np.concatenate(audio_e)
         return audio_e
 
+    def code_audio(self, audios, one_hot=False):  # FIXME messed up sized ETC
+        if not (   isinstance(self.SpeechEncoder, SpeechEncoderVQ)
+                or isinstance(self.SpeechEncoder, SpeechEncoderVQ2)):
+            raise NotImplementedError
+
+        audio = torch.utils.data.DataLoader(dataset=audios, batch_size=32,
+                                            shuffle=False,
+                                            collate_fn=D.batch_audio)
+        audio_e = []
+        _device = platalea.hardware.device()
+        for a, l in audio:
+            if one_hot:
+                codes = self.SpeechEncoder.Codebook(self.SpeechEncoder.Bottom(
+                    a.to(_device), l.to(_device)))['one_hot']
+            else:
+                codes = self.SpeechEncoder.Codebook(self.SpeechEncoder.Bottom(
+                    a.to(_device), l.to(_device)))['codes']
+            codes = codes.detach().cpu().numpy()
+            for code, L in zip(list(codes), list(l)):
+                code = code[:inout(self.SpeechEncoder.Bottom.Conv, L).item()]
+                audio_e.append(code)
+        return audio_e
+
 
 def dict_values_to_device(data, device):
     return {key: value.to(device) for key, value in data.items()}
@@ -102,7 +125,7 @@ def experiment(net, data, config,
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
-            for j, item in enumerate(data['train'], start=1): # check reshuffling
+            for j, item in enumerate(data['train'], start=1):  # check reshuffling
                 wandb_step_output = {
                     "epoch": epoch,
                 }
@@ -171,10 +194,32 @@ def experiment(net, data, config,
             wandb.log(result)
 
 
-DEFAULT_CONFIG = dict(SpeechEncoder=dict(conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0,
-                                                   bias=False),
-                                         rnn=dict(input_size=64, hidden_size=1024, num_layers=4,
-                                                  bidirectional=True, dropout=0),
-                                         att=dict(in_size=2048, hidden_size=128)),
-                      ImageEncoder=dict(linear=dict(in_size=2048, out_size=2*1024), norm=True),
-                      margin_size=0.2)
+DEFAULT_CONFIG = dict(
+    SpeechEncoder=dict(
+        conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,
+                  padding=0, bias=False),
+        rnn=dict(input_size=64, hidden_size=1024, num_layers=4,
+                 bidirectional=True, dropout=0),
+        att=dict(in_size=2048, hidden_size=128)),
+    ImageEncoder=dict(
+        linear=dict(in_size=2048, out_size=2*1024),
+        norm=True),
+    margin_size=0.2)
+
+DEFAULT_CONFIG_VQ = dict(
+    SpeechEncoder=dict(
+        SpeechEncoderBottom=dict(
+            conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,
+                      padding=0, bias=False),
+            rnn=dict(input_size=64, hidden_size=1024, num_layers=2,
+                     bidirectional=True, dropout=0)),
+        VQEmbedding=dict(num_codebook_embeddings=256, embedding_dim=1024,
+                         jitter=0.12),
+        SpeechEncoderTop=dict(
+            rnn=dict(input_size=64, hidden_size=1024, num_layers=2,
+                     bidirectional=True, dropout=0),
+            att=dict(in_size=2048, hidden_size=128))),
+    ImageEncoder=dict(
+        linear=dict(in_size=2048, out_size=2*1024),
+        norm=True),
+    margin_size=0.2)

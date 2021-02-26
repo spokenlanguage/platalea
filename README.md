@@ -1,5 +1,6 @@
 # Platalea
-Understanding visually grounded spoken language via multi-tasking
+
+Library for training visually-grounded models of spoken language understanding.
 
 [![DOI](https://zenodo.org/badge/239750248.svg)](https://zenodo.org/badge/latestdoi/239750248)
 ![install and run tests](https://github.com/egpbos/platalea/workflows/install%20and%20run%20tests/badge.svg?branch=master)
