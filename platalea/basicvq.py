@@ -83,6 +83,7 @@ def experiment(net, data, config):
     config['min_lr'] = 1e-6
     scheduler = create_scheduler(config, optimizer, data)
 
+    results = []
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
@@ -94,16 +95,19 @@ def experiment(net, data, config):
                 optimizer.step()
                 scheduler.step()
                 cost += Counter({'cost': loss.item(), 'N':1})
+                step_loss = cost['cost'] / cost['N']
                 if j % 100 == 0:
-                    logging.info("train {} {} {}".format(epoch, j, cost['cost']/cost['N']))
+                    logging.info("train {} {} {}".format(epoch, j, step_loss))
                 if j % 400 == 0:
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
             result = platalea.score.score(net, data['val'].dataset)
+            result['step_loss'] = step_loss
             result['epoch'] = epoch
+            results.append(result)
             print(json.dumps(result), file=out, flush=True)
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
-
+    return results
 
 DEFAULT_CONFIG = dict(SpeechEncoder=dict(SpeechEncoderBottom=dict(conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0, bias=False),
                                                                   rnn= dict(input_size=64, hidden_size=1024, num_layers=2,

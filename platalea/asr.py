@@ -98,6 +98,7 @@ def experiment(net, data, config, slt=False):
     optimizer = create_optimizer(config, net_parameters)
     scheduler = create_scheduler(config, optimizer, data)
 
+    results = []
     with open("result.json", "w") as out:
         best_score = -np.inf
         for epoch in range(1, config['epochs']+1):
@@ -109,12 +110,13 @@ def experiment(net, data, config, slt=False):
                 loss.backward()
                 nn.utils.clip_grad_norm_(net.parameters(), config['max_norm'])
                 optimizer.step()
+                cost += Counter({'cost': loss.item(), 'N': 1})
+                step_loss = cost['cost'] / cost['N']
                 if 'opt' not in config.keys() or config['opt'] == 'adam':
                     scheduler.step()
-                cost += Counter({'cost': loss.item(), 'N': 1})
                 if j % 100 == 0:
                     logging.info("train {} {} {}".format(
-                        epoch, j, cost['cost'] / cost['N']))
+                        epoch, j, step_loss))
                 if j % 400 == 0:
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
             with torch.no_grad():
@@ -125,6 +127,7 @@ def experiment(net, data, config, slt=False):
                     result = platalea.score.score_asr(net, data['val'].dataset)
                 net.train()
             result['epoch'] = epoch
+            results.append(result)
             json.dump(result, out)
             print('', file=out, flush=True)
             if 'epsilon_decay' in config.keys():
@@ -148,7 +151,7 @@ def experiment(net, data, config, slt=False):
     if 'epsilon_decay' in config.keys():
         # Save full model for inference
         torch.save(net, 'net.best.pt')
-    return {'validation loss': val_loss().item()}
+    return results
 
 def get_default_config(hidden_size_factor=1024):
     fd = D.Flickr8KData

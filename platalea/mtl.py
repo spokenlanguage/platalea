@@ -106,7 +106,8 @@ def experiment(net, tasks, config):
         t['net'].train()
         t['optimizer'] = create_optimizer(config, t['net'].parameters())
         t['scheduler'] = create_scheduler(config, t['optimizer'], t['data'])
-        
+
+    results = []
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
             for t in tasks:
@@ -122,10 +123,10 @@ def experiment(net, tasks, config):
                     t['optimizer'].step()
                     t['scheduler'].step()
                     t['cost'] += Counter({'cost': loss.item(), 'N': 1})
+                    t['step_loss'] = t['cost']['cost'] / t['cost']['N']
                     if j % 100 == 0:
                         logging.info("train {} {} {} {}".format(
-                            t['name'], epoch, j,
-                            t['cost']['cost'] / t['cost']['N']))
+                            t['name'], epoch, j, t['step_loss']))
                     if j % 400 == 0:
                         logging.info("valid {} {} {} {}".format(
                             t['name'], epoch, j,
@@ -138,11 +139,14 @@ def experiment(net, tasks, config):
                     result[t['name']] = t['eval'](t['net'],
                                                   t['data']['val'].dataset)
                 net.train()
+            for t in tasks:
+                result[t['name']].update({'step_loss': t['step_loss']})
             result['epoch'] = epoch
+            results.append(result)
             json.dump(result, out)
             print('', file=out, flush=True)
             # Saving model
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
 
-    return result
+    return results
