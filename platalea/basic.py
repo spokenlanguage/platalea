@@ -167,13 +167,13 @@ def experiment(net, data, config,
                 # only add it here (for wandb), because json.dump doesn't like tensor values
                 result["validation loss"] = validation_loss
 
+            result["step loss"] = loss_value
             result['epoch'] = epoch
             results.append(result)
             json.dump(result, out)
             print('', file=out, flush=True)
             wandb.log(result)
 
-    # Return loss of the final model for automated testing
     return results
 
 

@@ -29,8 +29,11 @@ def test_transformer_experiment():
                                           '--trafo_d_model=4',
                                           '--trafo_feedforward_dim=4']):
         import platalea.experiments.flickr8k.transformer
-        assert platalea.experiments.flickr8k.transformer.result == [{'epoch': 1, 'medr': 1.5,
-                                                                     'recall': {1: 0.5, 5: 1.0, 10: 1.0}}]
+        assert platalea.experiments.flickr8k.transformer.result == [{'epoch': 1,
+                                                                     'medr': 1.5,
+                                                                     'recall': {1: 0.5, 5: 1.0, 10: 1.0},
+                                                                     'step loss': 0.5153712034225464,
+                                                                     }]
 
 
 def test_basic_experiment():
@@ -40,8 +43,11 @@ def test_basic_experiment():
                                           f'--flickr8k_root={flickr1d_path}',
                                           '--hidden_size_factor=4']):
         import platalea.experiments.flickr8k.basic
-        assert platalea.experiments.flickr8k.basic.result == [{'epoch': 1, 'medr': 1.5,
-                                                               'recall': {1: 0.5, 5: 1.0, 10: 1.0}}]
+        assert platalea.experiments.flickr8k.basic.result == [{'epoch': 1,
+                                                               'medr': 1.5,
+                                                               'recall': {1: 0.5, 5: 1.0, 10: 1.0},
+                                                               'step loss': 0.41894787549972534
+                                                               }]
 
 
 def test_mtl_asr_experiment():
