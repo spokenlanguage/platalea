@@ -95,13 +95,13 @@ def experiment(net, data, config):
                 optimizer.step()
                 scheduler.step()
                 cost += Counter({'cost': loss.item(), 'N':1})
-                step_loss = cost['cost'] / cost['N']
+                average_loss = cost['cost'] / cost['N']
                 if j % 100 == 0:
-                    logging.info("train {} {} {}".format(epoch, j, step_loss))
+                    logging.info("train {} {} {}".format(epoch, j, average_loss))
                 if j % 400 == 0:
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
             result = platalea.score.score(net, data['val'].dataset)
-            result['step_loss'] = step_loss
+            result['average_loss'] = average_loss
             result['epoch'] = epoch
             results.append(result)
             print(json.dumps(result), file=out, flush=True)

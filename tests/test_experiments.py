@@ -25,7 +25,7 @@ def test_transformer_experiment():
     expected = [{'epoch': 1,
                  'medr': 1.5,
                  'recall': {1: 0.5, 5: 1.0, 10: 1.0},
-                 'step loss': 0.5153712034225464,
+                 'average_loss': 0.5153712034225464,
                  }]
 
     with unittest.mock.patch('sys.argv', ['[this gets ignored]',
@@ -45,7 +45,7 @@ def test_basic_experiment():
     expected = [{'epoch': 1,
                  'medr': 1.5,
                  'recall': {1: 0.5, 5: 1.0, 10: 1.0},
-                 'step loss': 0.41894787549972534
+                 'average_loss': 0.41894787549972534
                  }]
 
     with unittest.mock.patch('sys.argv', ['[this gets ignored]',
@@ -66,7 +66,7 @@ def test_mtl_asr_experiment():
                          'Del': 0,
                          'Ins': 3411,
                          'Sub': 589},
-                 'step_loss': 4.440168142318726,
+                 'average_loss': 4.440168142318726,
                  'wer': {'Cor': 0,
                          'Del': 118,
                          'Ins': 0,
@@ -76,7 +76,7 @@ def test_mtl_asr_experiment():
                 'recall': {1: 0.5,
                            5: 1.0,
                            10: 1.0},
-                'step_loss': 0.3971380218863487},
+                'average_loss': 0.3971380218863487},
          'epoch': 1}
     ]
 
@@ -93,8 +93,8 @@ def test_mtl_asr_experiment():
 
 def test_mtl_st_experiment():
     expected = [
-        {'SI': {'medr': 2.0, 'recall': {1: 0.4, 5: 1.0, 10: 1.0}, 'step_loss': 0.3906550034880638},
-         'ST': {'medr': 6.0, 'recall': {1: 0.0, 5: 0.5, 10: 1.0}, 'step_loss': 0.37090546637773514},
+        {'SI': {'medr': 2.0, 'recall': {1: 0.4, 5: 1.0, 10: 1.0}, 'average_loss': 0.3906550034880638},
+         'ST': {'medr': 6.0, 'recall': {1: 0.0, 5: 0.5, 10: 1.0}, 'average_loss': 0.37090546637773514},
          'epoch': 1},
     ]
 
@@ -117,6 +117,7 @@ def test_asr_experiment():
                  'Ins': 3411,
                  'Sub': 585},
          'epoch': 1,
+         'average_loss': 4.3757164478302,
          'wer': {'Cor': 0,
                  'Del': 118,
                  'Ins': 0,
@@ -141,7 +142,7 @@ def test_text_image_experiment():
         'epoch': 1,
         'medr': 1.5,
         'recall': {1: 0.5, 5: 1.0, 10: 1.0},
-        'step_loss': [0.3847378194332123]
+        'average_loss': 0.3847378194332123,
     }]
 
     with unittest.mock.patch('sys.argv', ['[this gets ignored]',
@@ -181,8 +182,7 @@ def test_pip_ind_experiment():
 
 def test_pip_seq_experiment():
     expected = [{'medr': 1.5, 'recall': {1: 0.5, 5: 1.0, 10: 1.0},
-                 'step_loss': [0.3427541255950928, 0.4100440442562103,
-                               0.3921596209208171, 0.3918714001774788],
+                 'average_loss': 0.3918714001774788,
                  'epoch': 1}]
 
     with unittest.mock.patch('sys.argv', ['[this gets ignored]',

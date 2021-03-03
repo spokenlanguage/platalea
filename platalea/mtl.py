@@ -123,10 +123,10 @@ def experiment(net, tasks, config):
                     t['optimizer'].step()
                     t['scheduler'].step()
                     t['cost'] += Counter({'cost': loss.item(), 'N': 1})
-                    t['step_loss'] = t['cost']['cost'] / t['cost']['N']
+                    t['average_loss'] = t['cost']['cost'] / t['cost']['N']
                     if j % 100 == 0:
                         logging.info("train {} {} {} {}".format(
-                            t['name'], epoch, j, t['step_loss']))
+                            t['name'], epoch, j, t['average_loss']))
                     if j % 400 == 0:
                         logging.info("valid {} {} {} {}".format(
                             t['name'], epoch, j,
@@ -140,7 +140,7 @@ def experiment(net, tasks, config):
                                                   t['data']['val'].dataset)
                 net.train()
             for t in tasks:
-                result[t['name']].update({'step_loss': t['step_loss']})
+                result[t['name']].update({'average_loss': t['average_loss']})
             result['epoch'] = epoch
             results.append(result)
             json.dump(result, out)

@@ -117,15 +117,16 @@ def experiment(net, data, config,
                 scheduler.step()
                 loss_value = loss.item()
                 cost += Counter({'cost': loss_value, 'N': 1})
+                average_loss = cost['cost'] / cost['N']
 
                 # logging
                 wandb_step_output["step loss"] = loss_value
                 wandb_step_output["last_lr"] = scheduler.get_last_lr()[0]
                 if j % 100 == 0:
-                    logging.info("train %d %d %f", epoch, j, cost['cost'] / cost['N'])
+                    logging.info("train %d %d %f", epoch, j, average_loss)
                 else:
                     if debug_logging_active:
-                        logging.debug("train %d %d %f %f", epoch, j, cost['cost'] / cost['N'], loss_value)
+                        logging.debug("train %d %d %f %f", epoch, j, average_loss, loss_value)
                 if not config.get('validate_on_cpu'):
                     if j % 400 == 0:
                         validation_loss = val_loss(net)
@@ -168,7 +169,7 @@ def experiment(net, data, config,
                 # only add it here (for wandb), because json.dump doesn't like tensor values
                 result["validation loss"] = validation_loss
 
-            result["step loss"] = loss_value
+            result['average_loss'] = average_loss
             result['epoch'] = epoch
             results.append(result)
             json.dump(result, out)

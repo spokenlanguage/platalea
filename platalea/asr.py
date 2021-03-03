@@ -111,12 +111,12 @@ def experiment(net, data, config, slt=False):
                 nn.utils.clip_grad_norm_(net.parameters(), config['max_norm'])
                 optimizer.step()
                 cost += Counter({'cost': loss.item(), 'N': 1})
-                step_loss = cost['cost'] / cost['N']
+                average_loss = cost['cost'] / cost['N']
                 if 'opt' not in config.keys() or config['opt'] == 'adam':
                     scheduler.step()
                 if j % 100 == 0:
                     logging.info("train {} {} {}".format(
-                        epoch, j, step_loss))
+                        epoch, j, average_loss))
                 if j % 400 == 0:
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
             with torch.no_grad():
@@ -126,6 +126,7 @@ def experiment(net, data, config, slt=False):
                 else:
                     result = platalea.score.score_asr(net, data['val'].dataset)
                 net.train()
+            result['average_loss'] = average_loss
             result['epoch'] = epoch
             results.append(result)
             json.dump(result, out)

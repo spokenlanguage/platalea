@@ -83,7 +83,7 @@ def experiment(net, data, config):
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
-            step_losses = []
+            average_loss = None
             for j, item in enumerate(data['train'], start=1):
                 item = {key: value.to(_device) for key, value in item.items()}
                 loss = net.cost(item)
@@ -92,15 +92,14 @@ def experiment(net, data, config):
                 optimizer.step()
                 scheduler.step()
                 cost += Counter({'cost': loss.item(), 'N': 1})
-                step_loss = cost['cost'] / cost['N']
-                step_losses.append(step_loss)
+                average_loss = cost['cost'] / cost['N']
                 if j % 100 == 0:
                     logging.info("train {} {} {}".format(
-                        epoch, j, step_loss))
+                        epoch, j, average_loss))
                 if j % 400 == 0:
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
             result = platalea.score.score_text_image(net, data['val'].dataset)
-            result['step_loss'] = step_losses
+            result['average_loss'] = average_loss
             result['epoch'] = epoch
             results.append(result)
             json.dump(result, out)
