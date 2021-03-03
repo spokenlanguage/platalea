@@ -89,4 +89,4 @@ tasks = [dict(name='SI', net=net.SpeechImage, data=data, eval=score),
          dict(name='ASR', net=net.SpeechTranscriber, data=data, eval=scorer)]
 
 logging.info('Training')
-M.experiment(net, tasks, run_config)
+result = M.experiment(net, tasks, run_config)

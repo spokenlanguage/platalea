@@ -79,9 +79,11 @@ def experiment(net, data, config):
     optimizer = create_optimizer(config, net_parameters)
     scheduler = create_scheduler(config, optimizer, data)
 
+    results = []
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
+            average_loss = None
             for j, item in enumerate(data['train'], start=1):
                 item = {key: value.to(_device) for key, value in item.items()}
                 loss = net.cost(item)
@@ -90,17 +92,21 @@ def experiment(net, data, config):
                 optimizer.step()
                 scheduler.step()
                 cost += Counter({'cost': loss.item(), 'N': 1})
+                average_loss = cost['cost'] / cost['N']
                 if j % 100 == 0:
                     logging.info("train {} {} {}".format(
-                        epoch, j, cost['cost']/cost['N']))
+                        epoch, j, average_loss))
                 if j % 400 == 0:
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
             result = platalea.score.score_text_image(net, data['val'].dataset)
+            result['average_loss'] = average_loss
             result['epoch'] = epoch
+            results.append(result)
             json.dump(result, out)
             print('', file=out, flush=True)
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
+    return results
 
 
 def get_default_config(hidden_size_factor=1024):

@@ -99,10 +99,12 @@ def experiment(net, data, config,
 
     debug_logging_active = logging.getLogger().isEnabledFor(logging.DEBUG)
 
+    loss_value = None
+    results = []
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
-            for j, item in enumerate(data['train'], start=1): # check reshuffling
+            for j, item in enumerate(data['train'], start=1):  # check reshuffling
                 wandb_step_output = {
                     "epoch": epoch,
                 }
@@ -115,15 +117,16 @@ def experiment(net, data, config,
                 scheduler.step()
                 loss_value = loss.item()
                 cost += Counter({'cost': loss_value, 'N': 1})
+                average_loss = cost['cost'] / cost['N']
 
                 # logging
                 wandb_step_output["step loss"] = loss_value
                 wandb_step_output["last_lr"] = scheduler.get_last_lr()[0]
                 if j % 100 == 0:
-                    logging.info("train %d %d %f", epoch, j, cost['cost'] / cost['N'])
+                    logging.info("train %d %d %f", epoch, j, average_loss)
                 else:
                     if debug_logging_active:
-                        logging.debug("train %d %d %f %f", epoch, j, cost['cost'] / cost['N'], loss_value)
+                        logging.debug("train %d %d %f %f", epoch, j, average_loss, loss_value)
                 if not config.get('validate_on_cpu'):
                     if j % 400 == 0:
                         validation_loss = val_loss(net)
@@ -161,14 +164,19 @@ def experiment(net, data, config,
             if config.get('score_on_cpu') and platalea.hardware._device == 'cpu' and previous_device != 'cpu':
                 platalea.hardware.set_device(previous_device)
 
-            result['epoch'] = epoch
-            json.dump(result, out)
-            print('', file=out, flush=True)
 
             if config.get('validate_on_cpu'):
                 # only add it here (for wandb), because json.dump doesn't like tensor values
                 result["validation loss"] = validation_loss
+
+            result['average_loss'] = average_loss
+            result['epoch'] = epoch
+            results.append(result)
+            json.dump(result, out)
+            print('', file=out, flush=True)
             wandb.log(result)
+
+    return results
 
 
 DEFAULT_CONFIG = dict(SpeechEncoder=dict(conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0,
