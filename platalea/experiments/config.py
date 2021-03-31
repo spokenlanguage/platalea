@@ -5,8 +5,8 @@ from pathlib import Path
 home = Path.home()
 # Looking at the home folder, then at current folder (later ones in list override previous ones)
 default_config_files = [
-    str(home / '.platalea/config.ini'),
-    str(home / '.platalea/config.yml'),
+    str(home / '.config/platalea/config.ini'),
+    str(home / '.config/platalea/config.yml'),
     'config.ini',
     'config.yml']
 
