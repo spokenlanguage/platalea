@@ -127,50 +127,26 @@ def experiment(net, data, config,
                 else:
                     if debug_logging_active:
                         logging.debug("train %d %d %f %f", epoch, j, average_loss, loss_value)
-                if not config.get('validate_on_cpu'):
-                    if j % 400 == 0:
+                if j % 400 == 0:
+                    validation_loss = val_loss(net)
+                    logging.info("valid %d %d %f", epoch, j, validation_loss)
+                    wandb_step_output["validation loss"] = validation_loss
+                else:
+                    if debug_logging_active:
                         validation_loss = val_loss(net)
-                        logging.info("valid %d %d %f", epoch, j, validation_loss)
+                        logging.debug("valid %d %d %f", epoch, j, validation_loss)
                         wandb_step_output["validation loss"] = validation_loss
-                    else:
-                        if debug_logging_active:
-                            validation_loss = val_loss(net)
-                            logging.debug("valid %d %d %f", epoch, j, validation_loss)
-                            wandb_step_output["validation loss"] = validation_loss
-
                 wandb.log(wandb_step_output)
 
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
 
             logging.info("Calculating and saving epoch score results")
-            if config.get('score_on_cpu') or config.get('validate_on_cpu'):
-                score_net = torch.load("net.{}.pt".format(epoch), map_location=torch.device("cpu"))
-                if platalea.hardware._device != 'cpu':
-                    previous_device = platalea.hardware._device
-                    platalea.hardware.set_device('cpu')
-            else:
-                score_net = net
-
-            score_net.eval()
-
-            result = platalea.score.score(score_net, data['val'].dataset)
-            if config.get('validate_on_cpu'):
-                validation_loss = val_loss(score_net)
-                logging.info("valid %d %d %f", epoch, j, validation_loss)
-
-            score_net.train()
-
-            if config.get('score_on_cpu') and platalea.hardware._device == 'cpu' and previous_device != 'cpu':
-                platalea.hardware.set_device(previous_device)
-
-
-            if config.get('validate_on_cpu'):
-                # only add it here (for wandb), because json.dump doesn't like tensor values
-                result["validation loss"] = validation_loss
-
-            result['average_loss'] = average_loss
+            net.eval()
+            result = platalea.score.score(net, data['val'].dataset)
+            net.train()
             result['epoch'] = epoch
+            result['average_loss'] = average_loss
             results.append(result)
             json.dump(result, out)
             print('', file=out, flush=True)
