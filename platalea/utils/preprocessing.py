@@ -6,9 +6,13 @@ Preprocesses datasets
 
 import json
 import logging
+import os
+
 import numpy as np
 import pathlib
 import PIL.Image
+from moviepy.video.io.VideoFileClip import VideoFileClip
+
 import platalea.hardware
 import soundfile
 import torch
@@ -22,6 +26,23 @@ args = get_argument_parser()
 _audio_feat_config = dict(type='mfcc', delta=True, alpha=0.97, n_filters=40,
                           window_size=0.025, frame_shift=0.010)
 _images_feat_config = dict(model='resnet')
+
+
+def extract_audio_from_videos(video_dir_path, audio_dir_path):
+    os.makedirs(audio_dir_path, exist_ok=True)
+    for video_file_name in os.listdir(video_dir_path):
+
+        video = VideoFileClip(str(video_dir_path / video_file_name))
+        audio_file_name = video_file_name + '.wav'
+        video.audio.write_audiofile(audio_dir_path / audio_file_name)
+        video.close()
+
+
+def preprocess_howto100m(dataset_path, audio_subdir, video_subdir):
+    audio_path = pathlib.Path(dataset_path) / audio_subdir
+    video_path = pathlib.Path(dataset_path) / video_subdir
+    if not audio_path.exists():
+        extract_audio_from_videos(video_path, audio_path)
 
 
 def preprocess_flickr8k(dataset_path, audio_subdir, image_subdir):
@@ -231,3 +252,5 @@ if __name__ == '__main__':
         preprocess_flickr8k(args.flickr8k_root, args.flickr8k_audio_subdir, args.flickr8k_image_subdir)
     elif args.dataset_name == "librispeech":
         preprocess_librispeech(args.librispeech_root)
+    if args.dataset_name == "howto100m-encc":
+        preprocess_howto100m(args.howto100m_root, args.howto100m_audio_subdir, args.howto100m_video_subdir)
