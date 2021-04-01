@@ -33,12 +33,19 @@ class Howto100mProcessingCase(TestCase):
         video_dir = self.test_dataset_path / self.video_subdir
         assert len(os.listdir(audio_dir)) == len(os.listdir(video_dir))
 
+    def test_audio_features_created(self):
+        preprocess_howto100m(self.test_dataset_path, self.audio_subdir, self.video_subdir)
+
+        features_file_path = self.test_dataset_path / 'mfcc_features.pt'
+        assert features_file_path.exists()
+
     def setUp(self):
         shutil.copytree(self._dataset_path, self.test_dataset_path)
 
     def tearDown(self):
         shutil.rmtree(self.test_dataset_path, ignore_errors=False)
         print('removed', self.test_dataset_path, Path(self.test_dataset_path).exists())
+
 
 def has_at_least_same_unchanged_content(source_dir, target_dir):
     """Returns True if all files in the source dir are present and unchanged in the target dir. False otherwise.

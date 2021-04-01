@@ -21,7 +21,6 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 from platalea.experiments.config import get_argument_parser
 
-
 args = get_argument_parser()
 _audio_feat_config = dict(type='mfcc', delta=True, alpha=0.97, n_filters=40,
                           window_size=0.025, frame_shift=0.010)
@@ -31,7 +30,6 @@ _images_feat_config = dict(model='resnet')
 def extract_audio_from_videos(video_dir_path, audio_dir_path):
     os.makedirs(audio_dir_path, exist_ok=True)
     for video_file_name in os.listdir(video_dir_path):
-
         video = VideoFileClip(str(video_dir_path / video_file_name))
         audio_file_name = video_file_name + '.wav'
         video.audio.write_audiofile(audio_dir_path / audio_file_name)
@@ -43,6 +41,16 @@ def preprocess_howto100m(dataset_path, audio_subdir, video_subdir):
     video_path = pathlib.Path(dataset_path) / video_subdir
     if not audio_path.exists():
         extract_audio_from_videos(video_path, audio_path)
+
+    extract_howto100m_audio_features(dataset_path, audio_subdir, _audio_feat_config)
+
+
+def extract_howto100m_audio_features(dataset_path, audio_subdir, feat_config):
+    audio_dir_path = dataset_path / audio_subdir
+    file_names = os.listdir(audio_dir_path)
+    paths = [audio_dir_path / fn for fn in file_names]
+    features = audio_features(paths, feat_config)
+    torch.save(dict(features=features, filenames=file_names), dataset_path / 'mfcc_features.pt')
 
 
 def preprocess_flickr8k(dataset_path, audio_subdir, image_subdir):
@@ -215,8 +223,8 @@ def audio_features(paths, config):
             path = fix_wav(cap)
             data, fs = soundfile.read(path)
         # get window and frameshift size in samples
-        window_size = int(fs*config['window_size'])
-        frame_shift = int(fs*config['frame_shift'])
+        window_size = int(fs * config['window_size'])
+        frame_shift = int(fs * config['frame_shift'])
 
         [frames, energy] = raw_frames(data, frame_shift, window_size)
         freq_spectrum = get_freqspectrum(frames, config['alpha'], fs,
