@@ -12,20 +12,7 @@ conda create -n platalea python==3.8 pytorch -c conda-forge -c pytorch
 conda activate platalea
 pip install torchvision
 pip install .
-```
-
-### Experiment dependencies
-Different experiments may have different additional dependencies.
-The `basic` experiment needs the following:
-
-```sh
-pip install sklearn python-Levenshtein
-```
-
-## Dataset
-
-The repository has been developed to work with Flickr8K dataset. The code can
-be made to work with other datasets but this will require some adaptations.
+```datasets but this will require some adaptations.
 
 To use Flickr8K, you need to download:
 * [Flickr8K](http://hockenmaier.cs.illinois.edu/Framing_Image_Description/KCCA.html) [1].
@@ -40,6 +27,19 @@ Create a folder to store the dataset (we will assume here that the folder is
 extract the content of the archives.  You can now setup the environment and
 start preprocessing the data.
 
+
+### Experiment dependencies
+Different experiments may have different additional dependencies.
+The `basic` experiment needs the following:
+
+```sh
+pip install sklearn python-Levenshtein
+```
+
+## Dataset
+
+The repository has been developed to work with Flickr8K dataset. The code can
+be made to work with other 
 ### Configuration
 
 We use ConfigArgParse for setting necessary input variables, including the
