@@ -252,7 +252,7 @@ if __name__ == '__main__':
     args._parser.description = doc[0]
     args.add_argument(
         'dataset_name', help='Name of the dataset to preprocess.',
-        type=str, choices=['flickr8k', 'librispeech'])
+        type=str, choices=['flickr8k', 'librispeech', 'howto100m-encc'])
     args.enable_help()
     args.parse()
 
