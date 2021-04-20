@@ -127,6 +127,20 @@ def get_argument_parser():
         '--flickr8k_language', env_var='FLICKR8K_LANGUAGE', default='en',
         help='language to use for the transcriptions/translations')
 
+    # HowTo100M
+    args.add_argument(
+        '--howto100m_root', env_var='HOWTO100M_ROOT',
+        default='.',
+        help='location of the howto100m dataset')
+    args.add_argument(
+        '--howto100m_audio_subdir', env_var='HOWTO100M_AUDIO_SUBDIR',
+        default='.',
+        help='relative path of the audio subdir within the HowTo100M dir')
+    args.add_argument(
+        '--howto100m_video_subdir', env_var='HOWTO100M_VIDEO_SUBDIR',
+        default='.',
+        help='relative path of the video subdir within the HowTo100M dir')
+
     # Librispeech specific parameters
     args.add_argument(
         '--librispeech_root', env_var='LIBRISPEECH_ROOT',
