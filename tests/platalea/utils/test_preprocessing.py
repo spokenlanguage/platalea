@@ -40,11 +40,11 @@ class Howto100mProcessingCase(TestCase):
         assert features_file_path.exists()
 
     def setUp(self):
+        print('current working dir:', os.getcwd())
         shutil.copytree(self._dataset_path, self.test_dataset_path)
 
     def tearDown(self):
         shutil.rmtree(self.test_dataset_path, ignore_errors=False)
-        print('removed', self.test_dataset_path, Path(self.test_dataset_path).exists())
 
 
 def has_at_least_same_unchanged_content(source_dir, target_dir):
