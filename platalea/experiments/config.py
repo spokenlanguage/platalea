@@ -134,11 +134,11 @@ def get_argument_parser():
         help='location of the howto100m dataset')
     args.add_argument(
         '--howto100m_audio_subdir', env_var='HOWTO100M_AUDIO_SUBDIR',
-        default='.',
+        default='audio',
         help='relative path of the audio subdir within the HowTo100M dir')
     args.add_argument(
         '--howto100m_video_subdir', env_var='HOWTO100M_VIDEO_SUBDIR',
-        default='.',
+        default='video',
         help='relative path of the video subdir within the HowTo100M dir')
 
     # Librispeech specific parameters
