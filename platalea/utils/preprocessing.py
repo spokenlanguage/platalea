@@ -42,7 +42,7 @@ def preprocess_howto100m(dataset_path, audio_subdir, video_subdir):
     if not audio_path.exists():
         extract_audio_from_videos(video_path, audio_path)
 
-    extract_howto100m_audio_features(dataset_path, audio_subdir, _audio_feat_config)
+    extract_howto100m_audio_features(pathlib.Path(dataset_path), audio_subdir, _audio_feat_config)
 
 
 def extract_howto100m_audio_features(dataset_path, audio_subdir, feat_config):
