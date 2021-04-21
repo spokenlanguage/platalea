@@ -18,7 +18,7 @@ class Howto100mProcessingCase(TestCase):
 
     def test_no_files_changed(self):
         preprocess_howto100m(self.test_dataset_path, self.audio_subdir, self.video_subdir)
-        assert has_at_least_same_unchanged_content(self._dataset_path, self.test_dataset_path)
+        assert_has_at_least_same_unchanged_content(self._dataset_path, self.test_dataset_path)
 
     def test_audio_dir_created(self):
         preprocess_howto100m(self.test_dataset_path, self.audio_subdir, self.video_subdir)
@@ -47,16 +47,14 @@ class Howto100mProcessingCase(TestCase):
         shutil.rmtree(self.test_dataset_path, ignore_errors=False)
 
 
-def has_at_least_same_unchanged_content(source_dir, target_dir):
+def assert_has_at_least_same_unchanged_content(source_dir, target_dir):
     """Returns True if all files in the source dir are present and unchanged in the target dir. False otherwise.
     NB, files in the target dir that are not in the source dir, are ignored."""
     for entry in os.listdir(source_dir):
         current_source_path = source_dir / entry
         current_target_path = target_dir / entry
         if current_source_path.is_dir():
-            if not has_at_least_same_unchanged_content(current_source_path, current_target_path):
-                return False
+            assert_has_at_least_same_unchanged_content(current_source_path, current_target_path)
         else:
             if not filecmp.cmp(current_source_path, current_target_path):
-                return False
-    return True
+                raise AssertionError('Change found in {}'.format(current_source_path))
