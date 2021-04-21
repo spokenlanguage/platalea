@@ -29,7 +29,7 @@ _images_feat_config = dict(model='resnet')
 
 def extract_audio_from_videos(video_dir_path, audio_dir_path):
     os.makedirs(audio_dir_path, exist_ok=True)
-    for video_file_name in os.listdir(video_dir_path):
+    for video_file_name in video_dir_path.iterdir():
         video = VideoFileClip(str(video_dir_path / video_file_name))
         audio_file_name = video_file_name + '.wav'
         video.audio.write_audiofile(audio_dir_path / audio_file_name)
@@ -37,12 +37,15 @@ def extract_audio_from_videos(video_dir_path, audio_dir_path):
 
 
 def preprocess_howto100m(dataset_path, audio_subdir, video_subdir):
-    audio_path = pathlib.Path(dataset_path) / audio_subdir
-    video_path = pathlib.Path(dataset_path) / video_subdir
+    dataset_path_obj = pathlib.Path(dataset_path)
+    audio_path = dataset_path_obj / audio_subdir
+    video_path = dataset_path_obj / video_subdir
+    print('starting', audio_path.exists(), audio_path, dataset_path_obj)
     if not audio_path.exists():
+        print('audio does not exist')
         extract_audio_from_videos(video_path, audio_path)
 
-    extract_howto100m_audio_features(pathlib.Path(dataset_path), audio_subdir, _audio_feat_config)
+    extract_howto100m_audio_features(dataset_path_obj, audio_subdir, _audio_feat_config)
 
 
 def extract_howto100m_audio_features(dataset_path, audio_subdir, feat_config):
