@@ -45,7 +45,7 @@ def test_basic_experiment():
     expected = [{'epoch': 1,
                  'medr': 1.5,
                  'recall': {1: 0.5, 5: 1.0, 10: 1.0},
-                 'average_loss': 0.41894787549972534
+                 'average_loss': 0.4189479351043701
                  }]
 
     with unittest.mock.patch('sys.argv', ['[this gets ignored]',
@@ -76,7 +76,7 @@ def test_mtl_asr_experiment():
                 'recall': {1: 0.5,
                            5: 1.0,
                            10: 1.0},
-                'average_loss': 0.3971380218863487},
+                'average_loss': 0.3971380740404129},
          'epoch': 1}
     ]
 
@@ -94,7 +94,7 @@ def test_mtl_asr_experiment():
 def test_mtl_st_experiment():
     expected = [
         {'SI': {'medr': 2.0, 'recall': {1: 0.4, 5: 1.0, 10: 1.0}, 'average_loss': 0.3906550034880638},
-         'ST': {'medr': 6.0, 'recall': {1: 0.0, 5: 0.5, 10: 1.0}, 'average_loss': 0.37090546637773514},
+         'ST': {'medr': 6.0, 'recall': {1: 0.0, 5: 0.5, 10: 1.0}, 'average_loss': 0.37090542912483215},
          'epoch': 1},
     ]
 
@@ -182,7 +182,7 @@ def test_pip_ind_experiment():
 
 def test_pip_seq_experiment():
     expected = [{'medr': 1.5, 'recall': {1: 0.5, 5: 1.0, 10: 1.0},
-                 'average_loss': 0.3918714001774788,
+                 'average_loss': 0.3918714374303818,
                  'epoch': 1}]
 
     with unittest.mock.patch('sys.argv', ['[this gets ignored]',
@@ -205,4 +205,5 @@ def _assert_nested_almost_equal(a, b):
     The check is done using pandas functions.
     By default, pandas uses an absolute tolerance of 1e-8 and a relative tolerance of 1e-5 for any numeric comparison.
     """
-    pandas.testing.assert_series_equal(pandas.Series(a), pandas.Series(b))
+    # pandas.testing.assert_series_equal(pandas.Series(a), pandas.Series(b))
+    assert(a == b)
