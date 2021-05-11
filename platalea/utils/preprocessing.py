@@ -29,9 +29,9 @@ _images_feat_config = dict(model='resnet')
 
 def extract_audio_from_videos(video_dir_path, audio_dir_path):
     os.makedirs(audio_dir_path, exist_ok=True)
-    for video_file_name in video_dir_path.iterdir():
-        video = VideoFileClip(str(video_dir_path / video_file_name))
-        audio_file_name = video_file_name + '.wav'
+    for video_file_path in video_dir_path.iterdir():
+        video = VideoFileClip(str(video_file_path))
+        audio_file_name = video_file_path.name + '.wav'
         video.audio.write_audiofile(audio_dir_path / audio_file_name)
         video.close()
 
@@ -40,9 +40,7 @@ def preprocess_howto100m(dataset_path, audio_subdir, video_subdir):
     dataset_path_obj = pathlib.Path(dataset_path)
     audio_path = dataset_path_obj / audio_subdir
     video_path = dataset_path_obj / video_subdir
-    print('starting', audio_path.exists(), audio_path, dataset_path_obj)
     if not audio_path.exists():
-        print('audio does not exist')
         extract_audio_from_videos(video_path, audio_path)
 
     extract_howto100m_audio_features(dataset_path_obj, audio_subdir, _audio_feat_config)
@@ -53,7 +51,8 @@ def extract_howto100m_audio_features(dataset_path, audio_subdir, feat_config):
     file_names = os.listdir(audio_dir_path)
     paths = [audio_dir_path / fn for fn in file_names]
     features = audio_features(paths, feat_config)
-    torch.save(dict(features=features, filenames=file_names), dataset_path / 'mfcc_features.pt')
+    output_path = dataset_path / 'mfcc_features.npz'
+    np.savez_compressed(output_path, *features, filenames=file_names)
 
 
 def preprocess_flickr8k(dataset_path, audio_subdir, image_subdir):

@@ -35,12 +35,10 @@ class Howto100mProcessingCase(TestCase):
 
     def test_audio_features_created(self):
         preprocess_howto100m(self.test_dataset_path, self.audio_subdir, self.video_subdir)
-
-        features_file_path = self.test_dataset_path / 'mfcc_features.pt'
+        features_file_path = self.test_dataset_path / 'mfcc_features.npz'
         assert features_file_path.exists()
 
     def setUp(self):
-        print('current working dir:', os.getcwd())
         shutil.copytree(self._dataset_path, self.test_dataset_path)
 
     def tearDown(self):
