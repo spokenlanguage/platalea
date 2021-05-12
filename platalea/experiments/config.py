@@ -139,7 +139,7 @@ def get_argument_parser():
             the dataset location')
     args.add_argument(
         '--spokencoco_audio_subdir', env_var='SPOKENCOCO_AUDIO_SUBDIR',
-        default='SpokenCOCO/wavs',
+        default='SpokenCOCO',
         help='directory containing the SpokenCOCO wav files, relative to the \
             dataset location')
     args.add_argument(
