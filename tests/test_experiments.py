@@ -1,6 +1,6 @@
 import unittest.mock
 from flickr1d import __path__ as flickr1d_path
-import pandas
+import deepdiff
 
 flickr1d_path = flickr1d_path[-1]
 
@@ -202,7 +202,5 @@ def test_pip_seq_experiment():
 def _assert_nested_almost_equal(a, b):
     """
     Asserts that 2 nested objects are approximately equal.
-    The check is done using pandas functions.
-    By default, pandas uses an absolute tolerance of 1e-8 and a relative tolerance of 1e-5 for any numeric comparison.
     """
-    pandas.testing.assert_series_equal(pandas.Series(a), pandas.Series(b))
+    assert(not deepdiff.DeepDiff(a, b, math_epsilon=1e-5, ignore_numeric_type_changes=True))
