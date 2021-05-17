@@ -82,6 +82,7 @@ class SpeechTranscriber(nn.Module):
 
 def experiment(net, data, config, slt=False):
     _device = platalea.hardware.device()
+
     def val_loss():
         with torch.no_grad():
             net.eval()
@@ -153,6 +154,7 @@ def experiment(net, data, config, slt=False):
         # Save full model for inference
         torch.save(net, 'net.best.pt')
     return results
+
 
 def get_default_config(hidden_size_factor=1024):
     fd = D.Flickr8KData

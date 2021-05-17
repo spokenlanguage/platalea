@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Categorical
 
+
 class Jitter(nn.Module):
     def __init__(self, p):
         super().__init__()
@@ -26,6 +27,7 @@ class Jitter(nn.Module):
             x = torch.gather(x, 1, index.unsqueeze(-1).expand(-1, -1, channels))
         return x
 
+
 class VQEmbeddingEMA(nn.Module):
     def __init__(self, num_embeddings, embedding_dim, commitment_cost=0.25, decay=0.999, epsilon=1e-5, jitter=0.12):
         super(VQEmbeddingEMA, self).__init__()
@@ -40,25 +42,23 @@ class VQEmbeddingEMA(nn.Module):
         self.register_buffer("ema_count", torch.zeros(num_embeddings))
         self.register_buffer("ema_weight", self.embedding.clone())
         self.jitter = Jitter(jitter) if jitter > 0 else None
-        
+
     def forward(self, x):
         M, D = self.embedding.size()
         # unpack packed_sequence
         x, l = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
         x_flat = x.detach().reshape(-1, D)
-        
+
         distances = torch.addmm(torch.sum(self.embedding ** 2, dim=1) +
                                 torch.sum(x_flat ** 2, dim=1, keepdim=True),
                                 x_flat, self.embedding.t(),
                                 alpha=-2.0, beta=1.0)
-        #distances = ((self.embedding - x_flat.unsqueeze(dim=1))**2).sum(dim=2)
 
         indices = torch.argmin(distances.float(), dim=-1)
         encodings = F.one_hot(indices, M).float()
         quantized = F.embedding(indices, self.embedding)
         quantized = quantized.view_as(x)
 
-        
         if self.training:
             self.ema_count = self.decay * self.ema_count + (1 - self.decay) * torch.sum(encodings, dim=0)
 

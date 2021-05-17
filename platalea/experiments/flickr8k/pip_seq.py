@@ -12,7 +12,7 @@ from platalea.utils.extract_transcriptions import extract_trn
 from platalea.experiments.config import get_argument_parser
 
 
-args = get_argument_parser()# import cProfile
+args = get_argument_parser()
 
 # Parsing arguments
 args.add_argument(

@@ -64,6 +64,7 @@ class TextImage(nn.Module):
 
 def experiment(net, data, config):
     _device = platalea.hardware.device()
+
     def val_loss():
         net.eval()
         result = []

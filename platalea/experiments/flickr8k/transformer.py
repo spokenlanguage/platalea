@@ -9,7 +9,7 @@ import platalea.hardware
 from platalea.experiments.config import get_argument_parser
 
 
-args = get_argument_parser()# Parsing arguments
+args = get_argument_parser()  # Parsing arguments
 args.add_argument('--batch_size', default=32, type=int,
                   help='How many samples per batch to load.')
 args.add_argument('--conv_stride', default=2, type=int,
@@ -23,6 +23,7 @@ args.add_argument('--trafo_heads', default=8, type=int,
 args.add_argument('--trafo_feedforward_dim', default=1024, type=int,
                   help='TRANSFORMER: Dimensionality of feedforward layer at the end of the transformer layer stack.')
 
+
 class unit_float(float):
     def __new__(cls, value):
         value = float(value)
@@ -30,6 +31,7 @@ class unit_float(float):
             return super().__new__(cls, value)
         else:
             raise ValueError(f"{value} is not a proper unit_float, because it is not between 0 and 1")
+
 
 args.add_argument('--trafo_dropout', default=0, type=unit_float,
                   help='TRANSFORMER: Dropout factor, used for regularization.')
@@ -50,11 +52,11 @@ logging.info('Loading data')
 data = dict(
     train=D.flickr8k_loader(
         args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
-                            args.audio_features_fn, split='train', batch_size=args.batch_size, shuffle=True,
+        args.audio_features_fn, split='train', batch_size=args.batch_size, shuffle=True,
         downsampling_factor=args.downsampling_factor),
     val=D.flickr8k_loader(
         args.flickr8k_root, args.flickr8k_meta, args.flickr8k_language,
-                          args.audio_features_fn, split='val', batch_size=args.batch_size, shuffle=False)
+        args.audio_features_fn, split='val', batch_size=args.batch_size, shuffle=False)
 )
 
 

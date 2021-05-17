@@ -3,8 +3,10 @@
 import numpy
 from scipy.spatial.distance import cdist
 
+
 def cosine(x, y):
     return cdist(x, y, metric='cosine')
+
 
 def ranking(candidates, references, correct, metric=cosine, ns=(1, 5, 10)):
     """Rank `candidates` in order of similarity for each vector and return evaluation metrics.
@@ -12,9 +14,9 @@ def ranking(candidates, references, correct, metric=cosine, ns=(1, 5, 10)):
     `correct[i][j]` indicates whether for reference item i the candidate j is correct.
     """
     distances = cdist(references, candidates)
-    result = {'ranks' : [] , 'recall' : {} }
+    result = {'ranks': [], 'recall': {}}
     for n in ns:
-        result['recall'][n]    = []
+        result['recall'][n] = []
     for j, row in enumerate(distances):
         ranked = numpy.argsort(row)
         id_correct = numpy.where(correct[j][ranked])[0]
