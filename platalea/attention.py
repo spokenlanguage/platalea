@@ -18,6 +18,7 @@ class LinearAttention(nn.Module):
         # return the resulting embedding
         return x
 
+
 class MeanPool(nn.Module):
     def __init__(self):
         super(MeanPool, self).__init__()
@@ -75,7 +76,7 @@ class BahdanauAttention(nn.Module):
         self.U_a = nn.Linear(in_size_enc, hidden_size, bias=False)
         self.W_a = nn.Linear(in_size_state, hidden_size, bias=False)
         self.v_a = nn.Linear(hidden_size, 1, bias=True)
-        self.prev_enc_out= None
+        self.prev_enc_out = None
 
     def forward(self, hidden, encoder_outputs):
         # Calculate energies for each encoder output

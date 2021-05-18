@@ -1,5 +1,5 @@
 # encoding: utf-8
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(name='platalea',
       description='Understanding visually grounded spoken language via multi-tasking',
@@ -24,4 +24,4 @@ setup(name='platalea',
           'python-Levenshtein>=0.12.0'],
       use_scm_version=True,
       setup_requires=['setuptools_scm'],
-)
+      )

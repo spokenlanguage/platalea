@@ -17,7 +17,7 @@ def test_config():
 
         assert args.epochs == 2
         assert args.flickr8k_meta == 'thisandthat.json'
-        assert args.verbose == True
+        assert args.verbose
         assert args.lr_scheduler == 'noam'
 
 
@@ -177,7 +177,6 @@ def test_pip_ind_experiment():
         result = platalea.experiments.flickr8k.pip_ind.result
 
     _assert_nested_almost_equal(result, expected)
-
 
 
 def test_pip_seq_experiment():
