@@ -107,6 +107,10 @@ If you don't want to use cloud logging of learning curves using wandb, you can
 disable it by running:
 ```wandb disabled```
 
+## Contributing
+
+If you want to contribute to the development of platalea, have a look at the [contribution guidelines](CONTRIBUTING.md).
+
 ## References
 
 [1] Hodosh, M., Young, P., & Hockenmaier, J. (2013). Framing Image Description
