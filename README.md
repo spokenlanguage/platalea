@@ -111,6 +111,10 @@ disable it by running:
 
 If you want to contribute to the development of platalea, have a look at the [contribution guidelines](CONTRIBUTING.md).
 
+## Changelog
+
+We keep track of what is added, changed and removed in releases in the [changelog](CHANGELOG.md).
+
 ## References
 
 [1] Hodosh, M., Young, P., & Hockenmaier, J. (2013). Framing Image Description
