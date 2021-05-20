@@ -102,6 +102,12 @@ def get_argument_parser():
     args.add_argument(
         '--l2_regularization', default=0, type=float,
         help='L2 regularization using weight decay in the optimizer.')
+    args.add_argument(
+        '--loss_logging_interval', type=int, default=100,
+        help='Step interval at which the training loss is logged on the info level.')
+    args.add_argument(
+        '--validation_interval', type=int, default=400,
+        help='Step interval at which a validation step is run and logged on the info level.')
 
     # Flickr8k specific parameters
     args.add_argument(
