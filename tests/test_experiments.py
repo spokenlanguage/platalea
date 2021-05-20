@@ -56,7 +56,8 @@ def test_basic_experiment():
                                           '--epochs=1',
                                           '-c', f'{flickr1d_path}/config.yml',
                                           f'--flickr8k_root={flickr1d_path}',
-                                          '--hidden_size_factor=4'
+                                          '--hidden_size_factor=4',
+                                          '--optimizer=adadelta'
                                           ]):
         import platalea.experiments.flickr8k.basic
         result = platalea.experiments.flickr8k.basic.result
