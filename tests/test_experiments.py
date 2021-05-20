@@ -37,7 +37,8 @@ def test_transformer_experiment():
                                           '--trafo_feedforward_dim=4',
                                           '--trafo_dropout=0.1',
                                           '--loss_logging_interval=1',
-                                          '--validation_interval=1'
+                                          '--validation_interval=1',
+                                          '--lr_scheduler=noam'
                                           ]):
         import platalea.experiments.flickr8k.transformer
         result = platalea.experiments.flickr8k.transformer.result
@@ -111,7 +112,8 @@ def test_mtl_st_experiment():
                                           '--epochs=1',
                                           '-c', f'{flickr1d_path}/config.yml',
                                           f'--flickr8k_root={flickr1d_path}',
-                                          '--hidden_size_factor=4'
+                                          '--hidden_size_factor=4',
+                                          '--lr_scheduler=constant'
                                           ]):
         import platalea.experiments.flickr8k.mtl_st
         result = platalea.experiments.flickr8k.mtl_st.result
