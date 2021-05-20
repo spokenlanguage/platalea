@@ -55,7 +55,9 @@ else:
     run_config = dict(max_norm=2.0, max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs,
                       l2_regularization=args.l2_regularization,
                       loss_logging_interval=args.loss_logging_interval,
-                      validation_interval=args.validation_interval)
+                      validation_interval=args.validation_interval,
+                      opt=args.optimizer
+                      )
     logging.info('Training ASR/SLT')
     if data['train'].dataset.is_slt():
         M1.experiment(net, data, run_config, slt=True)
@@ -88,7 +90,9 @@ net = M2.TextImage(M2.get_default_config(hidden_size_factor=args.hidden_size_fac
 run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs,
                   l2_regularization=args.l2_regularization,
                   loss_logging_interval=args.loss_logging_interval,
-                  validation_interval=args.validation_interval)
+                  validation_interval=args.validation_interval,
+                  opt=args.optimizer
+                  )
 
 logging.info('Training text-image')
 result = M2.experiment(net, data, run_config)

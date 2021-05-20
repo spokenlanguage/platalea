@@ -77,6 +77,10 @@ def get_argument_parser():
         dest='downsampling_factor',
         help='factor by which the dataset should be downsampled')
     args.add_argument(
+        '--optimizer', default='adam',
+        choices=['adam', 'adadelta'],
+        help='The optimizer used for the learning process.')
+    args.add_argument(
         '--lr_scheduler', default="cyclic",
         choices=['cyclic', 'noam', 'constant'],
         help='The learning rate scheduler to use. WARNING: noam not yet \
