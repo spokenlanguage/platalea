@@ -2,6 +2,7 @@ import torch
 import torch.utils.data
 
 from platalea.data.flickr8kdata import Flickr8KData
+from platalea.data.howto100mdata import HowTo100MData
 from platalea.data.librispeechdata import LibriSpeechData
 
 
@@ -50,6 +51,10 @@ def collate_fn_speech(data, max_frames=2048):
     chars, char_lengths = batch_text(texts)
     return dict(audio=mfcc, text=chars, audio_len=mfcc_lengths,
                 text_len=char_lengths)
+
+
+def howto100m_loader(root, split='train', batch_size=32, shuffle=False):
+    return torch.utils.data.DataLoader(dataset=HowTo100MData(root, split))
 
 
 def flickr8k_loader(root, meta_fname, language, feature_fname,
