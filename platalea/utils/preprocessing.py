@@ -51,8 +51,8 @@ def extract_howto100m_audio_features(dataset_path, audio_subdir, feat_config):
     file_names = os.listdir(audio_dir_path)
     paths = [audio_dir_path / fn for fn in file_names]
     features = audio_features(paths, feat_config)
-    output_path = dataset_path / 'mfcc_features.npz'
-    np.savez_compressed(output_path, *features, filenames=file_names)
+    output_path = dataset_path / 'mfcc_features.memmap'
+    save_audio_features_to_memmap(features, output_path)
 
 
 def preprocess_flickr8k(dataset_path, audio_subdir, image_subdir):
