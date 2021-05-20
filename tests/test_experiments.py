@@ -25,7 +25,7 @@ def test_transformer_experiment():
     expected = [{'epoch': 1,
                  'medr': 1.5,
                  'recall': {1: 0.5, 5: 1.0, 10: 1.0},
-                 'average_loss': 0.5153712034225464,
+                 'average_loss': 0.5192822813987732,
                  }]
 
     with unittest.mock.patch('sys.argv', ['[this gets ignored]',
@@ -34,7 +34,8 @@ def test_transformer_experiment():
                                           f'--flickr8k_root={flickr1d_path}',
                                           '--trafo_heads=4',
                                           '--trafo_d_model=4',
-                                          '--trafo_feedforward_dim=4']):
+                                          '--trafo_feedforward_dim=4',
+                                          '--trafo_dropout=0.1']):
         import platalea.experiments.flickr8k.transformer
         result = platalea.experiments.flickr8k.transformer.result
 
