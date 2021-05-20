@@ -35,7 +35,10 @@ def test_transformer_experiment():
                                           '--trafo_heads=4',
                                           '--trafo_d_model=4',
                                           '--trafo_feedforward_dim=4',
-                                          '--trafo_dropout=0.1']):
+                                          '--trafo_dropout=0.1',
+                                          '--loss_logging_interval=1',
+                                          '--validation_interval=1'
+                                          ]):
         import platalea.experiments.flickr8k.transformer
         result = platalea.experiments.flickr8k.transformer.result
 
@@ -53,7 +56,8 @@ def test_basic_experiment():
                                           '--epochs=1',
                                           '-c', f'{flickr1d_path}/config.yml',
                                           f'--flickr8k_root={flickr1d_path}',
-                                          '--hidden_size_factor=4']):
+                                          '--hidden_size_factor=4'
+                                          ]):
         import platalea.experiments.flickr8k.basic
         result = platalea.experiments.flickr8k.basic.result
 
@@ -85,7 +89,10 @@ def test_mtl_asr_experiment():
                                           '--epochs=1',
                                           '-c', f'{flickr1d_path}/config.yml',
                                           f'--flickr8k_root={flickr1d_path}',
-                                          '--hidden_size_factor=4']):
+                                          '--hidden_size_factor=4',
+                                          '--loss_logging_interval=1',
+                                          '--validation_interval=1'
+                                          ]):
         import platalea.experiments.flickr8k.mtl_asr
         result = platalea.experiments.flickr8k.mtl_asr.result
 
@@ -103,7 +110,8 @@ def test_mtl_st_experiment():
                                           '--epochs=1',
                                           '-c', f'{flickr1d_path}/config.yml',
                                           f'--flickr8k_root={flickr1d_path}',
-                                          '--hidden_size_factor=4']):
+                                          '--hidden_size_factor=4'
+                                          ]):
         import platalea.experiments.flickr8k.mtl_st
         result = platalea.experiments.flickr8k.mtl_st.result
 
@@ -131,7 +139,10 @@ def test_asr_experiment():
                                           '-c', f'{flickr1d_path}/config.yml',
                                           f'--flickr8k_root={flickr1d_path}',
                                           '--hidden_size_factor=4',
-                                          '--epsilon_decay=0.001']):
+                                          '--epsilon_decay=0.001',
+                                          '--loss_logging_interval=1',
+                                          '--validation_interval=1'
+                                          ]):
         import platalea.experiments.flickr8k.asr
         result = platalea.experiments.flickr8k.asr.result
 
@@ -150,7 +161,10 @@ def test_text_image_experiment():
                                           '--epochs=1',
                                           '-c', f'{flickr1d_path}/config.yml',
                                           f'--flickr8k_root={flickr1d_path}',
-                                          '--hidden_size_factor=4']):
+                                          '--hidden_size_factor=4',
+                                          '--loss_logging_interval=1',
+                                          '--validation_interval=1'
+                                          ]):
         import platalea.experiments.flickr8k.text_image
         result = platalea.experiments.flickr8k.text_image.result
 
@@ -191,6 +205,7 @@ def test_pip_seq_experiment():
                                           f'--flickr8k_root={flickr1d_path}',
                                           '--hidden_size_factor=4',
                                           '--pip_seq_no_beam_decoding',
+                                        #   '--flickr8k_language=jp',
                                           #   '--asr_model_dir={asr_out_path}'
                                           ]):
         import platalea.experiments.flickr8k.pip_seq
