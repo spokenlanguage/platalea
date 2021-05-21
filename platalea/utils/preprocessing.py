@@ -22,20 +22,20 @@ NB_DEBUG = 50
 
 
 def preprocess_flickr8k(dataset_path, audio_subdir, image_subdir,
-                        _audio_feat_config, _images_feat_config):
-    flickr8k_audio_features(pathlib.Path(dataset_path), audio_subdir, _audio_feat_config)
-    flickr8k_image_features(pathlib.Path(dataset_path), image_subdir, _images_feat_config)
+                        audio_feat_config, images_feat_config):
+    flickr8k_audio_features(pathlib.Path(dataset_path), audio_subdir, audio_feat_config)
+    flickr8k_image_features(pathlib.Path(dataset_path), image_subdir, images_feat_config)
 
 
 def preprocess_spokencoco(dataset_path, audio_subdir,
-                          _audio_feat_config, _images_feat_config,
+                          audio_feat_config, images_feat_config,
                           debug=False):
-    spokencoco_audio_features(pathlib.Path(dataset_path), audio_subdir, _audio_feat_config, debug)
-    spokencoco_image_features(pathlib.Path(dataset_path), audio_subdir, _images_feat_config, debug)
+    spokencoco_audio_features(pathlib.Path(dataset_path), audio_subdir, audio_feat_config, debug)
+    spokencoco_image_features(pathlib.Path(dataset_path), audio_subdir, images_feat_config, debug)
 
 
-def preprocess_librispeech(dataset_path, _audio_feat_config, debug=False):
-    librispeech_audio_features(pathlib.Path(dataset_path), _audio_feat_config, debug)
+def preprocess_librispeech(dataset_path, audio_feat_config, debug=False):
+    librispeech_audio_features(pathlib.Path(dataset_path), audio_feat_config, debug)
 
 
 def flickr8k_audio_features(dataset_path, audio_subdir, feat_config):
@@ -199,7 +199,6 @@ def save_image_features_to_memmap(data, fname):
     return list(range(data.shape[0]))
 
 
-
 def librispeech_load_trn(path):
     with open(path) as f:
         lines = f.read().splitlines()
@@ -286,7 +285,6 @@ def audio_features(paths, config):
         raise NotImplementedError("Can't find audio feature extraction of type %s" % config['type'])
 
 
-
 def acoustic_audio_features(paths, config):
     # Adapted from https://github.com/gchrupala/speech2image/blob/master/preprocessing/audio_features.py#L45
     from platalea.audio.features import get_fbanks, get_freqspectrum, get_mfcc, delta, raw_frames
@@ -358,21 +356,23 @@ if __name__ == '__main__':
         args.image_features_fn = args.image_features_fn.replace('.pt', '.memmap')
 
     # Initializing feature extraction config
-    _audio_feat_config = dict(type='mfcc', delta=True, alpha=0.97, n_filters=40,
-                              window_size=0.025, frame_shift=0.010, audio_features_fn=args.audio_features_fn)
-    _images_feat_config = dict(model='resnet', image_features_fn=args.image_features_fn)
+    audio_feat_config = dict(type='mfcc', delta=True, alpha=0.97, n_filters=40,
+                             window_size=0.025, frame_shift=0.010, audio_features_fn=args.audio_features_fn)
+    images_feat_config = dict(model='resnet', image_features_fn=args.image_features_fn)
 
     if args.cpc_model_path is not None:
         if args.audio_features_fn.startswith('mfcc_features'):
             args.audio_features_fn = args.audio_features_fn.replace('mfcc', 'cpc')
-        _audio_feat_config = dict(type='cpc', model_path=args.cpc_model_path, audio_features_fn=args.audio_features_fn,
-                                  strict=False, seq_norm=False, max_size_seq=10240, gru_level=args.cpc_gru_level, on_gpu=True)
+        audio_feat_config = dict(type='cpc', model_path=args.cpc_model_path,
+                                 audio_features_fn=args.audio_features_fn,
+                                 strict=False, seq_norm=False, max_size_seq=10240,
+                                 gru_level=args.cpc_gru_level, on_gpu=True)
 
     if args.dataset_name == "flickr8k":
-        preprocess_flickr8k(args.flickr8k_root, args.flickr8k_audio_subdir, args.flickr8k_image_subdir,
-                            _audio_feat_config, _images_feat_config)
+        preprocess_flickr8k(args.flickr8k_root, args.flickr8kaudio_subdir, args.flickr8k_image_subdir,
+                            audio_feat_config, images_feat_config)
     elif args.dataset_name == "spokencoco":
         preprocess_spokencoco(args.spokencoco_root, args.spokencoco_audio_subdir,
-                              _audio_feat_config, _images_feat_config, args.debug)
+                              audio_feat_config, images_feat_config, args.debug)
     elif args.dataset_name == "librispeech":
-        preprocess_librispeech(args.librispeech_root, _audio_feat_config, args.debug)
+        preprocess_librispeech(args.librispeech_root, audio_feat_config, args.debug)
