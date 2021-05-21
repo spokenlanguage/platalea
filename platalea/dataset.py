@@ -14,6 +14,8 @@ tokenizer = None
 SpecialTokens = namedtuple('SpecialTokens', ['eos', 'pad', 'sos', 'unk'])
 special_tokens = SpecialTokens('<eos>', '<pad>', '<sos>', '<unk>')
 
+# Number of files to keep in the debug mode
+NB_DEBUG = 50
 
 def init_vocabulary(transcriptions):
     global tokenizer
@@ -217,6 +219,11 @@ class SpokenCOCOData(torch.utils.data.Dataset):
 
     def __init__(self, root, feature_fname, meta_fname, split='train',
                  downsampling_factor=None, debug=False):
+
+        if feature_fname.endswith('.pt'):
+            raise ValueError("Training on SpokenCOCO is not possible with .pt files. Please provide --audio_features_fn "
+                             "that points to .memmap files.")
+
         self.root = root
         self.split = split
         self.feature_fname = feature_fname
@@ -240,12 +247,11 @@ class SpokenCOCOData(torch.utils.data.Dataset):
         with open(root_path / meta_fname) as fmeta:
             metadata = json.load(fmeta)['data']
 
-        image_feature_fname = 'resnet_features.pt'
+        image_feature_fname = 'resnet_features.memmap'
         if debug:
-            print("Debug mode activated.")
-            image_feature_fname = 'resnet_features_debug.pt'
-            feature_fname = 'mfcc_features_debug.pt'
-            metadata = metadata[0:100]
+            image_feature_fname = image_feature_fname.replace('.memmap', '_debug.memmap')
+            feature_fname = feature_fname.replace('.memmap', '_debug.memmap')
+            metadata = metadata[0:NB_DEBUG]
 
         # Loading mapping from image id to list of caption id
         self.image_captions = {}
@@ -264,23 +270,49 @@ class SpokenCOCOData(torch.utils.data.Dataset):
             num_examples = int(len(self.split_data) // downsampling_factor)
             self.split_data = random.sample(self.split_data, num_examples)
 
-        # image and audio feature data
-        image = torch.load(root_path / image_feature_fname)
-        self.image = dict(zip(image['filenames'], image['features']))
-        audio = torch.load(root_path / feature_fname)
-        self.audio = dict(zip(audio['filenames'], audio['features']))
+        # Load memory map metadata
+        mmap_meta_fname = root_path / (image_feature_fname.replace('.memmap', '_memmap_mapping.json'))
+        with open(root_path / mmap_meta_fname) as fmeta:
+            self.image_mmap_mapping = json.load(fmeta)
+            last_key = list(self.image_mmap_mapping)[-1]
+            self.nb_images = self.image_mmap_mapping[last_key]['image_idx']
+
+        mmap_meta_fname = root_path / (feature_fname.replace('.memmap', '_memmap_mapping.json'))
+        with open(root_path / mmap_meta_fname) as fmeta:
+            self.audio_mmap_mapping = json.load(fmeta)
+            last_key = list(self.audio_mmap_mapping)[-1]
+            self.nb_frames = self.audio_mmap_mapping[last_key]['audio_end']
+
+        # Load memory-map arrays
+        self.image = np.memmap(root_path / image_feature_fname, dtype='float32',
+                               mode='r', shape=(self.nb_images+1, self.image_mmap_mapping['feature_size']))
+
+        self.audio = np.memmap(root_path / feature_fname, dtype='float64',
+                               mode='r', shape=(self.nb_frames, self.audio_mmap_mapping['feature_size']))
 
     def __getitem__(self, index):
+        # Get ids and captions
         sd = self.split_data[index]
-        image = self.image[sd[0]]
-        audio = self.audio[sd[1]]
-        text = caption2tensor(sd[2])
-        return dict(image_id=sd[0],
-                    audio_id=sd[1],
+        image_id = sd[0]
+        audio_id = sd[1]
+        caption = sd[2]
+
+        # Get their location in the memory-map array
+        image_idx = self.image_mmap_mapping[image_id]['image_idx']
+        audio_start = self.audio_mmap_mapping[audio_id]['audio_start']
+        audio_end = self.audio_mmap_mapping[audio_id]['audio_end']
+
+        # Retrieve features
+        image = torch.from_numpy(self.image[image_idx])
+        audio = torch.from_numpy(self.audio[audio_start:audio_end])
+        text = caption2tensor(caption)
+
+        return dict(image_id=image_id,
+                    audio_id=audio_id,
                     image=image,
-                    text=text,
                     audio=audio,
-                    gloss=sd[2])
+                    text=text,
+                    gloss=caption)
 
     def __len__(self):
         return len(self.split_data)
@@ -298,25 +330,33 @@ class SpokenCOCOData(torch.utils.data.Dataset):
         matches = []
         image2idx = {}
         for sd in self.split_data:
+            # Get ids
+            image_id = sd[0]
+            audio_id = sd[1]
+            caption = sd[2]
+
+            # Get their location in the memory-map array
+            memmap_image_idx = self.image_mmap_mapping[image_id]['image_idx']
+            memmap_audio_start = self.audio_mmap_mapping[audio_id]['audio_start']
+            memmap_audio_end = self.audio_mmap_mapping[audio_id]['audio_end']
+
             # Add image
-            if sd[0] in image2idx:
-                image_idx = image2idx[sd[0]]
+            if image_id in image2idx:
+                image_idx = image2idx[image_id]
             else:
                 image_idx = len(image)
-                image2idx[sd[0]] = image_idx
-                image.append(self.image[sd[0]])
+                image2idx[image_id] = image_idx
+                image.append(torch.from_numpy(self.image[memmap_image_idx]))
+
             # Add audio and text
-            audio.append(self.audio[sd[1]])
-            text.append(sd[2])
+            audio.append(torch.from_numpy(self.audio[memmap_audio_start:memmap_audio_end]))
+            text.append(caption)
             matches.append((len(audio) - 1, image_idx))
         correct = torch.zeros(len(audio), len(image)).bool()
         for i, j in matches:
             correct[i, j] = True
+
         return dict(image=image, audio=audio, text=text, correct=correct)
-
-    #def split_sentences(self, sentences):
-    #    return [s.split() for s in sentences]
-
 
 def batch_audio(audios, max_frames=2048):
     """Merge audio captions. Truncate to max_frames. Pad with 0s."""
