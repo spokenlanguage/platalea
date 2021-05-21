@@ -35,7 +35,7 @@ class Howto100mProcessingCase(TestCase):
 
     def test_audio_features_created(self):
         preprocess_howto100m(self.test_dataset_path, self.audio_subdir, self.video_subdir)
-        features_file_path = self.test_dataset_path / 'mfcc_features.npz'
+        features_file_path = self.test_dataset_path / 'mfcc_features.memmap'
         assert features_file_path.exists()
 
     def setUp(self):
