@@ -199,7 +199,7 @@ def test_pip_ind_experiment():
 
 def test_pip_seq_experiment():
     expected = [{'medr': 1.5, 'recall': {1: 0.5, 5: 1.0, 10: 1.0},
-                 'average_loss': 0.3790612369775772,
+                 'average_loss': 0.36633214354515076,
                  'epoch': 1}]
 
     with unittest.mock.patch('sys.argv', ['[this gets ignored]',
