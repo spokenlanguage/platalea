@@ -199,7 +199,7 @@ def test_pip_ind_experiment():
 
 def test_pip_seq_experiment():
     expected = [{'medr': 1.5, 'recall': {1: 0.5, 5: 1.0, 10: 1.0},
-                 'average_loss': 0.3918714001774788,
+                 'average_loss': 0.3790612369775772,
                  'epoch': 1}]
 
     with unittest.mock.patch('sys.argv', ['[this gets ignored]',
@@ -208,7 +208,7 @@ def test_pip_seq_experiment():
                                           f'--flickr8k_root={flickr1d_path}',
                                           '--hidden_size_factor=4',
                                           '--pip_seq_no_beam_decoding',
-                                        #   '--flickr8k_language=jp',
+                                          '--flickr8k_language=jp',
                                           #   '--asr_model_dir={asr_out_path}'
                                           ]):
         import platalea.experiments.flickr8k.pip_seq
