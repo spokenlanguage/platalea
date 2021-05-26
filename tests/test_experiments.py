@@ -206,7 +206,7 @@ def test_pip_seq_experiment():
                                           '--epochs=1',
                                           '-c', f'{flickr1d_path}/config.yml',
                                           f'--flickr8k_root={flickr1d_path}',
-                                          '--hidden_size_factor=4',
+                                          '--hidden_size_factor=8',
                                           '--pip_seq_no_beam_decoding',
                                           '--flickr8k_language=jp',
                                           #   '--asr_model_dir={asr_out_path}'
