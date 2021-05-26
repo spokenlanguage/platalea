@@ -90,6 +90,9 @@ run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=a
                   d_model=args.trafo_d_model,
                   constant_lr=args.constant_lr,
                   l2_regularization=args.l2_regularization,
+                  loss_logging_interval=args.loss_logging_interval,
+                  validation_interval=args.validation_interval,
+                  opt=args.optimizer
                   )
 
 logged_config = dict(run_config=run_config, encoder_config=config, speech_config=speech_config)

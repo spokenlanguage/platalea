@@ -97,9 +97,9 @@ def experiment(net, data, config):
                 scheduler.step()
                 cost += Counter({'cost': loss.item(), 'N': 1})
                 average_loss = cost['cost'] / cost['N']
-                if j % 100 == 0:
+                if j % config['loss_logging_interval'] == 0:
                     logging.info("train {} {} {}".format(epoch, j, average_loss))
-                if j % 400 == 0:
+                if j % config['validation_interval'] == 0:
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
             result = platalea.score.score(net, data['val'].dataset)
             result['average_loss'] = average_loss

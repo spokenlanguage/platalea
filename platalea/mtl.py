@@ -124,10 +124,10 @@ def experiment(net, tasks, config):
                     t['scheduler'].step()
                     t['cost'] += Counter({'cost': loss.item(), 'N': 1})
                     t['average_loss'] = t['cost']['cost'] / t['cost']['N']
-                    if j % 100 == 0:
+                    if j % config['loss_logging_interval'] == 0:
                         logging.info("train {} {} {} {}".format(
                             t['name'], epoch, j, t['average_loss']))
-                    if j % 400 == 0:
+                    if j % config['validation_interval'] == 0:
                         logging.info("valid {} {} {} {}".format(
                             t['name'], epoch, j,
                             val_loss(t['net'], t['data'])))

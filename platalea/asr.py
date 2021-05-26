@@ -115,10 +115,10 @@ def experiment(net, data, config, slt=False):
                 average_loss = cost['cost'] / cost['N']
                 if 'opt' not in config.keys() or config['opt'] == 'adam':
                     scheduler.step()
-                if j % 100 == 0:
+                if j % config['loss_logging_interval'] == 0:
                     logging.info("train {} {} {}".format(
                         epoch, j, average_loss))
-                if j % 400 == 0:
+                if j % config['validation_interval'] == 0:
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
             with torch.no_grad():
                 net.eval()
