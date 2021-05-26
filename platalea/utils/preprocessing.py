@@ -52,7 +52,12 @@ def extract_howto100m_audio_features(dataset_path, audio_subdir, feat_config):
     paths = [audio_dir_path / fn for fn in file_names]
     features = audio_features(paths, feat_config)
     output_path = dataset_path / 'mfcc_features.memmap'
-    save_audio_features_to_memmap(features, output_path)
+    starts, ends = save_audio_features_to_memmap(features, output_path)
+
+    ids = [file_name.split('.')[0] for file_name in file_names]
+    id_map = {id: {'audio_start': start, 'audio_end': end}
+              for id, start, end in zip(ids, starts, ends)}
+    json.dump(id_map, open(dataset_path / 'id_map.json', 'w'))
 
 
 def preprocess_flickr8k(dataset_path, audio_subdir, image_subdir):
@@ -117,20 +122,19 @@ def librispeech_audio_features(dataset_path, feat_config):
         json.dump(metadata, f)
 
 
-def save_audio_features_to_memmap(data, fname):
+def save_audio_features_to_memmap(data, file_name):
     num_lines = np.sum([d.shape[0] for d in data])
-    fp = np.memmap(fname, dtype='float64', mode='w+', shape=(num_lines, 39))
+    map = np.memmap(file_name, dtype='float64', mode='w+', shape=(num_lines, 39))
     start = 0
-    end = None
-    S = []
-    E = []
+    start_indices = []
+    end_indices = []
     for d in data:
         end = start + d.shape[0]
-        fp[start:end, :] = d
-        S.append(start)
-        E.append(end)
+        map[start:end, :] = d
+        start_indices.append(start)
+        end_indices.append(end)
         start = end
-    return S, E
+    return start_indices, end_indices
 
 
 def librispeech_load_trn(path):
