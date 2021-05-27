@@ -38,6 +38,11 @@ class Howto100mProcessingCase(TestCase):
         features_file_path = self.test_dataset_path / 'mfcc_features.memmap'
         assert features_file_path.exists()
 
+    def test_id_map_created(self):
+        preprocess_howto100m(self.test_dataset_path, self.audio_subdir, self.video_subdir)
+        id_map_file_path = self.test_dataset_path / 'id_map.json'
+        assert id_map_file_path.exists()
+
     def setUp(self):
         shutil.copytree(self._dataset_path, self.test_dataset_path)
 
