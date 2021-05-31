@@ -163,7 +163,7 @@ class SpeechEncoderTransformer(nn.Module):
         self.Conv = nn.Conv1d(**conv)
 
         trafo = config['trafo']
-        num_layers = trafo.pop('num_encoder_layers', 6)
+        num_layers = trafo.pop('num_encoder_layers')
 
         def default_transformer_layer(**config):
             return nn.TransformerEncoder(nn.TransformerEncoderLayer(**config), num_layers)
@@ -189,11 +189,15 @@ class SpeechEncoderTransformer(nn.Module):
         # update the lengths to compensate for the convolution subsampling
         lengths = inout(self.Conv, lengths)
 
-        # source sequence dimension must be first (but is last in input),
-        # batch dimension in the middle (was first in input), feature dimension last
-        x = x.permute(2, 0, 1)
+        # # source sequence dimension must be first (but is last in input),
+        # # batch dimension in the middle (was first in input), feature dimension last
+        # x = x.permute(2, 0, 1)
+        x = x.permute(0, 2, 1)
 
         x = self.scale_conv_to_trafo(x)
+
+        x = x.permute(1, 0, 2)
+
         mask = generate_padding_mask(x.size()[1], lengths).to(platalea.hardware.device())
         x = torch.utils.checkpoint.checkpoint(lambda a, b: self.Transformer(a, src_key_padding_mask=b),
                                               x, mask)
@@ -427,7 +431,6 @@ class SpeechEncoderMiddle(nn.Module):
         # Expecting packed sequence
         if self.RNN is not None:
             x, _ = self.RNN(x)
-        #x, _ = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
         return x
 
     def introspect(self, input, length):
@@ -522,7 +525,8 @@ class SpeechEncoderVQ(nn.Module):
     def __init__(self, config):
         super(SpeechEncoderVQ, self).__init__()
         self.Bottom = SpeechEncoderBottom(config['SpeechEncoderBottom'])
-        self.Codebook = VQEmbeddingEMA(config['VQEmbedding']['num_codebook_embeddings'], config['VQEmbedding']['embedding_dim'], jitter=config['VQEmbedding']['jitter'])
+        self.Codebook = VQEmbeddingEMA(config['VQEmbedding']['num_codebook_embeddings'],
+                                       config['VQEmbedding']['embedding_dim'], jitter=config['VQEmbedding']['jitter'])
         self.Top = SpeechEncoderTop(config['SpeechEncoderTop'])
 
     def forward(self, input, length):
@@ -545,13 +549,14 @@ class SpeechEncoderVQ2(nn.Module):
     def __init__(self, config):
         super(SpeechEncoderVQ2, self).__init__()
         self.Bottom = SpeechEncoderBottom(config['SpeechEncoderBottom'])
-        self.Codebook1 = VQEmbeddingEMA(config['VQEmbedding1']['num_codebook_embeddings'], config['VQEmbedding1']['embedding_dim'], jitter=config['VQEmbedding1']['jitter'])
+        self.Codebook1 = VQEmbeddingEMA(config['VQEmbedding1']['num_codebook_embeddings'],
+                                        config['VQEmbedding1']['embedding_dim'], jitter=config['VQEmbedding1']['jitter'])
         self.Middle = SpeechEncoderMiddle(config['SpeechEncoderMiddle'])
-        self.Codebook2 = VQEmbeddingEMA(config['VQEmbedding2']['num_codebook_embeddings'], config['VQEmbedding2']['embedding_dim'], jitter=config['VQEmbedding2']['jitter'])
+        self.Codebook2 = VQEmbeddingEMA(config['VQEmbedding2']['num_codebook_embeddings'],
+                                        config['VQEmbedding2']['embedding_dim'], jitter=config['VQEmbedding2']['jitter'])
         self.Top = SpeechEncoderTop(config['SpeechEncoderTop'])
 
     def forward(self, input, length):
-        #return self.Top(self.Codebook(self.Bottom(input, length))['quantized'])
         return self.Top(self.Codebook2(self.Middle(self.Codebook1(self.Bottom(input, length))['quantized']))['quantized'])
 
     def introspect(self, input, length):
@@ -575,7 +580,7 @@ class SpeechEncoderVQ2(nn.Module):
         return result
 
 
-def inout(layer, L):
+def inout(layer, input_length):
     """Mapping from size of input to the size of the output of a 1D
     convolutional layer.
     https://pytorch.org/docs/stable/nn.html#torch.nn.Conv1d
@@ -597,9 +602,10 @@ def inout(layer, L):
     ksize = fn(layer.kernel_size)
     stride = fn(layer.stride)
     dilation = fn(layer.dilation)
-    L = ((L.float() + 2 * pad - dilation * (ksize - 1) - 1) / stride + 1)
+    input_length = ((input_length.float() + 2 * pad - dilation * (ksize - 1) - 1) / stride + 1)
     if maxpool and layer.ceil_mode:
-        L = L.ceil()
+        input_length = input_length.ceil()
     else:
-        L = L.floor()
-    return L.long()
+        input_length = input_length.floor()
+    output_length = input_length.long().clamp(min=0)
+    return output_length

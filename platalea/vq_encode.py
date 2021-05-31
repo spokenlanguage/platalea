@@ -1,22 +1,23 @@
 import glob
-from platalea.utils.preprocessing import _audio_feat_config, audio_features
+from platalea.utils.preprocessing import audio_features
 from zerospeech2020.evaluation import evaluation_2019
 import logging
 import os
 import os.path
 import numpy as np
 import torch
-from pathlib import Path
+
+config = dict(type='mfcc', delta=True, alpha=0.97, n_filters=40,  window_size=0.025, frame_shift=0.010)
 
 
 def encode(net, datadir, outdir):
-    paths = glob.glob(datadir +  "/*.wav")
+    paths = glob.glob(datadir + "/*.wav")
     assert len(paths) > 0
     try:
         feat = torch.load(datadir + "_audiofeat.pt")
     except FileNotFoundError:
         logging.info("Preprocessing data")
-        feat = audio_features(paths, _audio_feat_config)
+        feat = audio_features(paths, config)
         logging.info("Saving preprocessed data")
         torch.save(feat, str(datadir) + "_audiofeat.pt")
     logging.info("Computing codes")
@@ -27,8 +28,10 @@ def encode(net, datadir, outdir):
         assert code.shape[0] > 0
         np.savetxt(out, code.astype(int), fmt='%d')
 
+
 def encode_zerospeech(net, outdir='.'):
     encode(net, "/roaming/gchrupal/verdigris/platalea.vq/data/2020/2019/english/test/")
+
 
 def evaluate_zerospeech(net, outdir='.'):
     encode_zerospeech(net, outdir=outdir)

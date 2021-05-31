@@ -4,7 +4,6 @@ import logging
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 
 import platalea.schedulers
 import platalea.dataset as D
@@ -12,6 +11,8 @@ from platalea.encoders import TextEncoder, ImageEncoder
 import platalea.loss
 import platalea.score
 import platalea.hardware
+from platalea.optimizers import create_optimizer
+from platalea.schedulers import create_scheduler
 
 
 class TextImage(nn.Module):
@@ -75,14 +76,15 @@ def experiment(net, data, config):
 
     net.to(_device)
     net.train()
-    optimizer = optim.Adam(net.parameters(), lr=1)
-    scheduler = platalea.schedulers.cyclic(optimizer, len(data['train']),
-                                           max_lr=config['max_lr'], min_lr=config['min_lr'])
-    optimizer.zero_grad()
+    net_parameters = net.parameters()
+    optimizer = create_optimizer(config, net_parameters)
+    scheduler = create_scheduler(config, optimizer, data)
 
+    results = []
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
+            average_loss = None
             for j, item in enumerate(data['train'], start=1):
                 item = {key: value.to(_device) for key, value in item.items()}
                 loss = net.cost(item)
@@ -91,17 +93,21 @@ def experiment(net, data, config):
                 optimizer.step()
                 scheduler.step()
                 cost += Counter({'cost': loss.item(), 'N': 1})
-                if j % 100 == 0:
+                average_loss = cost['cost'] / cost['N']
+                if j % config['loss_logging_interval'] == 0:
                     logging.info("train {} {} {}".format(
-                        epoch, j, cost['cost']/cost['N']))
-                if j % 400 == 0:
+                        epoch, j, average_loss))
+                if j % config['validation_interval'] == 0:
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
             result = platalea.score.score_text_image(net, data['val'].dataset)
+            result['average_loss'] = average_loss
             result['epoch'] = epoch
+            results.append(result)
             json.dump(result, out)
             print('', file=out, flush=True)
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
+    return results
 
 
 def get_default_config(hidden_size_factor=1024):

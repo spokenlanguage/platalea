@@ -4,9 +4,7 @@ import json
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import wandb  # cloud logging
-
 
 from platalea.encoders import SpeechEncoder, ImageEncoder
 import platalea.loss
@@ -14,6 +12,8 @@ import platalea.dataset as D
 import platalea.score
 import platalea.hardware
 import platalea.schedulers
+from platalea.optimizers import create_optimizer
+from platalea.schedulers import create_scheduler
 
 
 class SpeechImage(nn.Module):
@@ -93,15 +93,17 @@ def experiment(net, data, config,
     net.to(_device)
     net.train()
     net_parameters = net.parameters()
-    optimizer = create_optimizer(net_parameters, config['l2_regularization'])
+    optimizer = create_optimizer(config, net_parameters)
     scheduler = create_scheduler(config, optimizer, data)
 
     debug_logging_active = logging.getLogger().isEnabledFor(logging.DEBUG)
 
+    loss_value = None
+    results = []
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
-            for j, item in enumerate(data['train'], start=1): # check reshuffling
+            for j, item in enumerate(data['train'], start=1):  # check reshuffling
                 wandb_step_output = {
                     "epoch": epoch,
                 }
@@ -114,81 +116,42 @@ def experiment(net, data, config,
                 scheduler.step()
                 loss_value = loss.item()
                 cost += Counter({'cost': loss_value, 'N': 1})
+                average_loss = cost['cost'] / cost['N']
 
                 # logging
                 wandb_step_output["step loss"] = loss_value
-                #wandb_step_output["last_lr"] = scheduler.get_last_lr()[0]
-                if j % 100 == 0:
-                    logging.info("train %d %d %f", epoch, j, cost['cost'] / cost['N'])
+                wandb_step_output["last_lr"] = scheduler.get_last_lr()[0]
+                if j % config['loss_logging_interval'] == 0:
+                    logging.info("train %d %d %f", epoch, j, average_loss)
                 else:
                     if debug_logging_active:
-                        logging.debug("train %d %d %f %f", epoch, j, cost['cost'] / cost['N'], loss_value)
-                if not config.get('validate_on_cpu'):
-                    if j % 400 == 0:
+                        logging.debug("train %d %d %f %f", epoch, j, average_loss, loss_value)
+                if j % config['validation_interval'] == 0:
+                    validation_loss = val_loss(net)
+                    logging.info("valid %d %d %f", epoch, j, validation_loss)
+                    wandb_step_output["validation loss"] = validation_loss
+                else:
+                    if debug_logging_active:
                         validation_loss = val_loss(net)
-                        logging.info("valid %d %d %f", epoch, j, validation_loss)
+                        logging.debug("valid %d %d %f", epoch, j, validation_loss)
                         wandb_step_output["validation loss"] = validation_loss
-                    else:
-                        if debug_logging_active:
-                            validation_loss = val_loss(net)
-                            logging.debug("valid %d %d %f", epoch, j, validation_loss)
-                            wandb_step_output["validation loss"] = validation_loss
-
                 wandb.log(wandb_step_output)
 
             logging.info("Saving model in net.{}.pt".format(epoch))
             torch.save(net, "net.{}.pt".format(epoch))
 
             logging.info("Calculating and saving epoch score results")
-            if config.get('score_on_cpu') or config.get('validate_on_cpu'):
-                score_net = torch.load("net.{}.pt".format(epoch), map_location=torch.device("cpu"))
-                if platalea.hardware._device != 'cpu':
-                    previous_device = platalea.hardware._device
-                    platalea.hardware.set_device('cpu')
-            else:
-                score_net = net
-
-            score_net.eval()
-
-            result = platalea.score.score(score_net, data['val'].dataset)
-            if config.get('validate_on_cpu'):
-                validation_loss = val_loss(score_net)
-                logging.info("valid %d %d %f", epoch, j, validation_loss)
-
-            score_net.train()
-
-            if config.get('score_on_cpu') and platalea.hardware._device == 'cpu' and previous_device != 'cpu':
-                platalea.hardware.set_device(previous_device)
-
+            net.eval()
+            result = platalea.score.score(net, data['val'].dataset)
+            net.train()
             result['epoch'] = epoch
+            result['average_loss'] = average_loss
+            results.append(result)
             json.dump(result, out)
             print('', file=out, flush=True)
-
-            if config.get('validate_on_cpu'):
-                # only add it here (for wandb), because json.dump doesn't like tensor values
-                result["validation loss"] = validation_loss
             wandb.log(result)
 
-
-def create_scheduler(config, optimizer, data):
-    configured_scheduler = config.get('lr_scheduler')
-    if configured_scheduler is None or configured_scheduler == 'cyclic':
-        scheduler = platalea.schedulers.cyclic(optimizer, len(data['train']), max_lr=config['max_lr'],
-                                               min_lr=config['min_lr'])
-    elif configured_scheduler == 'noam':
-        scheduler = platalea.schedulers.noam(optimizer, config['d_model'])
-    elif configured_scheduler == 'constant':
-        scheduler = platalea.schedulers.constant(optimizer, config['constant_lr'])
-    else:
-        raise Exception(
-            "lr_scheduler config value " + configured_scheduler + " is invalid, use cyclic or noam or constant")
-    return scheduler
-
-
-def create_optimizer(net_parameters, regularization):
-    optimizer = optim.Adam(net_parameters, lr=1, weight_decay=regularization)
-    optimizer.zero_grad()
-    return optimizer
+    return results
 
 
 DEFAULT_CONFIG = dict(SpeechEncoder=dict(conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0,

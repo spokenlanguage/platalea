@@ -5,7 +5,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 
 import platalea.schedulers
 import platalea.dataset as D
@@ -14,6 +13,8 @@ from platalea.encoders import SpeechEncoder
 import platalea.loss
 import platalea.score
 import platalea.hardware
+from platalea.optimizers import create_optimizer
+from platalea.schedulers import create_scheduler
 
 
 class SpeechTranscriber(nn.Module):
@@ -93,18 +94,11 @@ def experiment(net, data, config, slt=False):
 
     net.to(_device)
     net.train()
-    if 'lr' in config.keys():
-        lr = config['lr']
-    else:
-        lr = 1.0
-    if 'opt' in config.keys() and config['opt'] == 'adadelta':
-        optimizer = optim.Adadelta(net.parameters(), lr=lr, rho=0.95, eps=1e-8)
-    else:
-        optimizer = optim.Adam(net.parameters(), lr=lr)
-        scheduler = platalea.schedulers.cyclic(optimizer, len(data['train']),
-                                               max_lr=config['max_lr'], min_lr=config['min_lr'])
-    optimizer.zero_grad()
+    net_parameters = net.parameters()
+    optimizer = create_optimizer(config, net_parameters)
+    scheduler = create_scheduler(config, optimizer, data)
 
+    results = []
     with open("result.json", "w") as out:
         best_score = -np.inf
         for epoch in range(1, config['epochs']+1):
@@ -116,13 +110,14 @@ def experiment(net, data, config, slt=False):
                 loss.backward()
                 nn.utils.clip_grad_norm_(net.parameters(), config['max_norm'])
                 optimizer.step()
+                cost += Counter({'cost': loss.item(), 'N': 1})
+                average_loss = cost['cost'] / cost['N']
                 if 'opt' not in config.keys() or config['opt'] == 'adam':
                     scheduler.step()
-                cost += Counter({'cost': loss.item(), 'N': 1})
-                if j % 100 == 0:
+                if j % config['loss_logging_interval'] == 0:
                     logging.info("train {} {} {}".format(
-                        epoch, j, cost['cost'] / cost['N']))
-                if j % 400 == 0:
+                        epoch, j, average_loss))
+                if j % config['validation_interval'] == 0:
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
             with torch.no_grad():
                 net.eval()
@@ -131,7 +126,9 @@ def experiment(net, data, config, slt=False):
                 else:
                     result = platalea.score.score_asr(net, data['val'].dataset)
                 net.train()
+            result['average_loss'] = average_loss
             result['epoch'] = epoch
+            results.append(result)
             json.dump(result, out)
             print('', file=out, flush=True)
             if 'epsilon_decay' in config.keys():
@@ -155,6 +152,7 @@ def experiment(net, data, config, slt=False):
     if 'epsilon_decay' in config.keys():
         # Save full model for inference
         torch.save(net, 'net.best.pt')
+    return results
 
 
 def get_default_config(hidden_size_factor=1024):

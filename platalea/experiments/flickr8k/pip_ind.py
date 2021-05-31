@@ -57,7 +57,11 @@ else:
     config = M1.get_default_config(hidden_size_factor=args.hidden_size_factor)
     net = M1.SpeechTranscriber(config)
     run_config = dict(max_norm=2.0, max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs,
-                      l2_regularization=args.l2_regularization,)
+                      l2_regularization=args.l2_regularization,
+                      loss_logging_interval=args.loss_logging_interval,
+                      validation_interval=args.validation_interval,
+                      opt=args.optimizer
+                      )
     logging.info('Training ASR/SLT')
     if data['train'].dataset.is_slt():
         M1.experiment(net, data, run_config, slt=True)
@@ -78,7 +82,12 @@ if args.text_image_model_dir:
 else:
     logging.info('Building model text-image')
     net = M2.TextImage(M2.get_default_config(hidden_size_factor=args.hidden_size_factor))
-    run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs)
+    run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs,
+                      l2_regularization=args.l2_regularization,
+                      loss_logging_interval=args.loss_logging_interval,
+                      validation_interval=args.validation_interval,
+                      opt=args.optimizer
+                      )
     logging.info('Training text-image')
     M2.experiment(net, data, run_config)
     copyfile('result.json', 'result_text_image.json')

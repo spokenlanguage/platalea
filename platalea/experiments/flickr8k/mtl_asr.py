@@ -76,7 +76,11 @@ config = dict(
 logging.info('Building model')
 net = M.MTLNetASR(config)
 run_config = dict(max_norm=2.0, max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs,
-                  l2_regularization=args.l2_regularization,)
+                  l2_regularization=args.l2_regularization,
+                  loss_logging_interval=args.loss_logging_interval,
+                  validation_interval=args.validation_interval,
+                  opt=args.optimizer
+                  )
 
 if data['train'].dataset.is_slt():
     scorer = score_slt
@@ -86,4 +90,4 @@ tasks = [dict(name='SI', net=net.SpeechImage, data=data, eval=score),
          dict(name='ASR', net=net.SpeechTranscriber, data=data, eval=scorer)]
 
 logging.info('Training')
-M.experiment(net, tasks, run_config)
+result = M.experiment(net, tasks, run_config)

@@ -33,7 +33,11 @@ data = dict(
 logging.info('Building model')
 net = M.TextImage(M.get_default_config())
 run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min, epochs=args.epochs,
-                  l2_regularization=args.l2_regularization,)
+                  l2_regularization=args.l2_regularization,
+                  loss_logging_interval=args.loss_logging_interval,
+                  validation_interval=args.validation_interval,
+                  opt=args.optimizer
+                  )
 
 logging.info('Training')
-M.experiment(net, data, run_config)
+result = M.experiment(net, data, run_config)

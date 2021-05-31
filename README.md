@@ -2,15 +2,29 @@
 Understanding visually grounded spoken language via multi-tasking
 
 [![DOI](https://zenodo.org/badge/239750248.svg)](https://zenodo.org/badge/latestdoi/239750248)
-![install and run tests](https://github.com/egpbos/platalea/workflows/install%20and%20run%20tests/badge.svg?branch=master)
+[![install and run tests](https://github.com/egpbos/platalea/workflows/install%20and%20run%20tests/badge.svg?branch=master)](https://github.com/spokenlanguage/platalea/actions/workflows/pythonapp.yml)
 [![codecov](https://codecov.io/gh/spokenlanguage/platalea/branch/master/graph/badge.svg)](https://codecov.io/gh/spokenlanguage/platalea)
 
 ## Installation
+
+Clone this repo and cd into it:
+
+```sh
+git clone https://github.com/spokenlanguage/platalea.git
+cd platalea
+```
+
+To install in a conda environment, assuming conda has already been installed, run the following to download and install dependencies:
 
 ```sh
 conda create -n platalea python==3.8 pytorch -c conda-forge -c pytorch
 conda activate platalea
 pip install torchvision
+```
+
+Then install platalea with:
+
+```sh
 pip install .
 ```
 
@@ -91,6 +105,14 @@ After the model is trained, results are available in `results.json`.
 Some experiments support the use of wandb for cloud logging of results.
 In the examples we provide under `platalea/experiments`, this option is disabled by default.
 To enable it, the call to `experiment()` should be changed from `experiment(..., wandb_mode='disabled')` to experiment(..., wandb_mode='online'). To default back to wandb normal behavior (where the mode can be set through command line or environment variable), use `wandb_mode=None` (or ignore the parameter).
+
+## Contributing
+
+If you want to contribute to the development of platalea, have a look at the [contribution guidelines](CONTRIBUTING.md).
+
+## Changelog
+
+We keep track of what is added, changed and removed in releases in the [changelog](CHANGELOG.md).
 
 ## References
 
