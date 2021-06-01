@@ -142,6 +142,8 @@ def spokencoco_generate_metadata(dataset_path, audio_subdir, debug=False):
                     'uttid': c['uttid'],
                     'wav': c['wav']}
     metadata = json.load(open(dataset_path / 'dataset_coco.json'))
+    images = metadata['images']
+    images_new = []
     for item in metadata['images']:
         if debug and item['filename'] not in meta_spokencoco:
             continue
@@ -151,6 +153,8 @@ def spokencoco_generate_metadata(dataset_path, audio_subdir, debug=False):
         item['split_spokencoco'] = ms['split_spokencoco']
         for sid, sent in zip(item['sentids'], item['sentences']):
             sent.update(ms['captions'][sid])
+        images_new.append(item)
+    metadata['images'] = images_new
 
     output_fname = 'dataset_debug.json' if debug else 'dataset.json'
     json.dump(metadata, open(dataset_path / output_fname, 'w'))

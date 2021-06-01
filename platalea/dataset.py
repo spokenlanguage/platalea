@@ -52,9 +52,6 @@ class Flickr8KData(torch.utils.data.Dataset):
             self.text_key = 'raw_jp'
         else:
             raise ValueError('Language {} not supported.'.format(language))
-        self.root = root
-        self.split = split
-        self.language = language
         root_path = pathlib.Path(root)
         # Loading label encoder
         module_path = pathlib.Path(__file__).parent
@@ -218,18 +215,44 @@ class SpokenCOCOData(torch.utils.data.Dataset):
         init_vocabulary(transcriptions)
 
     def __init__(self, root, feature_fname, meta_fname, split='train',
+                 split_scheme='karpathy++',
                  downsampling_factor=None, debug=False):
+        """__init__.
+
+        Parameters
+        ----------
+        root :
+            Root folder where the corpus is stored
+        feature_fname :
+            Name of the file where the audio features are stored
+        meta_fname :
+            Name of the file containing the metadata
+        split : 'train', 'val' or 'test'.
+            Subset of data to use. Only the first two values are valid with the
+            'spokencoco' split scheme.
+        split_scheme : 'karpathy', 'karpathy++', 'spokencoco.
+            - 'karpathy' refers to the split defined in "Karpathy, A., & Fei-Fei, L. (2015). Deep Visual-Semantic
+            Alignments for Generating Image Descriptions. Proceedings of the IEEE Conference on Computer Vision
+            and Pattern Recognition, 3128–3137."
+            - 'karpathy++' uses the same validation and test sets as 'karpathy'
+            and the rest of the data ('train' and 'restval') as training set.
+            - 'spokencoco' refers to SpokenCOCO original split of the data.
+        downsampling_factor : float
+            Multiply the amount of data used by this factor.
+        debug :
+            Activates debug mode.
+        """
 
         if feature_fname.endswith('.pt'):
-            raise ValueError("Training on SpokenCOCO is not possible with .pt files. Please provide --audio_features_fn "
-                             "that points to .memmap files.")
+            raise ValueError("Training on SpokenCOCO is not possible with .pt files."
+                             "Please provide --audio_features_fn that points to .memmap files.")
 
         self.root = root
         self.split = split
+        self.split_scheme = split_scheme
+        self.init_valid_subsets()
         self.feature_fname = feature_fname
         self.language = 'en'
-        self.root = root
-        self.split = split
         root_path = pathlib.Path(root)
         # Loading label encoder
         module_path = pathlib.Path(__file__).parent
@@ -237,32 +260,33 @@ class SpokenCOCOData(torch.utils.data.Dataset):
             global tokenizer
             tokenizer = pickle.load(f)[self.language]
 
-        if split != "train":
-            if split == "val":
-                meta_fname = meta_fname.replace('train', 'val')
-            else:
-                raise ValueError("Split == %s not defined for SpokenCOCO" % split)
-
-        # Loading metadata
-        with open(root_path / meta_fname) as fmeta:
-            metadata = json.load(fmeta)['data']
+        if split not in ['train', 'val', 'test']:
+            raise ValueError(f'Split == {split} not defined for SpokenCOCO.')
+        elif split == 'test' and split_scheme == 'spokencoco':
+            raise ValueError(f'Test set not defined for SpokenCOCO original split.')
 
         image_feature_fname = 'resnet_features.memmap'
         if debug:
             image_feature_fname = image_feature_fname.replace('.memmap', '_debug.memmap')
             feature_fname = feature_fname.replace('.memmap', '_debug.memmap')
-            metadata = metadata[0:NB_DEBUG]
+            meta_fname = meta_fname.replace('.json', '_debug.json')
+
+        # Loading metadata
+        with open(root_path / meta_fname) as fmeta:
+            metadata = json.load(fmeta)['images']
 
         # Loading mapping from image id to list of caption id
         self.image_captions = {}
         # And creating image, caption pairs
         self.split_data = []
         for sample in metadata:
-            img_id = sample['image']
+            if sample[self.split_field] not in self.valid_subsets:
+                continue
+            img_id = f"{sample['filepath']}/{sample['filename']}"
             caption_list = []
-            for caption in sample['captions']:
+            for caption in sample['sentences']:
                 caption_list.append((caption['uttid'], caption['wav']))
-                self.split_data.append((img_id, caption['wav'], caption['text']))
+                self.split_data.append((img_id, caption['wav'], caption['raw']))
             self.image_captions[img_id] = caption_list
 
         # Downsampling
@@ -358,6 +382,15 @@ class SpokenCOCOData(torch.utils.data.Dataset):
 
         return dict(image=image, audio=audio, text=text, correct=correct)
 
+    def init_valid_subsets(self):
+        self.valid_subsets = [self.split]
+        self.split_field = f'split_{self.split_scheme}'
+        if self.split_scheme == 'karpathy++':
+            self.split_field = 'split_karpathy'
+            if self.split == 'train':
+                self.valid_subsets.append('restval')
+
+
 def batch_audio(audios, max_frames=2048):
     """Merge audio captions. Truncate to max_frames. Pad with 0s."""
     mfcc_lengths = [len(cap[:max_frames, :]) for cap in audios]
@@ -439,7 +472,8 @@ def librispeech_loader(root, meta_fname, feature_fname,
 
 
 def spokencoco_loader(root, meta_fname, feature_fname,
-                      split='train', batch_size=32, shuffle=False,
+                      split='train', split_scheme='karpathy++',
+                      batch_size=32, shuffle=False,
                       max_frames=2048,
                       downsampling_factor=None,
                       debug=False):

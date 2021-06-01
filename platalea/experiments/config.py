@@ -155,7 +155,7 @@ def get_argument_parser():
         help='location of the spokencoco dataset')
     args.add_argument(
         '--spokencoco_meta', env_var='SPOKENCOCO_METADATA_JSON',
-        default='SpokenCOCO/SpokenCOCO_train.json',
+        default='dataset.json',
         help='filename of the metadata file (dataset.json or similar) relative to \
             the dataset location')
     args.add_argument(
@@ -163,6 +163,16 @@ def get_argument_parser():
         default='SpokenCOCO',
         help='directory containing the SpokenCOCO wav files, relative to the \
             dataset location')
+    args.add_argument(
+        '--spokencoco_split_scheme', env_var='SPOKENCOCO_SPLIT_SCHEME',
+        default='karpathy++', choices=['karpathy', 'karpathy++', 'spokencoco'],
+        help='Split definition to use with SpokenCOCO dataset.'
+             "'karpathy' refers to the split defined in \"Karpathy, A., & Fei-Fei, L. (2015). Deep Visual-Semantic"
+             "Alignments for Generating Image Descriptions. Proceedings of the IEEE Conference on Computer Vision"
+             "and Pattern Recognition, 3128–3137\"."
+             "'karpathy++' uses the same validation and test sets as 'karpathy'"
+             "and the rest of the data ('train' and 'restval') as training set."
+             "'spokencoco' refers to SpokenCOCO original split of the data.")
     args.add_argument(
         '--debug', action='store_true',
         help='If activated, will only consider 100 images.')
