@@ -32,6 +32,7 @@ def preprocess_spokencoco(dataset_path, audio_subdir,
                           debug=False):
     spokencoco_audio_features(pathlib.Path(dataset_path), audio_subdir, audio_feat_config, debug)
     spokencoco_image_features(pathlib.Path(dataset_path), audio_subdir, images_feat_config, debug)
+    spokencoco_generate_metadata(pathlib.Path(dataset_path), audio_subdir, debug)
 
 
 def preprocess_librispeech(dataset_path, audio_feat_config, debug=False):
@@ -121,6 +122,38 @@ def spokencoco_image_features(dataset_path, audio_subdir, feat_config, debug=Fal
     memmap_mapping_fname = dataset_path / output_bn.replace('.memmap', '_memmap_mapping.json')
     with open(memmap_mapping_fname, 'w') as f:
         json.dump(memmap_mapping, f)
+
+
+def spokencoco_generate_metadata(dataset_path, audio_subdir, debug=False):
+    meta_spokencoco = {}
+    for subset in ['train', 'val']:
+        org_json_file = f'SpokenCOCO_{subset}.json'
+        data = json.load(open(dataset_path / audio_subdir / org_json_file))['data']
+        if debug:
+            data = data[:NB_DEBUG]
+        for item in data:
+            image_fname = item['image'].split('/')[-1]
+            meta_spokencoco[image_fname] = {'split_spokencoco': subset,
+                                             'captions': {}}
+            for c in item['captions']:
+                sentid = int(c['uttid'].split('_')[-1])
+                meta_spokencoco[image_fname]['captions'][sentid] = {
+                    'speaker': c['speaker'],
+                    'uttid': c['uttid'],
+                    'wav': c['wav']}
+    metadata = json.load(open(dataset_path / 'dataset_coco.json'))
+    for item in metadata['images']:
+        if debug and item['filename'] not in meta_spokencoco:
+            continue
+        ms = meta_spokencoco[item['filename']]
+        item['split_karpathy'] = item['split']
+        del item['split']
+        item['split_spokencoco'] = ms['split_spokencoco']
+        for sid, sent in zip(item['sentids'], item['sentences']):
+            sent.update(ms['captions'][sid])
+
+    output_fname = 'dataset_debug.json' if debug else 'dataset.json'
+    json.dump(metadata, open(dataset_path / output_fname, 'w'))
 
 
 def librispeech_audio_features(dataset_path, feat_config, debug):
