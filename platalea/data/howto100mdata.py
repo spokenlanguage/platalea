@@ -1,3 +1,4 @@
+import json
 import pathlib
 
 import torch
@@ -7,22 +8,22 @@ from platalea.data.transcribeddataset import TranscribedDataset
 
 
 class HowTo100MData(torch.utils.data.Dataset, TranscribedDataset):
-    def __init__(self, root, feature_fname, id_fname, split='train',
+    def __init__(self, root, feature_fname, id_map_fname, split='train',
                  downsampling_factor=None):
         self.root = root
         self.split = split
         self.feature_fname = feature_fname
         root_path = pathlib.Path(root)
 
-        id_file_path = root_path / id_fname
-        ids = _get_ids(id_file_path, downsampling_factor)
+        id_map_path = root_path / id_map_fname
+        self.memmap_indices_by_id = _get_id_map(id_map_path, split, downsampling_factor)
         raise NotImplementedError()
 
     def __getitem__(self, index):
         raise NotImplementedError()
 
     def __len__(self):
-        raise NotImplementedError()
+        return len(self.ids)
 
     def get_config(self):
         raise NotImplementedError()
@@ -31,16 +32,18 @@ class HowTo100MData(torch.utils.data.Dataset, TranscribedDataset):
         raise NotImplementedError()
 
 
-def _get_ids(id_file_path, split, downsampling_factor=None):
-    ids = _read_ids_from_file(id_file_path)
-    ids = _get_split(ids, split)
-    return _get_down_sampled_ids(ids, downsampling_factor)
+def _get_id_map(id_map_path, split, downsampling_factor=None):
+    id_map = _load_id_map(id_map_path)
+    all_ids = list(id_map.keys())
+    split_ids = _get_split(all_ids, split)
+    down_sampled_ids = _get_down_sampled_ids(split_ids, downsampling_factor)
+    return {id: id_map[id] for id in down_sampled_ids}
 
 
-def _read_ids_from_file(id_file_path):
-    with open(id_file_path) as id_file:
-        ids = id_file.readlines()
-    return ids
+def _load_id_map(id_map_path):
+    with open(id_map_path) as id_map_file:
+        id_map = json.load(id_map_file)
+    return id_map
 
 
 def _get_split(ids, split):
