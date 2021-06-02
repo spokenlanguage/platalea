@@ -82,6 +82,7 @@ class SpeechTranscriber(nn.Module):
 
 def experiment(net, data, config, slt=False):
     _device = platalea.hardware.device()
+
     def val_loss():
         with torch.no_grad():
             net.eval()
@@ -114,10 +115,10 @@ def experiment(net, data, config, slt=False):
                 average_loss = cost['cost'] / cost['N']
                 if 'opt' not in config.keys() or config['opt'] == 'adam':
                     scheduler.step()
-                if j % 100 == 0:
+                if j % config['loss_logging_interval'] == 0:
                     logging.info("train {} {} {}".format(
                         epoch, j, average_loss))
-                if j % 400 == 0:
+                if j % config['validation_interval'] == 0:
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
             with torch.no_grad():
                 net.eval()
@@ -153,6 +154,7 @@ def experiment(net, data, config, slt=False):
         # Save full model for inference
         torch.save(net, 'net.best.pt')
     return results
+
 
 def get_default_config(hidden_size_factor=1024):
     fd = D.Flickr8KData

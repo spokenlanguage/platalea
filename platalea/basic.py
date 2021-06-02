@@ -122,12 +122,12 @@ def experiment(net, data, config,
                 # logging
                 wandb_step_output["step loss"] = loss_value
                 wandb_step_output["last_lr"] = scheduler.get_last_lr()[0]
-                if j % 100 == 0:
+                if j % config['loss_logging_interval'] == 0:
                     logging.info("train %d %d %f", epoch, j, average_loss)
                 else:
                     if debug_logging_active:
                         logging.debug("train %d %d %f %f", epoch, j, average_loss, loss_value)
-                if j % 400 == 0:
+                if j % config['validation_interval'] == 0:
                     validation_loss = val_loss(net)
                     logging.info("valid %d %d %f", epoch, j, validation_loss)
                     wandb_step_output["validation loss"] = validation_loss

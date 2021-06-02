@@ -12,6 +12,7 @@ import json
 from platalea.optimizers import create_optimizer
 from platalea.schedulers import create_scheduler
 
+
 class SpeechImage(nn.Module):
     def __init__(self, config):
         super(SpeechImage, self).__init__()
@@ -27,7 +28,7 @@ class SpeechImage(nn.Module):
         speech_enc = self.SpeechEncoder(item['audio'], item['audio_len'])
         image_enc = self.ImageEncoder(item['image'])
         scores = platalea.loss.cosine_matrix(speech_enc, image_enc)
-        loss =  platalea.loss.contrastive(scores, margin=self.config['margin_size'])
+        loss = platalea.loss.contrastive(scores, margin=self.config['margin_size'])
         return loss
 
     def embed_image(self, images):
@@ -49,8 +50,8 @@ class SpeechImage(nn.Module):
             audio_e.append(self.SpeechEncoder(a.cuda(), l.cuda()).detach().cpu().numpy())
         audio_e = np.concatenate(audio_e)
         return audio_e
-    
-    def code_audio(self, audios, one_hot=False): #FIXME messed up sized ETC
+
+    def code_audio(self, audios, one_hot=False):  # FIXME messed up sized ETC
         audio = torch.utils.data.DataLoader(dataset=audios, batch_size=32,
                                             shuffle=False,
                                             collate_fn=D.batch_audio)
@@ -87,18 +88,18 @@ def experiment(net, data, config):
     with open("result.json", "w") as out:
         for epoch in range(1, config['epochs']+1):
             cost = Counter()
-            for j, item in enumerate(data['train'], start=1): # check reshuffling
+            for j, item in enumerate(data['train'], start=1):  # check reshuffling
                 item = {key: value.cuda() for key, value in item.items()}
                 loss = net.cost(item)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
                 scheduler.step()
-                cost += Counter({'cost': loss.item(), 'N':1})
+                cost += Counter({'cost': loss.item(), 'N': 1})
                 average_loss = cost['cost'] / cost['N']
-                if j % 100 == 0:
+                if j % config['loss_logging_interval'] == 0:
                     logging.info("train {} {} {}".format(epoch, j, average_loss))
-                if j % 400 == 0:
+                if j % config['validation_interval'] == 0:
                     logging.info("valid {} {} {}".format(epoch, j, val_loss()))
             result = platalea.score.score(net, data['val'].dataset)
             result['average_loss'] = average_loss
@@ -109,12 +110,14 @@ def experiment(net, data, config):
             torch.save(net, "net.{}.pt".format(epoch))
     return results
 
-DEFAULT_CONFIG = dict(SpeechEncoder=dict(SpeechEncoderBottom=dict(conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2, padding=0, bias=False),
-                                                                  rnn= dict(input_size=64, hidden_size=1024, num_layers=2,
-                                                                            bidirectional=True, dropout=0)),
+
+DEFAULT_CONFIG = dict(SpeechEncoder=dict(SpeechEncoderBottom=dict(conv=dict(in_channels=39, out_channels=64, kernel_size=6,
+                                                                            stride=2, padding=0, bias=False),
+                                                                  rnn=dict(input_size=64, hidden_size=1024, num_layers=2,
+                                                                           bidirectional=True, dropout=0)),
                                          VQEmbedding=dict(num_codebook_embeddings=256, embedding_dim=1024, jitter=0.12),
-                                         SpeechEncoderTop=dict(rnn= dict(input_size=64, hidden_size=1024, num_layers=2,
-                                                                         bidirectional=True, dropout=0),
-                                                               att= dict(in_size=2048, hidden_size=128))),
+                                         SpeechEncoderTop=dict(rnn=dict(input_size=64, hidden_size=1024, num_layers=2,
+                                                                        bidirectional=True, dropout=0),
+                                                               att=dict(in_size=2048, hidden_size=128))),
                       ImageEncoder=dict(linear=dict(in_size=2048, out_size=2*1024), norm=True),
                       margin_size=0.2)

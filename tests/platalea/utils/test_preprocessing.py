@@ -54,7 +54,8 @@ def assert_has_at_least_same_unchanged_content(source_dir, target_dir):
     """Returns True if all files in the source dir are present and unchanged in the target dir.
 
     Returns false otherwise.
-    NB, files in the target dir that are not in the source dir, are ignored."""
+    NB, files in the target dir that are not in the source dir, are ignored.
+    """
     for entry in os.listdir(source_dir):
         current_source_path = source_dir / entry
         current_target_path = target_dir / entry

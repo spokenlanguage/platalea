@@ -16,6 +16,8 @@ from platalea.experiments.config import get_argument_parser
 
 
 args = get_argument_parser()
+
+
 def get_score_fn_speech_transcriber(is_slt, use_beam_decoding):
     if is_slt:
         score_fn = platalea.score.score_slt
