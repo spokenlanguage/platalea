@@ -1,5 +1,5 @@
 import logging
-PHONEMES="""arpabet	ipa	class
+PHONEMES = """arpabet	ipa	class
 aa	ɑ	vowel
 ae	æ	vowel
 ah	ə	vowel
@@ -40,15 +40,18 @@ y	j	approximant
 z	z	fricative
 zh	ʒ	fricative"""
 
+
 def parseipa():
-    mapping =  {}
+    mapping = {}
     lines = PHONEMES.split("\n")
     for line in lines[1:]:
         arpa, ipa, _ = line.split()
         mapping[arpa] = ipa
     return mapping
 
+
 _arpa2ipa = parseipa()
+
 
 def arpa2ipa(arpa, default=None):
     try:
@@ -56,5 +59,3 @@ def arpa2ipa(arpa, default=None):
     except KeyError:
         logging.warning("Key not found: {}".format(arpa))
         return default
-    
-

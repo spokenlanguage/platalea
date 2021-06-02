@@ -431,7 +431,6 @@ class SpeechEncoderMiddle(nn.Module):
         # Expecting packed sequence
         if self.RNN is not None:
             x, _ = self.RNN(x)
-        #x, _ = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
         return x
 
     def introspect(self, input, length):
@@ -526,7 +525,8 @@ class SpeechEncoderVQ(nn.Module):
     def __init__(self, config):
         super(SpeechEncoderVQ, self).__init__()
         self.Bottom = SpeechEncoderBottom(config['SpeechEncoderBottom'])
-        self.Codebook = VQEmbeddingEMA(config['VQEmbedding']['num_codebook_embeddings'], config['VQEmbedding']['embedding_dim'], jitter=config['VQEmbedding']['jitter'])
+        self.Codebook = VQEmbeddingEMA(config['VQEmbedding']['num_codebook_embeddings'],
+                                       config['VQEmbedding']['embedding_dim'], jitter=config['VQEmbedding']['jitter'])
         self.Top = SpeechEncoderTop(config['SpeechEncoderTop'])
 
     def forward(self, input, length):
@@ -549,13 +549,14 @@ class SpeechEncoderVQ2(nn.Module):
     def __init__(self, config):
         super(SpeechEncoderVQ2, self).__init__()
         self.Bottom = SpeechEncoderBottom(config['SpeechEncoderBottom'])
-        self.Codebook1 = VQEmbeddingEMA(config['VQEmbedding1']['num_codebook_embeddings'], config['VQEmbedding1']['embedding_dim'], jitter=config['VQEmbedding1']['jitter'])
+        self.Codebook1 = VQEmbeddingEMA(config['VQEmbedding1']['num_codebook_embeddings'],
+                                        config['VQEmbedding1']['embedding_dim'], jitter=config['VQEmbedding1']['jitter'])
         self.Middle = SpeechEncoderMiddle(config['SpeechEncoderMiddle'])
-        self.Codebook2 = VQEmbeddingEMA(config['VQEmbedding2']['num_codebook_embeddings'], config['VQEmbedding2']['embedding_dim'], jitter=config['VQEmbedding2']['jitter'])
+        self.Codebook2 = VQEmbeddingEMA(config['VQEmbedding2']['num_codebook_embeddings'],
+                                        config['VQEmbedding2']['embedding_dim'], jitter=config['VQEmbedding2']['jitter'])
         self.Top = SpeechEncoderTop(config['SpeechEncoderTop'])
 
     def forward(self, input, length):
-        #return self.Top(self.Codebook(self.Bottom(input, length))['quantized'])
         return self.Top(self.Codebook2(self.Middle(self.Codebook1(self.Bottom(input, length))['quantized']))['quantized'])
 
     def introspect(self, input, length):

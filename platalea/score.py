@@ -1,5 +1,4 @@
 import numpy as np
-import platalea.dataset as D
 import platalea.rank_eval as E
 import platalea.xer as xer
 import torch
@@ -14,7 +13,7 @@ def score(net, dataset):
     return dict(medr=np.median(result['ranks']),
                 recall={1: np.mean(result['recall'][1]),
                         5: np.mean(result['recall'][5]),
-                       10: np.mean(result['recall'][10])})
+                        10: np.mean(result['recall'][10])})
 
 
 def score_text_image(net, dataset):
@@ -26,7 +25,7 @@ def score_text_image(net, dataset):
     return dict(medr=np.median(result['ranks']),
                 recall={1: np.mean(result['recall'][1]),
                         5: np.mean(result['recall'][5]),
-                       10: np.mean(result['recall'][10])})
+                        10: np.mean(result['recall'][10])})
 
 
 def score_speech_text(net, dataset):
@@ -38,7 +37,7 @@ def score_speech_text(net, dataset):
     return dict(medr=np.median(result['ranks']),
                 recall={1: np.mean(result['recall'][1]),
                         5: np.mean(result['recall'][5]),
-                       10: np.mean(result['recall'][10])})
+                        10: np.mean(result['recall'][10])})
 
 
 def score_asr(net, dataset, beam_size=None):
@@ -56,6 +55,7 @@ def bleu_score(references, hypotheses):
     for i in range(len(references)):
         bleu[i] = sentence_bleu([references[i]], hypotheses[i])
     return bleu.mean()
+
 
 def score_slt(net, dataset, beam_size=None):
     data = dataset.evaluation()
