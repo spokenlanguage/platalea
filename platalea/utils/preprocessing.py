@@ -124,13 +124,13 @@ def librispeech_audio_features(dataset_path, feat_config):
 
 def save_audio_features_to_memmap(data, file_name):
     num_lines = np.sum([d.shape[0] for d in data])
-    map = np.memmap(file_name, dtype='float64', mode='w+', shape=(num_lines, 39))
+    memmap = np.memmap(file_name, dtype='float64', mode='w+', shape=(num_lines, 39))
     start = 0
     start_indices = []
     end_indices = []
     for d in data:
         end = start + d.shape[0]
-        map[start:end, :] = d
+        memmap[start:end, :] = d
         start_indices.append(start)
         end_indices.append(end)
         start = end
