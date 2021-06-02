@@ -1,6 +1,3 @@
-
-
-
 def nbeditops(s1, s2):
     import Levenshtein as L
     d = 0

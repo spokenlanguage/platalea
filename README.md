@@ -2,15 +2,29 @@
 Understanding visually grounded spoken language via multi-tasking
 
 [![DOI](https://zenodo.org/badge/239750248.svg)](https://zenodo.org/badge/latestdoi/239750248)
-![install and run tests](https://github.com/egpbos/platalea/workflows/install%20and%20run%20tests/badge.svg?branch=master)
+[![install and run tests](https://github.com/egpbos/platalea/workflows/install%20and%20run%20tests/badge.svg?branch=master)](https://github.com/spokenlanguage/platalea/actions/workflows/pythonapp.yml)
 [![codecov](https://codecov.io/gh/spokenlanguage/platalea/branch/master/graph/badge.svg)](https://codecov.io/gh/spokenlanguage/platalea)
 
 ## Installation
+
+Clone this repo and cd into it:
+
+```sh
+git clone https://github.com/spokenlanguage/platalea.git
+cd platalea
+```
+
+To install in a conda environment, assuming conda has already been installed, run the following to download and install dependencies:
 
 ```sh
 conda create -n platalea python==3.8 pytorch -c conda-forge -c pytorch
 conda activate platalea
 pip install torchvision
+```
+
+Then install platalea with:
+
+```sh
 pip install .
 ```
 
@@ -92,6 +106,14 @@ Some experiments support the use of wandb for cloud logging of results.
 If you don't want to use cloud logging of learning curves using wandb, you can
 disable it by running:
 ```wandb disabled```
+
+## Contributing
+
+If you want to contribute to the development of platalea, have a look at the [contribution guidelines](CONTRIBUTING.md).
+
+## Changelog
+
+We keep track of what is added, changed and removed in releases in the [changelog](CHANGELOG.md).
 
 ## References
 

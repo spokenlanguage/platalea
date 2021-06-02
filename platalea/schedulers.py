@@ -66,7 +66,7 @@ def create_scheduler(config, optimizer, data):
 
     if configured_scheduler is None or configured_scheduler == 'cyclic':
         scheduler = cyclic(optimizer, len(data['train']), max_lr=config['max_lr'],
-                                               min_lr=config['min_lr'])
+                           min_lr=config['min_lr'])
     elif configured_scheduler == 'noam':
         scheduler = noam(optimizer, config['d_model'])
     elif configured_scheduler == 'constant':
