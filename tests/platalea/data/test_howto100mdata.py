@@ -18,6 +18,7 @@ class Howto100mProcessingCase(TestCase):
         dataset_path = Path('./testdata/howto100msample')
         id_map_path = r'C:\Users\ChristiaanMeijer\Documents\spoken-language\platalea\testdata\long_id_map.json'
         audio_features_path = r'C:\Users\ChristiaanMeijer\Documents\spoken-language\platalea\testdata\howto100msample\mfcc_features.memmap'
-        dataset = HowTo100MData(dataset_path, audio_features_path, id_map_path, split='train')
+        video_features_subdir = 's3d_features'
+        dataset = HowTo100MData(dataset_path, audio_features_path, video_features_subdir,  id_map_path, split='train')
         item = dataset[0]
         print({k: item[k].shape for k in item if item[k] is not None})

@@ -53,8 +53,12 @@ def collate_fn_speech(data, max_frames=2048):
                 text_len=char_lengths)
 
 
-def howto100m_loader(root, split='train', batch_size=32, shuffle=False):
-    return torch.utils.data.DataLoader(dataset=HowTo100MData(root, split))
+def howto100m_loader(root, video_features_subdir, id_map_fname,
+                     batch_size=32, shuffle=False, split='train'):
+    return torch.utils.data.DataLoader(dataset=HowTo100MData(root,
+                                                             video_features_subdir,
+                                                             id_map_fname,
+                                                             split))
 
 
 def flickr8k_loader(root, meta_fname, language, feature_fname,

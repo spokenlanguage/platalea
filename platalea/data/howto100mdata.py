@@ -10,30 +10,28 @@ from platalea.data.transcribeddataset import TranscribedDataset
 
 
 class HowTo100MData(torch.utils.data.Dataset, TranscribedDataset):
-    def __init__(self, root, feature_fname, id_map_fname, split='train',
+    def __init__(self, root, feature_fname, video_features_subdir, id_map_fname, split='train',
                  downsampling_factor=None):
         root_path = pathlib.Path(root)
+        self.video_features_dir_path = root_path / video_features_subdir
         id_map_path = root_path / id_map_fname
 
-        self.memmap_indices_by_id = _get_id_map(id_map_path, split, downsampling_factor)
-        print('root_path: {}, feature_fname: {}, downsampling_factor: {}'.format(root_path, feature_fname, downsampling_factor))
+        self.metadata_by_id = _get_id_map(id_map_path, split, downsampling_factor)
         self.audio = np.memmap(root_path / feature_fname, dtype='float64',
                                mode='r', shape=(len(self), 39))
 
 
     def __getitem__(self, index):
-        vid_id = list(self.memmap_indices_by_id.keys())[index]
-        audio_range = self.memmap_indices_by_id[vid_id]
-        audio = torch.from_numpy(self.audio[audio_range['audio_start']:audio_range['audio_end']])
-        # get video
-        p = r'C:\Users\ChristiaanMeijer\Documents\spoken-language\platalea\testdata\---0tKA3iYI.mp4.npy'
-
+        vid_id = list(self.metadata_by_id.keys())[index]
+        metadata = self.metadata_by_id[vid_id]
+        audio = torch.from_numpy(self.audio[metadata['audio_start']:metadata['audio_end']])
+        p = self.video_features_dir_path / metadata['video_feat_file']
         video = np.load(p)
 
         return dict(video=video, audio=audio)
 
     def __len__(self):
-        return 2 #len(self.memmap_indices_by_id)
+        return len(self.metadata_by_id)
 
     def get_config(self):
         raise NotImplementedError()
