@@ -36,17 +36,29 @@ def extract_audio_from_videos(video_dir_path, audio_dir_path):
         video.close()
 
 
-def preprocess_howto100m(dataset_path, audio_subdir, video_subdir):
+def preprocess_howto100m(dataset_path, audio_subdir, video_subdir, video_features_subdir):
     dataset_path_obj = pathlib.Path(dataset_path)
     audio_path = dataset_path_obj / audio_subdir
     video_path = dataset_path_obj / video_subdir
     if not audio_path.exists():
         extract_audio_from_videos(video_path, audio_path)
 
-    extract_howto100m_audio_features(dataset_path_obj, audio_subdir, _audio_feat_config)
+    extract_howto100m_audio_features(dataset_path_obj, audio_subdir, video_features_subdir, _audio_feat_config)
 
 
-def extract_howto100m_audio_features(dataset_path, audio_subdir, feat_config):
+def find_howto100m_video_feature_files(ids, video_features_path):
+    file_list = os.listdir(video_features_path)
+    id_to_file_map = {file_name.split('.')[0]: file_name for file_name in file_list}
+
+    missing_s3d_features = [id for id in ids if id not in id_to_file_map]
+    if missing_s3d_features:
+        raise FileNotFoundError(
+            'Failed to find s3d features for the following ids: ' + missing_s3d_features)
+
+    return [id_to_file_map[id] for id in ids]
+
+
+def extract_howto100m_audio_features(dataset_path, audio_subdir, video_features_subdir, feat_config):
     audio_dir_path = dataset_path / audio_subdir
     file_names = os.listdir(audio_dir_path)
     paths = [audio_dir_path / fn for fn in file_names]
@@ -55,8 +67,11 @@ def extract_howto100m_audio_features(dataset_path, audio_subdir, feat_config):
     starts, ends = save_audio_features_to_memmap(features, output_path)
 
     ids = [file_name.split('.')[0] for file_name in file_names]
-    id_map = {id: {'audio_start': start, 'audio_end': end}
-              for id, start, end in zip(ids, starts, ends)}
+    video_features_path = dataset_path / video_features_subdir
+    video_features_files = find_howto100m_video_feature_files(ids, video_features_path)
+
+    id_map = {id: {'audio_start': start, 'audio_end': end, 'video_feat_file': video}
+              for id, start, end, video in zip(ids, starts, ends, video_features_files)}
     json.dump(id_map, open(dataset_path / 'id_map.json', 'w'))
 
 
