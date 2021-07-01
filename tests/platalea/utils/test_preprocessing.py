@@ -12,34 +12,41 @@ class Howto100mProcessingCase(TestCase):
     test_dataset_path = Path('./testdata/temp_howto100msample')
     audio_subdir = 'audio'
     video_subdir = 'video'
+    video_features_subdir = 's3d_features'
+
+    def do_preprocess_call(self):
+        preprocess_howto100m(self.test_dataset_path,
+                             self.audio_subdir,
+                             self.video_subdir,
+                             self.video_features_subdir)
 
     def test_it_runs(self):
-        preprocess_howto100m(self.test_dataset_path, self.audio_subdir, self.video_subdir)
+        self.do_preprocess_call()
 
     def test_no_files_changed(self):
-        preprocess_howto100m(self.test_dataset_path, self.audio_subdir, self.video_subdir)
+        self.do_preprocess_call()
         assert_has_at_least_same_unchanged_content(self._dataset_path, self.test_dataset_path)
 
     def test_audio_dir_created(self):
-        preprocess_howto100m(self.test_dataset_path, self.audio_subdir, self.video_subdir)
+        self.do_preprocess_call()
 
         audio_dir = self.test_dataset_path / self.audio_subdir
         assert audio_dir.exists()
 
     def test_audio_files_created(self):
-        preprocess_howto100m(self.test_dataset_path, self.audio_subdir, self.video_subdir)
+        self.do_preprocess_call()
 
         audio_dir = self.test_dataset_path / self.audio_subdir
         video_dir = self.test_dataset_path / self.video_subdir
         assert len(os.listdir(audio_dir)) == len(os.listdir(video_dir))
 
     def test_audio_features_created(self):
-        preprocess_howto100m(self.test_dataset_path, self.audio_subdir, self.video_subdir)
+        self.do_preprocess_call()
         features_file_path = self.test_dataset_path / 'mfcc_features.memmap'
         assert features_file_path.exists()
 
     def test_id_map_created(self):
-        preprocess_howto100m(self.test_dataset_path, self.audio_subdir, self.video_subdir)
+        self.do_preprocess_call()
         id_map_file_path = self.test_dataset_path / 'id_map.json'
         assert id_map_file_path.exists()
 
