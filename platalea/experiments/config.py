@@ -73,12 +73,6 @@ def get_argument_parser():
         help='filename of the MFCC audio features file relative to the dataset \
         location')
     args.add_argument(
-        '--cpc_model_path', env_var='CPC_MODEL_PATH',
-        default=None,
-        help='path to a pretrained CPC model. If provided, will train the visually grounded model'
-             'from CPC representations instead of MFCCs. User should modify the --audio_features_fn parameter'
-             'accordingly.')
-    args.add_argument(
         '--seed', default=123, type=int, help='seed for sources of randomness')
     args.add_argument(
         '--epochs', env_var='PLATALEA_EPOCHS', action='store', default=32,
@@ -175,7 +169,7 @@ def get_argument_parser():
              "'spokencoco' refers to SpokenCOCO original split of the data.")
     args.add_argument(
         '--debug', action='store_true',
-        help='If activated, will only consider 100 images.')
+        help='If activated, will only consider 100 images (for spokencoco only).')
 
     # Librispeech specific parameters
     args.add_argument(
@@ -188,10 +182,4 @@ def get_argument_parser():
         help='filename of the metadata file (metadata.json or similar) relative to \
         the dataset location')
 
-    # CPC specific parameters
-    args.add_argument(
-        '--cpc_gru_level', type=int, default=-1,
-        help='The RNN layer that needs to be extracted. Default to -1, extracts the '
-             'last RNN layer of the aggregator network. Ex : for CPC big, 1 will extract the first layer,'
-             '2 will extract the second layer and so on.')
     return args

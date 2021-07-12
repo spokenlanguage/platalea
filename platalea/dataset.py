@@ -14,8 +14,6 @@ tokenizer = None
 SpecialTokens = namedtuple('SpecialTokens', ['eos', 'pad', 'sos', 'unk'])
 special_tokens = SpecialTokens('<eos>', '<pad>', '<sos>', '<unk>')
 
-# Number of files to keep in the debug mode
-NB_DEBUG = 50
 
 def init_vocabulary(transcriptions):
     global tokenizer
@@ -263,7 +261,7 @@ class SpokenCOCOData(torch.utils.data.Dataset):
         if split not in ['train', 'val', 'test']:
             raise ValueError(f'Split == {split} not defined for SpokenCOCO.')
         elif split == 'test' and split_scheme == 'spokencoco':
-            raise ValueError(f'Test set not defined for SpokenCOCO original split.')
+            raise ValueError('Test set not defined for SpokenCOCO original split.')
 
         image_feature_fname = 'resnet_features.memmap'
         if debug:
@@ -402,7 +400,7 @@ def batch_audio(audios, max_frames=2048):
 
 
 def batch_text(texts):
-    """Merge captions, (from tuple of 1D tensor to 2D tensor). Pad with
+    """Merge captions (from tuple of 1D tensor to 2D tensor). Pad with
     pad token."""
     char_lengths = [len(cap) for cap in texts]
     chars = torch.Tensor(len(texts), max(char_lengths)).long()

@@ -134,7 +134,7 @@ def spokencoco_generate_metadata(dataset_path, audio_subdir, debug=False):
         for item in data:
             image_fname = item['image'].split('/')[-1]
             meta_spokencoco[image_fname] = {'split_spokencoco': subset,
-                                             'captions': {}}
+                                            'captions': {}}
             for c in item['captions']:
                 sentid = int(c['uttid'].split('_')[-1])
                 meta_spokencoco[image_fname]['captions'][sentid] = {
@@ -142,7 +142,6 @@ def spokencoco_generate_metadata(dataset_path, audio_subdir, debug=False):
                     'uttid': c['uttid'],
                     'wav': c['wav']}
     metadata = json.load(open(dataset_path / 'dataset_coco.json'))
-    images = metadata['images']
     images_new = []
     for item in metadata['images']:
         if debug and item['filename'] not in meta_spokencoco:
@@ -316,8 +315,8 @@ def fix_wav(path):
 def audio_features(paths, config):
     if config['type'] == 'mfcc' or config['type'] == 'fbank':
         return acoustic_audio_features(paths, config)
-    elif config['type'] == 'cpc':
-        return cpc_audio_representations(paths, config)
+    elif config['type'] == 'pretrained':
+        return pretrained_audio_features(paths)
     else:
         raise NotImplementedError("Can't find audio feature extraction of type %s" % config['type'])
 
@@ -364,15 +363,12 @@ def acoustic_audio_features(paths, config):
     return output
 
 
-def cpc_audio_representations(paths, config):
-    from platalea.audio.cpc_features import load_feature_maker_CPC, cpc_feature_extraction
-    feature_maker_X = load_feature_maker_CPC(config['model_path'], gru_level=config['gru_level'], on_gpu=config['on_gpu'])
+def pretrained_audio_features(paths):
     output = []
     for cap in paths:
         logging.info("Processing {}".format(cap))
-        features = cpc_feature_extraction(feature_maker_X, cap)[0]
+        features = torch.load(pathlib.Path(cap).with_suffix(".pt"))
         output.append(features)
-
     return output
 
 
@@ -384,6 +380,9 @@ if __name__ == '__main__':
     args.add_argument(
         'dataset_name', help='Name of the dataset to preprocess.',
         type=str, choices=['flickr8k', 'spokencoco', 'librispeech'])
+    args.add_argument(
+        "--audio_feature_type", default='mfcc', choices=['mfcc', 'pretrained'],
+        help="Type of audio features to use.")
     args.enable_help()
     args.parse()
 
@@ -393,17 +392,13 @@ if __name__ == '__main__':
         args.image_features_fn = args.image_features_fn.replace('.pt', '.memmap')
 
     # Initializing feature extraction config
-    audio_feat_config = dict(type='mfcc', delta=True, alpha=0.97, n_filters=40,
-                             window_size=0.025, frame_shift=0.010, audio_features_fn=args.audio_features_fn)
+    if args.audio_feature_type == 'mfcc':
+        audio_feat_config = dict(type='mfcc', delta=True, alpha=0.97, n_filters=40,
+                                 window_size=0.025, frame_shift=0.010, audio_features_fn=args.audio_features_fn)
+    elif args.audio_feature_type == 'pretrained':
+        audio_feat_config = dict(type='pretrained',
+                                 audio_features_fn=args.audio_features_fn)
     images_feat_config = dict(model='resnet', image_features_fn=args.image_features_fn)
-
-    if args.cpc_model_path is not None:
-        if args.audio_features_fn.startswith('mfcc_features'):
-            args.audio_features_fn = args.audio_features_fn.replace('mfcc', 'cpc')
-        audio_feat_config = dict(type='cpc', model_path=args.cpc_model_path,
-                                 audio_features_fn=args.audio_features_fn,
-                                 strict=False, seq_norm=False, max_size_seq=10240,
-                                 gru_level=args.cpc_gru_level, on_gpu=True)
 
     if args.dataset_name == "flickr8k":
         preprocess_flickr8k(args.flickr8k_root, args.flickr8kaudio_subdir, args.flickr8k_image_subdir,
