@@ -96,7 +96,6 @@ elif args.dataset_name == "spokencoco":
 out = []
 for p in args.paths:
     out.append(p)
-    print(s)
     logging.info(f'Loading model {p}')
     net = torch.load(p)
     logging.info('Evaluating')
