@@ -45,10 +45,10 @@ class Howto100mProcessingCase(TestCase):
         features_file_path = self.test_dataset_path / 'mfcc_features.memmap'
         assert features_file_path.exists()
 
-    def test_id_map_created(self):
+    def test_index_created(self):
         self.do_preprocess_call()
-        id_map_file_path = self.test_dataset_path / 'id_map.json'
-        assert id_map_file_path.exists()
+        index_file_path = self.test_dataset_path / 'index.json'
+        assert index_file_path.exists()
 
     def setUp(self):
         shutil.copytree(self._dataset_path, self.test_dataset_path)

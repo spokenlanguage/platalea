@@ -70,9 +70,9 @@ def extract_howto100m_audio_features(dataset_path, audio_subdir, video_features_
     video_features_path = dataset_path / video_features_subdir
     video_features_files = find_howto100m_video_feature_files(ids, video_features_path)
 
-    id_map = {id: {'audio_start': start, 'audio_end': end, 'video_feat_file': video}
-              for id, start, end, video in zip(ids, starts, ends, video_features_files)}
-    json.dump(id_map, open(dataset_path / 'id_map.json', 'w'))
+    index = [{'id': id, 'audio_start': start, 'audio_end': end, 'video_feat_file': video}
+             for id, start, end, video in zip(ids, starts, ends, video_features_files)]
+    json.dump(index, open(dataset_path / 'index.json', 'w'))
 
 
 def preprocess_flickr8k(dataset_path, audio_subdir, image_subdir):
