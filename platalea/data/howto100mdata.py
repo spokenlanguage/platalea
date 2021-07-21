@@ -18,16 +18,14 @@ class HowTo100MData(torch.utils.data.Dataset, TranscribedDataset):
 
         self.metadata_by_id = _get_id_map(id_map_path, split, downsampling_factor)
         self.audio = np.memmap(root_path / feature_fname, dtype='float64',
-                               mode='r', shape=(2, 39))
+                               mode='r', shape=(len(self), 39))
 
 
     def __getitem__(self, index):
         vid_id = list(self.metadata_by_id.keys())[index]
         metadata = self.metadata_by_id[vid_id]
         audio = torch.from_numpy(self.audio[metadata['audio_start']:metadata['audio_end']])
-        p = self.video_features_dir_path / metadata['video_feat_file']
-        video = np.load(p)
-
+        video = np.load(self.video_features_dir_path / metadata['video_feat_file'])
         return dict(video=video, audio=audio)
 
     def __len__(self):
