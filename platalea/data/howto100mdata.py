@@ -18,7 +18,7 @@ class HowTo100MData(torch.utils.data.Dataset, TranscribedDataset):
 
         self.metadata_by_id = _get_id_map(id_map_path, split, downsampling_factor)
         self.audio = np.memmap(root_path / feature_fname, dtype='float64',
-                               mode='r', shape=(len(self), 39))
+                               mode='r', shape=(2, 39))
 
 
     def __getitem__(self, index):
