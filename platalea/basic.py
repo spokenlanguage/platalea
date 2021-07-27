@@ -86,8 +86,9 @@ def experiment(net, data, config,
     wandb_entity :
         Wandb entity
     wandb_mode :
-        Wandb mode. Can be "online", "offline" or "disabled". Defaults to "online".
-        Can be used to enable/disable logging with wandb.
+        Wandb mode. Can be "online", "offline" or "disabled".
+        Can be used to force a mode, overriding any value set through WANDB_MODE environment variable or `wandb` command line.
+        If set to None, default behavior applies.
     """
     def val_loss(net):
         _device = platalea.hardware.device()
