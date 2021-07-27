@@ -69,9 +69,25 @@ def experiment(net, data, config,
                wandb_project="platalea",
                wandb_entity="spokenlanguage",
                wandb_mode=None):
-    """
+    """Run a basic speech-image matching experiment.
 
-    :type wandb_log: (nested) dict with complete config to be logged by wandb
+    Parameters
+    ----------
+    net :
+        SpeechImage network.
+    data :
+        Training and validation data.
+    config :
+        Configuration of the experiment
+    wandb_log :
+        :type wandb_log: (nested) dict with complete config to be logged by wandb
+    wandb_project :
+        Wandb project
+    wandb_entity :
+        Wandb entity
+    wandb_mode :
+        Wandb mode. Can be "online", "offline" or "disabled". Defaults to "online".
+        Can be used to enable/disable logging with wandb.
     """
     def val_loss(net):
         _device = platalea.hardware.device()
