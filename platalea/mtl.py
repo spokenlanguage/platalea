@@ -33,8 +33,7 @@ class MTLNetASR(nn.Module):
             margin_size=config['margin_size']))
         self.SpeechTranscriber = SpeechTranscriber(dict(
             SpeechEncoder=SpeechEncoderSplitASR,
-            TextDecoder=config['TextDecoder'],
-            inverse_transform_fn=config['inverse_transform_fn']))
+            TextDecoder=config['TextDecoder']))
         self.lmbd = config.get('lmbd', 0.5)
 
     def cost(self, item):

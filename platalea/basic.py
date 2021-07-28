@@ -67,10 +67,28 @@ def dict_values_to_device(data, device):
 def experiment(net, data, config,
                wandb_log=None,
                wandb_project="platalea",
-               wandb_entity="spokenlanguage"):
-    """
+               wandb_entity="spokenlanguage",
+               wandb_mode=None):
+    """Run a basic speech-image matching experiment.
 
-    :type wandb_log: (nested) dict with complete config to be logged by wandb
+    Parameters
+    ----------
+    net :
+        SpeechImage network.
+    data :
+        Training and validation data.
+    config :
+        Configuration of the experiment
+    wandb_log :
+        :type wandb_log: (nested) dict with complete config to be logged by wandb
+    wandb_project :
+        Wandb project
+    wandb_entity :
+        Wandb entity
+    wandb_mode :
+        Wandb mode. Can be "online", "offline" or "disabled".
+        Can be used to force a mode, overriding any value set through WANDB_MODE environment variable or `wandb` command line.
+        If set to None, default behavior applies.
     """
     def val_loss(net):
         _device = platalea.hardware.device()
@@ -84,10 +102,8 @@ def experiment(net, data, config,
 
     if not wandb_log:
         wandb_log = config
-
-    logging.getLogger().info(
-        "Run 'wandb disabled' if you don't want to use wandb cloud logging.")
-    wandb.init(project=wandb_project, entity=wandb_entity, config=wandb_log)
+    wandb.init(project=wandb_project, entity=wandb_entity, config=wandb_log,
+               mode=wandb_mode)
     wandb.watch(net)
 
     _device = platalea.hardware.device()

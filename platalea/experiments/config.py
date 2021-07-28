@@ -5,8 +5,8 @@ from pathlib import Path
 home = Path.home()
 # Looking at the home folder, then at current folder (later ones in list override previous ones)
 default_config_files = [
-    str(home / '.platalea/config.ini'),
-    str(home / '.platalea/config.yml'),
+    str(home / '.config/platalea/config.ini'),
+    str(home / '.config/platalea/config.yml'),
     'config.ini',
     'config.yml']
 
@@ -62,6 +62,11 @@ def get_argument_parser():
         action="store_true")
     args.add_argument(
         "--silent", help="decrease output verbosity", action="store_true")
+    args.add_argument(
+        '--image_features_fn', env_var='PLATALEA_IMAGE_FEATURES_FN',
+        default='resnet_features.pt',
+        help='filename of the visual features file relative to the dataset \
+            location')
     args.add_argument(
         '--audio_features_fn', env_var='PLATALEA_AUDIO_FEATURES_FN',
         default='mfcc_features.pt',
@@ -136,6 +141,35 @@ def get_argument_parser():
     args.add_argument(
         '--flickr8k_language', env_var='FLICKR8K_LANGUAGE', default='en',
         help='language to use for the transcriptions/translations')
+
+    # SpokenCOCO specific parameters
+    args.add_argument(
+        '--spokencoco_root', env_var='SPOKENCOCO_ROOT',
+        default='/corpora/spokencoco/',
+        help='location of the spokencoco dataset')
+    args.add_argument(
+        '--spokencoco_meta', env_var='SPOKENCOCO_METADATA_JSON',
+        default='dataset.json',
+        help='filename of the metadata file (dataset.json or similar) relative to \
+            the dataset location')
+    args.add_argument(
+        '--spokencoco_audio_subdir', env_var='SPOKENCOCO_AUDIO_SUBDIR',
+        default='SpokenCOCO',
+        help='directory containing the SpokenCOCO wav files, relative to the \
+            dataset location')
+    args.add_argument(
+        '--spokencoco_split_scheme', env_var='SPOKENCOCO_SPLIT_SCHEME',
+        default='karpathy++', choices=['karpathy', 'karpathy++', 'spokencoco'],
+        help='Split definition to use with SpokenCOCO dataset.'
+             "'karpathy' refers to the split defined in \"Karpathy, A., & Fei-Fei, L. (2015). Deep Visual-Semantic"
+             "Alignments for Generating Image Descriptions. Proceedings of the IEEE Conference on Computer Vision"
+             "and Pattern Recognition, 3128–3137\"."
+             "'karpathy++' uses the same validation and test sets as 'karpathy'"
+             "and the rest of the data ('train' and 'restval') as training set."
+             "'spokencoco' refers to SpokenCOCO original split of the data.")
+    args.add_argument(
+        '--debug', action='store_true',
+        help='If activated, will only consider 100 images (for spokencoco only).')
 
     # Librispeech specific parameters
     args.add_argument(
