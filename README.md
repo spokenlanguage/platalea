@@ -104,7 +104,7 @@ After the model is trained, results are available in `results.json`.
 
 Some experiments support the use of wandb for cloud logging of results.
 In the examples we provide under `platalea/experiments`, this option is disabled by default.
-To enable it, the call to `experiment()` should be changed from `experiment(..., wandb_mode='disabled')` to experiment(..., wandb_mode='online'). To default back to wandb normal behavior (where the mode can be set through command line or environment variable), use `wandb_mode=None` (or ignore the parameter).
+To force-enable it, the call to `experiment()` should be changed from `experiment(..., wandb_mode='disabled')` to `experiment(..., wandb_mode='online')`. To default back to wandb normal behavior (where the mode can be set through command line or environment variable), use `wandb_mode=None`.
 
 ## Contributing
 
