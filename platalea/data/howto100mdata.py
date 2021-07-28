@@ -1,6 +1,7 @@
 import json
 import pathlib
 from collections import OrderedDict
+from typing import NamedTuple
 
 import numpy as np
 import torch
@@ -20,6 +21,8 @@ class HowTo100MData(torch.utils.data.Dataset, TranscribedDataset):
         self.audio = np.memmap(root_path / feature_fname, dtype='float64',
                                mode='r', shape=(len(self), 39))
 
+        self.config = dict(split=split, downsampling_factor=downsampling_factor)
+
 
     def __getitem__(self, index):
         vid_id = list(self.metadata_by_id.keys())[index]
@@ -32,10 +35,11 @@ class HowTo100MData(torch.utils.data.Dataset, TranscribedDataset):
         return len(self.metadata_by_id)
 
     def get_config(self):
-        raise NotImplementedError()
+        return self.config
 
     def evaluation(self):
-        raise NotImplementedError()
+
+        return dict(image=image, audio=audio, text=text, correct=correct)
 
 
 def _get_id_map(id_map_path, split, downsampling_factor=None):
