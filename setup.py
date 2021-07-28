@@ -12,7 +12,7 @@ setup(name='platalea',
                 'platalea.experiments.flickr8k', 'platalea.experiments.librispeech_places'],
       include_package_data=True,
       install_requires=[
-          'torch>=1.2.0',
+          'torch==1.8.1',
           'torchvision>=0.4.0',
           'numpy>=1.17.2',
           'scipy>=1.3.1',
