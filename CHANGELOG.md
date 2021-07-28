@@ -19,7 +19,7 @@ Changes related to the ZeroSpeech challenge:
  - disabled use of wandb by default in basic.py and transformer.py experiments
  - pinning down pytorch version
 
-Resolves issues #53, #103, #104 and (temporarily) solves #106.
+Resolves issues #53, #103, #104 and (temporarily) solves #116.
 
 ## [1.0] - 9 December 2020
 
