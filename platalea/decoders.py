@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from platalea.attention import BahdanauAttention
+import platalea.dataset as D
 import platalea.hardware
 
 
@@ -25,9 +26,6 @@ class TextDecoder(nn.Module):
         self.max_output_length = config['max_output_length']
         self.teacher_forcing_ratio = config.get('teacher_forcing_ratio', 1.0)
         self.use_cuda = config.get('use_cuda', True)
-        self.sos_id = config['sos_id']
-        self.eos_id = config['eos_id']
-        self.pad_id = config['pad_id']
         self.num_tokens = config['emb']['num_embeddings']
         self.rnn_layer_type = config['rnn_layer_type']
 
@@ -80,7 +78,8 @@ class TextDecoder(nn.Module):
     def decode(self, encoder_outputs, input_seq=None):
         # Prepare variables
         batch_size = encoder_outputs.shape[0]
-        input = encoder_outputs.new_full((batch_size, 1), self.sos_id,
+        input = encoder_outputs.new_full((batch_size, 1),
+                                         D.get_token_id(D.special_tokens.sos),
                                          dtype=torch.long)
         state = self.init_state(encoder_outputs)
         preds = None
@@ -103,7 +102,7 @@ class TextDecoder(nn.Module):
             attn_weights = torch.cat((attn_weights, att.detach().cpu()), 2)
             if input_seq is None:
                 # Check for ended sequences
-                no_eos = (output.argmax(dim=2) != self.eos_id)
+                no_eos = (output.argmax(dim=2) != D.get_token_id(D.special_tokens.eos))
                 not_ended = not_ended & no_eos
                 if not not_ended.any():
                     break
@@ -129,7 +128,8 @@ class TextDecoder(nn.Module):
         _device = platalea.hardware.device()
         for i_seq, eo in enumerate(encoder_outputs):
             eo = eo.unsqueeze(0)
-            input = eo.new_full((1, 1), self.sos_id, dtype=torch.long)
+            input = eo.new_full((1, 1), D.get_token_id(D.special_tokens.sos),
+                                dtype=torch.long)
             state = self.init_state(eo)
             hyps = np.empty([1, 0], dtype=int)
             scores = np.zeros(1)
@@ -170,7 +170,7 @@ class TextDecoder(nn.Module):
                         if type(self.RNN) == nn.LSTM:
                             new_cell = new_cell[:, new_order][:, :beam_size]
                 # Filter ended sequences
-                ended = (new_hyps[:, -1] == self.eos_id).nonzero()[0]
+                ended = (new_hyps[:, -1] == D.get_token_id(D.special_tokens.eos)).nonzero()[0]
                 best_ended_idx = None
                 best_ended_score = -np.inf
                 if len(ended) > 0:
