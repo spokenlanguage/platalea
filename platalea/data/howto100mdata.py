@@ -39,7 +39,7 @@ class HowTo100MData(torch.utils.data.Dataset, TranscribedDataset):
 
     def evaluation(self):
 
-        return dict(image=image, audio=audio, text=text, correct=correct)
+        return None  #dict(image=image, audio=audio, text=text, correct=None)
 
 
 def _get_id_map(id_map_path, split, downsampling_factor=None):

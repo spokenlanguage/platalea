@@ -34,8 +34,18 @@ class Howto100mProcessingCase(TestCase):
         item = dataset[0]
         print({k: item[k].shape for k in item if item[k] is not None})
 
+    # def test_evaluation_has_correct(self):
+    #     dataset = HowTo100MData(self.test_dataset_path,
+    #                             self.audio_features_file_name,
+    #                             self.video_features_subdir,
+    #                             self.id_map_file_name,
+    #                             split='train')
+    #     evaluation_data = dataset.evaluation()
+    #     assert 'correct' in evaluation_data
+
     def setUp(self):
         shutil.copytree(self._dataset_path, self.test_dataset_path)
+        # Create a test file
         np.memmap(self.test_dataset_path / self.audio_features_file_name, dtype='float64',
                   mode='w+', shape=(4422, 39))
 
