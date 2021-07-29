@@ -6,14 +6,14 @@ import random
 import torch
 import torch.utils
 
-from platalea.data.transcribeddataset import TranscribedDataset
+from platalea.dataset import init_vocabulary, caption2tensor
 
 
-class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
+class Flickr8KData(torch.utils.data.Dataset):
     @classmethod
     def init_vocabulary(cls, dataset):
         transcriptions = [sd[2] for sd in dataset.split_data]
-        TranscribedDataset.init_vocabulary(transcriptions)
+        init_vocabulary(transcriptions)
 
     def __init__(self, root, feature_fname, meta_fname, split='train', language='en',
                  downsampling_factor=None):
@@ -27,14 +27,12 @@ class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
             self.text_key = 'raw_jp'
         else:
             raise ValueError('Language {} not supported.'.format(language))
-        self.root = root
-        self.split = split
-        self.language = language
         root_path = pathlib.Path(root)
         # Loading label encoder
         module_path = pathlib.Path(__file__).parent
         with open(module_path / 'label_encoders.pkl', 'rb') as f:
-            self.__class__.le = pickle.load(f)[language]
+            global tokenizer
+            tokenizer = pickle.load(f)[language]
         # Loading metadata
         with open(root_path / meta_fname) as fmeta:
             metadata = json.load(fmeta)['images']
@@ -45,6 +43,7 @@ class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
                 audio_id, image_id, text_id = line.split()
                 text_id = int(text_id[1:])
                 self.image_captions[image_id] = self.image_captions.get(image_id, []) + [(text_id, audio_id)]
+
         # Creating image, caption pairs
         self.split_data = []
         for image in metadata:
@@ -78,7 +77,7 @@ class Flickr8KData(torch.utils.data.Dataset, TranscribedDataset):
         sd = self.split_data[index]
         image = self.image[sd[0]]
         audio = self.audio[sd[1]]
-        text = self.caption2tensor(sd[2])
+        text = caption2tensor(sd[2])
         return dict(image_id=sd[0],
                     audio_id=sd[1],
                     image=image,

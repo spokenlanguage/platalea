@@ -53,4 +53,4 @@ run_config = dict(max_lr=args.cyclic_lr_max, min_lr=args.cyclic_lr_min,
                   )
 
 logging.info('Training')
-result = M.experiment(net, data, run_config)
+result = M.experiment(net, data, run_config, wandb_mode='disabled')

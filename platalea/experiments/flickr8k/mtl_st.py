@@ -55,7 +55,7 @@ config = dict(
         linear=dict(in_size=2048, out_size=hidden_size * 2),
         norm=True),
     TextEncoder=dict(
-        emb=dict(num_embeddings=D.Flickr8KData.vocabulary_size(),
+        emb=dict(num_embeddings=len(D.tokenizer.classes_),
                  embedding_dim=128),
         rnn=dict(input_size=128, hidden_size=hidden_size, num_layers=1,
                  bidirectional=True, dropout=0),

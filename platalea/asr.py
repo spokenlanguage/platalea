@@ -30,7 +30,6 @@ class SpeechTranscriber(nn.Module):
             self.TextDecoder = config['TextDecoder']
         else:
             self.TextDecoder = TextDecoder(config['TextDecoder'])
-        self.inverse_transform_fn = config['inverse_transform_fn']
 
     def forward(self, speech, seq_len, target=None):
         out = self.SpeechEncoder(speech, seq_len)
@@ -57,9 +56,9 @@ class SpeechTranscriber(nn.Module):
     def pred2trn(self, preds):
         trn = []
         for p in preds:
-            i_eos = (p == self.TextDecoder.eos_id).nonzero()[0]
+            i_eos = (p == D.get_token_id(D.special_tokens.eos)).nonzero()[0]
             i_last = i_eos[0] if i_eos.shape[0] > 0 else p.shape[0]
-            chars = self.inverse_transform_fn(p[:i_last])
+            chars = D.tokenizer.inverse_transform(p[:i_last])
             trn.append(''.join(chars))
         return trn
 
@@ -72,7 +71,7 @@ class SpeechTranscriber(nn.Module):
         target = target.view(-1)
         pred = pred.view(-1, self.TextDecoder.num_tokens)
         # - compute and apply mask
-        mask = (target != self.TextDecoder.pad_id)
+        mask = (target != D.get_token_id(D.special_tokens.pad))
         target = target[mask]
         pred = pred[mask, :]
 
@@ -157,8 +156,8 @@ def experiment(net, data, config, slt=False):
 
 
 def get_default_config(hidden_size_factor=1024):
-    fd = D.Flickr8KData
     hidden_size = hidden_size_factor * 3 // 4
+    num_tokens = len(D.tokenizer.classes_)
     return dict(
         SpeechEncoder=dict(
             conv=dict(in_channels=39, out_channels=64, kernel_size=6, stride=2,
@@ -167,7 +166,7 @@ def get_default_config(hidden_size_factor=1024):
                      bidirectional=True, dropout=0.0),
             rnn_layer_type=nn.GRU),
         TextDecoder=dict(
-            emb=dict(num_embeddings=fd.vocabulary_size(),
+            emb=dict(num_embeddings=num_tokens,
                      embedding_dim=hidden_size),
             drop=dict(p=0.0),
             att=dict(in_size_enc=hidden_size * 2, in_size_state=hidden_size,
@@ -175,10 +174,6 @@ def get_default_config(hidden_size_factor=1024):
             rnn=dict(input_size=hidden_size * 3, hidden_size=hidden_size,
                      num_layers=1, dropout=0.0),
             out=dict(in_features=hidden_size * 3,
-                     out_features=fd.vocabulary_size()),
+                     out_features=num_tokens),
             rnn_layer_type=nn.GRU,
-            max_output_length=400,  # max length for flickr annotations is 199
-            sos_id=fd.get_token_id(fd.sos),
-            eos_id=fd.get_token_id(fd.eos),
-            pad_id=fd.get_token_id(fd.pad)),
-        inverse_transform_fn=fd.get_label_encoder().inverse_transform)
+            max_output_length=400))  # max length for flickr annotations is 199

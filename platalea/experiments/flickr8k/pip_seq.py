@@ -71,8 +71,6 @@ else:
 logging.info('Extracting ASR/SLT transcriptions')
 for set_name in ['train', 'val']:
     ds = data[set_name].dataset
-    # cProfile.run("extract_trn(net, ds, use_beam_decoding=False)")
-    # raise SystemExit
     hyp_asr, ref_asr = extract_trn(net, ds, use_beam_decoding=args.pip_seq_use_beam_decoding)
     # Replacing original transcriptions with ASR/SLT's output
     for i in range(len(hyp_asr)):

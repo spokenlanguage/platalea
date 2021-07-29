@@ -6,14 +6,14 @@ import numpy as np
 import torch
 import torch.utils
 
-from platalea.data.transcribeddataset import TranscribedDataset
+from platalea.dataset import caption2tensor, init_vocabulary
 
 
-class LibriSpeechData(torch.utils.data.Dataset, TranscribedDataset):
+class LibriSpeechData(torch.utils.data.Dataset):
     @classmethod
     def init_vocabulary(cls, dataset):
         transcriptions = [m['trn'] for m in dataset.metadata]
-        TranscribedDataset.init_vocabulary(transcriptions)
+        init_vocabulary(transcriptions)
 
     def __init__(self, root, feature_fname, meta_fname, split='train',
                  downsampling_factor=None):
@@ -43,7 +43,7 @@ class LibriSpeechData(torch.utils.data.Dataset, TranscribedDataset):
     def __getitem__(self, index):
         sd = self.metadata[index]
         audio = torch.from_numpy(self.audio[sd['audio_start']:sd['audio_end']])
-        text = self.caption2tensor(sd['trn'])
+        text = caption2tensor(sd['trn'])
         return dict(audio_id=sd['fileid'], text=text, audio=audio)
 
     def __len__(self):
