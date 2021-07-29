@@ -4,7 +4,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from platalea.data.howto100mdata import _get_id_map, HowTo100MData
+from platalea.dataset import _get_id_map, HowTo100MData
 
 
 class Howto100mProcessingCase(TestCase):

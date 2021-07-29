@@ -1,11 +1,9 @@
 
 import torch.utils.data
+from sklearn.model_selection import train_test_split
 
-from platalea.data.flickr8kdata import Flickr8KData
-from platalea.data.howto100mdata import HowTo100MData
-from platalea.data.librispeechdata import LibriSpeechData
 
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 import json
 import numpy as np
 import pathlib
@@ -334,3 +332,242 @@ def spokencoco_loader(root, meta_fname, feature_fname,
         shuffle=shuffle,
         num_workers=0,
         collate_fn=lambda x: collate_fn(x, max_frames=max_frames))
+
+class Flickr8KData(torch.utils.data.Dataset):
+    @classmethod
+    def init_vocabulary(cls, dataset):
+        transcriptions = [sd[2] for sd in dataset.split_data]
+        init_vocabulary(transcriptions)
+
+    def __init__(self, root, feature_fname, meta_fname, split='train', language='en',
+                 downsampling_factor=None):
+        self.root = root
+        self.split = split
+        self.feature_fname = feature_fname
+        self.language = language
+        if language == 'en':
+            self.text_key = 'raw'
+        elif language == 'jp':
+            self.text_key = 'raw_jp'
+        else:
+            raise ValueError('Language {} not supported.'.format(language))
+        root_path = pathlib.Path(root)
+        # Loading label encoder
+        module_path = pathlib.Path(__file__).parent
+        with open(module_path / 'label_encoders.pkl', 'rb') as f:
+            global tokenizer
+            tokenizer = pickle.load(f)[language]
+        # Loading metadata
+        with open(root_path / meta_fname) as fmeta:
+            metadata = json.load(fmeta)['images']
+        # Loading mapping from image id to list of caption id
+        self.image_captions = {}
+        with open(root_path / 'flickr_audio' / 'wav2capt.txt') as fwav2capt:
+            for line in fwav2capt:
+                audio_id, image_id, text_id = line.split()
+                text_id = int(text_id[1:])
+                self.image_captions[image_id] = self.image_captions.get(image_id, []) + [(text_id, audio_id)]
+
+        # Creating image, caption pairs
+        self.split_data = []
+        for image in metadata:
+            if image['split'] == self.split:
+                fname = image['filename']
+                for text_id, audio_id in self.image_captions[fname]:
+                    # In the reduced dataset containing only sentences with
+                    # translations, removed sentences are replaced by 'None' to
+                    # keep the index of the sentence fixed, so that we can
+                    # still retrieve them based on text_id.
+                    # TODO: find a nicer way to handle this
+                    if image['sentences'][text_id] is not None:
+                        if self.text_key in image['sentences'][text_id]:
+                            self.split_data.append((
+                                fname,
+                                audio_id,
+                                image['sentences'][text_id][self.text_key]))
+
+        # Downsampling
+        if downsampling_factor is not None:
+            num_examples = int(len(self.split_data) // downsampling_factor)
+            self.split_data = random.sample(self.split_data, num_examples)
+
+        # image and audio feature data
+        image = torch.load(root_path / 'resnet_features.pt')
+        self.image = dict(zip(image['filenames'], image['features']))
+        audio = torch.load(root_path / feature_fname)
+        self.audio = dict(zip(audio['filenames'], audio['features']))
+
+    def __getitem__(self, index):
+        sd = self.split_data[index]
+        image = self.image[sd[0]]
+        audio = self.audio[sd[1]]
+        text = caption2tensor(sd[2])
+        return dict(image_id=sd[0],
+                    audio_id=sd[1],
+                    image=image,
+                    text=text,
+                    audio=audio,
+                    gloss=sd[2])
+
+    def __len__(self):
+        return len(self.split_data)
+
+    def get_config(self):
+        return dict(feature_fname=self.feature_fname,
+                    label_encoder=self.get_label_encoder(),
+                    language=self.language)
+
+    def evaluation(self):
+        """Returns image features, audio features, caption features, and a
+        boolean array specifying whether a caption goes with an image."""
+        audio = []
+        text = []
+        image = []
+        matches = []
+        image2idx = {}
+        for sd in self.split_data:
+            # Add image
+            if sd[0] in image2idx:
+                image_idx = image2idx[sd[0]]
+            else:
+                image_idx = len(image)
+                image2idx[sd[0]] = image_idx
+                image.append(self.image[sd[0]])
+            # Add audio and text
+            audio.append(self.audio[sd[1]])
+            text.append(sd[2])
+            matches.append((len(audio) - 1, image_idx))
+        correct = torch.zeros(len(audio), len(image)).bool()
+        for i, j in matches:
+            correct[i, j] = True
+        return dict(image=image, audio=audio, text=text, correct=correct)
+
+    def is_slt(self):
+        return self.language != 'en'
+
+    def split_sentences(self, sentences):
+        if self.language == 'jp':
+            return sentences
+        else:
+            return [s.split() for s in sentences]
+
+class LibriSpeechData(torch.utils.data.Dataset):
+    @classmethod
+    def init_vocabulary(cls, dataset):
+        transcriptions = [m['trn'] for m in dataset.metadata]
+        init_vocabulary(transcriptions)
+
+    def __init__(self, root, feature_fname, meta_fname, split='train',
+                 downsampling_factor=None):
+        # 'val' set in flickr8k corresponds to 'dev' in librispeech
+        if split == 'val':
+            split = 'dev'
+        self.root = root
+        self.split = split
+        self.feature_fname = feature_fname
+        root_path = pathlib.Path(root)
+        with open(root_path / meta_fname) as fmeta:
+            self.metadata = json.load(fmeta)
+            self.num_lines = self.metadata[-1]['audio_end']
+        if downsampling_factor is not None:
+            num_examples = len(self.metadata) // downsampling_factor
+            self.metadata = random.sample(self.metadata, num_examples)
+        # filter examples based on split
+        meta = []
+        for ex in self.metadata:
+            if ex['split'] == self.split:
+                meta.append(ex)
+        self.metadata = meta
+        # load audio features
+        self.audio = np.memmap(root_path / feature_fname, dtype='float64',
+                               mode='r', shape=(self.num_lines, 39))
+
+    def __getitem__(self, index):
+        sd = self.metadata[index]
+        audio = torch.from_numpy(self.audio[sd['audio_start']:sd['audio_end']])
+        text = caption2tensor(sd['trn'])
+        return dict(audio_id=sd['fileid'], text=text, audio=audio)
+
+    def __len__(self):
+        return len(self.metadata)
+
+    def get_config(self):
+        return dict(feature_fname=self.feature_fname,
+                    label_encoder=self.get_label_encoder())
+
+    def evaluation(self):
+        """Returns audio features with corresponding caption"""
+        audio = []
+        text = []
+        for ex in self.metadata:
+            text.append(ex['trn'])
+            a = torch.from_numpy(self.audio[ex['audio_start']:ex['audio_end']])
+            audio.append(a)
+        return dict(audio=audio, text=text)
+
+class HowTo100MData(torch.utils.data.Dataset):
+    def __init__(self, root, feature_fname, video_features_subdir, id_map_fname, split='train',
+                 downsampling_factor=None):
+        root_path = pathlib.Path(root)
+        self.video_features_dir_path = root_path / video_features_subdir
+        id_map_path = root_path / id_map_fname
+
+        self.metadata_by_id = _get_id_map(id_map_path, split, downsampling_factor)
+        self.audio = np.memmap(root_path / feature_fname, dtype='float64',
+                               mode='r', shape=(len(self), 39))
+
+        self.config = dict(split=split, downsampling_factor=downsampling_factor)
+
+
+    def __getitem__(self, index):
+        vid_id = list(self.metadata_by_id.keys())[index]
+        metadata = self.metadata_by_id[vid_id]
+        audio = torch.from_numpy(self.audio[metadata['audio_start']:metadata['audio_end']])
+        video = np.load(self.video_features_dir_path / metadata['video_feat_file'])
+        return dict(video=video, audio=audio)
+
+    def __len__(self):
+        return len(self.metadata_by_id)
+
+    def get_config(self):
+        return self.config
+
+    def evaluation(self):
+
+        return None  #dict(image=image, audio=audio, text=text, correct=None)
+
+
+def _get_id_map(id_map_path, split, downsampling_factor=None):
+    id_map = _load_id_map(id_map_path)
+    all_ids = list(id_map.keys())
+    split_ids = _get_split(all_ids, split)
+    down_sampled_ids = _get_down_sampled_ids(split_ids, downsampling_factor)
+    return OrderedDict({id: id_map[id] for id in down_sampled_ids})
+
+
+def _load_id_map(id_map_path):
+    with open(id_map_path) as id_map_file:
+        id_map = json.load(id_map_file)
+    return id_map
+
+
+def _get_split(ids, split):
+    train_ids, test_ids = train_test_split(ids, test_size=1000, random_state=0)
+
+    if split == 'train':
+        return train_ids
+    if split == 'test':
+        return test_ids
+    raise ValueError('split should be either "train" or "test". '
+                     'Instead encountered illegal value: {}'
+                     .format(split))
+
+
+def _get_down_sampled_ids(all_ids, downsampling_factor):
+    if downsampling_factor is None:
+        num_examples = len(all_ids)
+    else:
+        num_examples = len(all_ids) // downsampling_factor
+    return all_ids[:num_examples]
+
+
