@@ -6,9 +6,13 @@ Preprocesses datasets
 
 import json
 import logging
+import os
+
 import numpy as np
 import pathlib
 import PIL.Image
+from moviepy.video.io.VideoFileClip import VideoFileClip
+
 import platalea.hardware
 import soundfile
 import torch
@@ -17,15 +21,69 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 from platalea.experiments.config import get_argument_parser
 
+args = get_argument_parser()
+_audio_feat_config = dict(type='mfcc', delta=True, alpha=0.97, n_filters=40,
+                          window_size=0.025, frame_shift=0.010)
+_images_feat_config = dict(model='resnet')
 # Number of files to keep in the debug mode
 NB_DEBUG = 50
-
 
 def preprocess_flickr8k(dataset_path, audio_subdir, image_subdir,
                         audio_feat_config, images_feat_config):
     flickr8k_audio_features(pathlib.Path(dataset_path), audio_subdir, audio_feat_config)
     flickr8k_image_features(pathlib.Path(dataset_path), image_subdir, images_feat_config)
 
+def extract_audio_from_videos(video_dir_path, audio_dir_path):
+    os.makedirs(audio_dir_path, exist_ok=True)
+    for video_file_path in video_dir_path.iterdir():
+        video = VideoFileClip(str(video_file_path))
+        audio_file_name = video_file_path.name + '.wav'
+        video.audio.write_audiofile(audio_dir_path / audio_file_name)
+        video.close()
+
+
+def preprocess_howto100m(dataset_path, audio_subdir, video_subdir, video_features_subdir):
+    dataset_path_obj = pathlib.Path(dataset_path)
+    audio_path = dataset_path_obj / audio_subdir
+    video_path = dataset_path_obj / video_subdir
+    if not audio_path.exists():
+        extract_audio_from_videos(video_path, audio_path)
+
+    extract_howto100m_audio_features(dataset_path_obj, audio_subdir, video_features_subdir, _audio_feat_config)
+
+
+def find_howto100m_video_feature_files(ids, video_features_path):
+    file_list = os.listdir(video_features_path)
+    id_to_file_map = {file_name.split('.')[0]: file_name for file_name in file_list}
+
+    missing_s3d_features = [id for id in ids if id not in id_to_file_map]
+    if missing_s3d_features:
+        raise FileNotFoundError(
+            'Failed to find s3d features for the following ids: ' + missing_s3d_features)
+
+    return [id_to_file_map[id] for id in ids]
+
+
+def extract_howto100m_audio_features(dataset_path, audio_subdir, video_features_subdir, feat_config):
+    audio_dir_path = dataset_path / audio_subdir
+    file_names = os.listdir(audio_dir_path)
+    paths = [audio_dir_path / fn for fn in file_names]
+    features = audio_features(paths, feat_config)
+    output_path = dataset_path / 'mfcc_features.memmap'
+    starts, ends = save_audio_features_to_memmap(features, output_path)
+
+    ids = [file_name.split('.')[0] for file_name in file_names]
+    video_features_path = dataset_path / video_features_subdir
+    video_features_files = find_howto100m_video_feature_files(ids, video_features_path)
+
+    index = [{'id': id, 'audio_start': start, 'audio_end': end, 'video_feat_file': video}
+             for id, start, end, video in zip(ids, starts, ends, video_features_files)]
+    json.dump(index, open(dataset_path / 'index.json', 'w'))
+
+
+def preprocess_flickr8k(dataset_path, audio_subdir, image_subdir):
+    flickr8k_audio_features(pathlib.Path(dataset_path), audio_subdir, _audio_feat_config)
+    flickr8k_image_features(pathlib.Path(dataset_path), image_subdir, _images_feat_config)
 
 def preprocess_spokencoco(dataset_path, audio_subdir,
                           audio_feat_config, images_feat_config,
@@ -204,27 +262,21 @@ def librispeech_audio_features(dataset_path, feat_config, debug):
         json.dump(metadata, f)
 
 
-def save_audio_features_to_memmap(data, fname):
-    # Would be way safer to store the dtype in the metadata of the memmap
-    # so that we'd be sure to use the same dtype in dataset.py
-    # If we don't use the same dtype in dataset.py, we'll end up with reading random
-    # segments of the memory /!\ Not performed this way for LibriVox, so I did the same
-    # for SpokenCOCO
+
+def save_audio_features_to_memmap(data, file_name):
     num_lines = np.sum([d.shape[0] for d in data])
     feat_size = data[0].shape[1]
-
-    fp = np.memmap(fname, dtype='float64', mode='w+', shape=(num_lines, feat_size))
+    memmap = np.memmap(file_name, dtype='float64', mode='w+', shape=(num_lines, feat_size))
     start = 0
-    end = None
-    S = []
-    E = []
+    start_indices = []
+    end_indices = []
     for d in data:
         end = start + d.shape[0]
-        fp[start:end, :] = d
-        S.append(start)
-        E.append(end)
+        memmap[start:end, :] = d
+        start_indices.append(start)
+        end_indices.append(end)
         start = end
-    return S, E
+    return start_indices, end_indices
 
 
 def save_image_features_to_memmap(data, fname):
@@ -339,8 +391,8 @@ def acoustic_audio_features(paths, config):
         if 'max_size_seq' in config:
             data = data[:config['max_size_seq']]
         # get window and frameshift size in samples
-        window_size = int(fs*config['window_size'])
-        frame_shift = int(fs*config['frame_shift'])
+        window_size = int(fs * config['window_size'])
+        frame_shift = int(fs * config['frame_shift'])
 
         [frames, energy] = raw_frames(data, frame_shift, window_size)
         freq_spectrum = get_freqspectrum(frames, config['alpha'], fs,
@@ -379,7 +431,7 @@ if __name__ == '__main__':
     args._parser.description = doc[0]
     args.add_argument(
         'dataset_name', help='Name of the dataset to preprocess.',
-        type=str, choices=['flickr8k', 'spokencoco', 'librispeech'])
+        type=str, choices=['flickr8k', 'librispeech', 'howto100m-encc', 'spokencoco'])
     args.add_argument(
         "--audio_feature_type", default='mfcc', choices=['mfcc', 'pretrained'],
         help="Type of audio features to use.")
@@ -408,3 +460,5 @@ if __name__ == '__main__':
                               audio_feat_config, images_feat_config, args.debug)
     elif args.dataset_name == "librispeech":
         preprocess_librispeech(args.librispeech_root, audio_feat_config, args.debug)
+    if args.dataset_name == "howto100m-encc":
+        preprocess_howto100m(args.howto100m_root, args.howto100m_audio_subdir, args.howto100m_video_subdir)
