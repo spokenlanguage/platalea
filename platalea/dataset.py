@@ -524,7 +524,7 @@ class HowTo100MData(torch.utils.data.Dataset):
         metadata = self.metadata_by_id[vid_id]
         audio = torch.from_numpy(self.audio[metadata['audio_start']:metadata['audio_end']])
         video = np.load(self.video_features_dir_path / metadata['video_feat_file'])
-        return dict(video=video, audio=audio)
+        return dict(video=video, audio=audio, id=vid_id)
 
     def __len__(self):
         return len(self.metadata_by_id)
@@ -533,8 +533,16 @@ class HowTo100MData(torch.utils.data.Dataset):
         return self.config
 
     def evaluation(self):
-
-        return None  #dict(image=image, audio=audio, text=text, correct=None)
+        # audio = []
+        # text = []
+        # for ex in self.metadata:
+        #     text.append(ex['trn'])
+        #     a = torch.from_numpy(self.audio[ex['audio_start']:ex['audio_end']])
+        #     audio.append(a)
+        items = list(self)
+        video = [item['video'] for item in items]
+        audio = [item['audio'] for item in items]
+        return dict(video=video, audio=audio)
 
 
 def _get_id_map(id_map_path, split, downsampling_factor=None):
