@@ -1,7 +1,5 @@
-
 import torch.utils.data
 from sklearn.model_selection import train_test_split
-
 
 from collections import namedtuple, OrderedDict
 import json
@@ -12,7 +10,6 @@ import random
 from sklearn.preprocessing import LabelEncoder
 import torch
 import torch.utils.data
-
 
 tokenizer = None
 
@@ -35,13 +32,6 @@ def caption2tensor(capt):
     capt = [c if c in tokenizer.classes_ else special_tokens.unk for c in capt]
     capt = [special_tokens.sos] + capt + [special_tokens.eos]
     return torch.Tensor(tokenizer.transform(capt))
-
-
-
-
-
-
-
 
 
 class SpokenCOCOData(torch.utils.data.Dataset):
@@ -145,7 +135,7 @@ class SpokenCOCOData(torch.utils.data.Dataset):
 
         # Load memory-map arrays
         self.image = np.memmap(root_path / image_feature_fname, dtype='float32',
-                               mode='r', shape=(self.nb_images+1, self.image_mmap_mapping['feature_size']))
+                               mode='r', shape=(self.nb_images + 1, self.image_mmap_mapping['feature_size']))
 
         self.audio = np.memmap(root_path / feature_fname, dtype='float64',
                                mode='r', shape=(self.nb_frames, self.audio_mmap_mapping['feature_size']))
@@ -254,9 +244,9 @@ def batch_image(images):
 
 
 def collate_fn(data, max_frames=2048):
-    images, texts, audios = zip(* [(datum['image'],
-                                    datum['text'],
-                                    datum['audio']) for datum in data])
+    images, texts, audios = zip(*[(datum['image'],
+                                   datum['text'],
+                                   datum['audio']) for datum in data])
     # Merge images (from tuple of 3D tensor to 4D tensor).
     images = batch_image(images)
     mfcc, mfcc_lengths = batch_audio(audios, max_frames=max_frames)
@@ -266,8 +256,8 @@ def collate_fn(data, max_frames=2048):
 
 
 def collate_fn_speech(data, max_frames=2048):
-    texts, audios = zip(* [(datum['text'],
-                            datum['audio']) for datum in data])
+    texts, audios = zip(*[(datum['text'],
+                           datum['audio']) for datum in data])
     mfcc, mfcc_lengths = batch_audio(audios, max_frames=max_frames)
     chars, char_lengths = batch_text(texts)
     return dict(audio=mfcc, text=chars, audio_len=mfcc_lengths,
@@ -332,6 +322,7 @@ def spokencoco_loader(root, meta_fname, feature_fname,
         shuffle=shuffle,
         num_workers=0,
         collate_fn=lambda x: collate_fn(x, max_frames=max_frames))
+
 
 class Flickr8KData(torch.utils.data.Dataset):
     @classmethod
@@ -451,6 +442,7 @@ class Flickr8KData(torch.utils.data.Dataset):
         else:
             return [s.split() for s in sentences]
 
+
 class LibriSpeechData(torch.utils.data.Dataset):
     @classmethod
     def init_vocabulary(cls, dataset):
@@ -505,6 +497,7 @@ class LibriSpeechData(torch.utils.data.Dataset):
             audio.append(a)
         return dict(audio=audio, text=text)
 
+
 class HowTo100MData(torch.utils.data.Dataset):
     def __init__(self, root, feature_fname, video_features_subdir, id_map_fname, split='train',
                  downsampling_factor=None):
@@ -517,7 +510,6 @@ class HowTo100MData(torch.utils.data.Dataset):
                                mode='r', shape=(len(self), 39))
 
         self.config = dict(split=split, downsampling_factor=downsampling_factor)
-
 
     def __getitem__(self, index):
         vid_id = list(self.metadata_by_id.keys())[index]
@@ -533,12 +525,6 @@ class HowTo100MData(torch.utils.data.Dataset):
         return self.config
 
     def evaluation(self):
-        # audio = []
-        # text = []
-        # for ex in self.metadata:
-        #     text.append(ex['trn'])
-        #     a = torch.from_numpy(self.audio[ex['audio_start']:ex['audio_end']])
-        #     audio.append(a)
         items = list(self)
         video = [item['video'] for item in items]
         audio = [item['audio'] for item in items]
@@ -577,5 +563,3 @@ def _get_down_sampled_ids(all_ids, downsampling_factor):
     else:
         num_examples = len(all_ids) // downsampling_factor
     return all_ids[:num_examples]
-
-
