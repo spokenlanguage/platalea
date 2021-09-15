@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 <!-- track upcoming changes here; move to new versioned section at release time -->
+- added support for HowTo100M dataset
 
 ## [2.0] - 16 July 2021
 
