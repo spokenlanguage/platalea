@@ -12,6 +12,7 @@ import numpy as np
 import pathlib
 import PIL.Image
 from moviepy.video.io.VideoFileClip import VideoFileClip
+from tqdm import tqdm
 
 import platalea.hardware
 import soundfile
@@ -35,7 +36,7 @@ def preprocess_flickr8k(dataset_path, audio_subdir, image_subdir,
 
 def extract_audio_from_videos(video_dir_path, audio_dir_path):
     os.makedirs(audio_dir_path, exist_ok=True)
-    for video_file_path in video_dir_path.iterdir():
+    for video_file_path in tqdm(video_dir_path.iterdir()):
         video = VideoFileClip(str(video_file_path))
         audio_file_name = video_file_path.name + '.wav'
         video.audio.write_audiofile(audio_dir_path / audio_file_name)
@@ -379,7 +380,7 @@ def acoustic_audio_features(paths, config):
     if config['type'] != 'mfcc' and config['type'] != 'fbank':
         raise NotImplementedError()
     output = []
-    for path in paths:
+    for path in tqdm(paths):
         logging.info("Processing {}".format(path))
         try:
             data, sample_rate = soundfile.read(path)
