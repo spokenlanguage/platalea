@@ -379,25 +379,25 @@ def acoustic_audio_features(paths, config):
     if config['type'] != 'mfcc' and config['type'] != 'fbank':
         raise NotImplementedError()
     output = []
-    for cap in paths:
-        logging.info("Processing {}".format(cap))
+    for path in paths:
+        logging.info("Processing {}".format(path))
         try:
-            data, fs = soundfile.read(cap)
+            data, sample_rate = soundfile.read(path)
         except ValueError:
             # try to repair the file
-            path = fix_wav(cap)
-            data, fs = soundfile.read(path)
+            path = fix_wav(path)
+            data, sample_rate = soundfile.read(path)
         # limit size
         if 'max_size_seq' in config:
             data = data[:config['max_size_seq']]
         # get window and frameshift size in samples
-        window_size = int(fs * config['window_size'])
-        frame_shift = int(fs * config['frame_shift'])
+        window_size = int(sample_rate * config['window_size'])
+        frame_shift = int(sample_rate * config['frame_shift'])
 
         [frames, energy] = raw_frames(data, frame_shift, window_size)
-        freq_spectrum = get_freqspectrum(frames, config['alpha'], fs,
+        freq_spectrum = get_freqspectrum(frames, config['alpha'], sample_rate,
                                          window_size)
-        fbanks = get_fbanks(freq_spectrum, config['n_filters'], fs)
+        fbanks = get_fbanks(freq_spectrum, config['n_filters'], sample_rate)
         if config['type'] == 'fbank':
             features = fbanks
         else:
