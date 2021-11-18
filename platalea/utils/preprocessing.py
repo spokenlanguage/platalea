@@ -461,4 +461,5 @@ if __name__ == '__main__':
     elif args.dataset_name == "librispeech":
         preprocess_librispeech(args.librispeech_root, audio_feat_config, args.debug)
     if args.dataset_name == "howto100m-encc":
-        preprocess_howto100m(args.howto100m_root, args.howto100m_audio_subdir, args.howto100m_video_subdir)
+        preprocess_howto100m(args.howto100m_root, args.howto100m_audio_subdir, args.howto100m_video_subdir,
+                             args.howto100m_video_features_subdir)
