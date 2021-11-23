@@ -36,12 +36,21 @@ def preprocess_flickr8k(dataset_path, audio_subdir, image_subdir,
 
 def extract_audio_from_videos(video_dir_path, audio_dir_path):
     os.makedirs(audio_dir_path, exist_ok=True)
+    failed_paths = []
     for video_file_path in tqdm(video_dir_path.iterdir()):
         print('Start extracting audio from: {}'.format(video_file_path))
-        video = VideoFileClip(str(video_file_path))
-        audio_file_name = video_file_path.name + '.wav'
-        video.audio.write_audiofile(audio_dir_path / audio_file_name)
-        video.close()
+        try:
+            video = VideoFileClip(str(video_file_path))
+            audio_file_name = video_file_path.name + '.wav'
+            video.audio.write_audiofile(audio_dir_path / audio_file_name)
+            video.close()
+        except Exception as e:
+            print('Error while extracting audio from:{}, {}'.format(video_file_path, e))
+            failed_paths += [video_file_path]
+    print('Audio extraction complete.')
+    if failed_paths:
+        print('Audio extraction failed for the following files:\n', '\n'.join(failed_paths))
+
 
 
 def preprocess_howto100m(dataset_path, audio_subdir, video_subdir, video_features_subdir):
