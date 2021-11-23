@@ -37,6 +37,7 @@ def preprocess_flickr8k(dataset_path, audio_subdir, image_subdir,
 def extract_audio_from_videos(video_dir_path, audio_dir_path):
     os.makedirs(audio_dir_path, exist_ok=True)
     for video_file_path in tqdm(video_dir_path.iterdir()):
+        print('Start extracting audio from: {}'.format(video_file_path))
         video = VideoFileClip(str(video_file_path))
         audio_file_name = video_file_path.name + '.wav'
         video.audio.write_audiofile(audio_dir_path / audio_file_name)
