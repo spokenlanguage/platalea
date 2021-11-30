@@ -12,6 +12,7 @@ import numpy as np
 import pathlib
 import PIL.Image
 from moviepy.video.io.VideoFileClip import VideoFileClip
+from tqdm import tqdm
 
 import platalea.hardware
 import soundfile
@@ -35,11 +36,21 @@ def preprocess_flickr8k(dataset_path, audio_subdir, image_subdir,
 
 def extract_audio_from_videos(video_dir_path, audio_dir_path):
     os.makedirs(audio_dir_path, exist_ok=True)
-    for video_file_path in video_dir_path.iterdir():
-        video = VideoFileClip(str(video_file_path))
-        audio_file_name = video_file_path.name + '.wav'
-        video.audio.write_audiofile(audio_dir_path / audio_file_name)
-        video.close()
+    failed_paths = []
+    for video_file_path in tqdm(video_dir_path.iterdir()):
+        logging.debug('Start extracting audio from: {}'.format(video_file_path))
+        try:
+            video = VideoFileClip(str(video_file_path))
+            audio_file_name = video_file_path.name + '.wav'
+            video.audio.write_audiofile(audio_dir_path / audio_file_name)
+            video.close()
+        except Exception as e:
+            logging.warning('Error while extracting audio from:{}, {}'.format(video_file_path, e))
+            failed_paths += [video_file_path]
+    logging.info('Audio extraction complete.')
+    if failed_paths:
+        logging.warning('Audio extraction failed for the following files:\n', '\n'.join(failed_paths))
+
 
 
 def preprocess_howto100m(dataset_path, audio_subdir, video_subdir, video_features_subdir):
@@ -379,25 +390,25 @@ def acoustic_audio_features(paths, config):
     if config['type'] != 'mfcc' and config['type'] != 'fbank':
         raise NotImplementedError()
     output = []
-    for cap in paths:
-        logging.info("Processing {}".format(cap))
+    for path in tqdm(paths):
+        logging.info("Processing {}".format(path))
         try:
-            data, fs = soundfile.read(cap)
+            data, sample_rate = soundfile.read(path)
         except ValueError:
             # try to repair the file
-            path = fix_wav(cap)
-            data, fs = soundfile.read(path)
+            path = fix_wav(path)
+            data, sample_rate = soundfile.read(path)
         # limit size
         if 'max_size_seq' in config:
             data = data[:config['max_size_seq']]
         # get window and frameshift size in samples
-        window_size = int(fs * config['window_size'])
-        frame_shift = int(fs * config['frame_shift'])
+        window_size = int(sample_rate * config['window_size'])
+        frame_shift = int(sample_rate * config['frame_shift'])
 
         [frames, energy] = raw_frames(data, frame_shift, window_size)
-        freq_spectrum = get_freqspectrum(frames, config['alpha'], fs,
+        freq_spectrum = get_freqspectrum(frames, config['alpha'], sample_rate,
                                          window_size)
-        fbanks = get_fbanks(freq_spectrum, config['n_filters'], fs)
+        fbanks = get_fbanks(freq_spectrum, config['n_filters'], sample_rate)
         if config['type'] == 'fbank':
             features = fbanks
         else:
@@ -461,4 +472,5 @@ if __name__ == '__main__':
     elif args.dataset_name == "librispeech":
         preprocess_librispeech(args.librispeech_root, audio_feat_config, args.debug)
     if args.dataset_name == "howto100m-encc":
-        preprocess_howto100m(args.howto100m_root, args.howto100m_audio_subdir, args.howto100m_video_subdir)
+        preprocess_howto100m(args.howto100m_root, args.howto100m_audio_subdir, args.howto100m_video_subdir,
+                             args.howto100m_video_features_subdir)

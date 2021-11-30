@@ -156,6 +156,10 @@ def get_argument_parser():
         '--howto100m_video_subdir', env_var='HOWTO100M_VIDEO_SUBDIR',
         default='video',
         help='relative path of the video subdir within the HowTo100M dir')
+    args.add_argument(
+        '--howto100m_video_features_subdir', env_var='HOWTO100M_VIDEO_FEATURES_SUBDIR',
+        default='s3d_features',
+        help='relative path of the video features subdir within the HowTo100M dir')
 
     # SpokenCOCO specific parameters
     args.add_argument(
