@@ -501,13 +501,23 @@ class LibriSpeechData(torch.utils.data.Dataset):
 class HowTo100MData(torch.utils.data.Dataset):
     def __init__(self, root, feature_fname, video_features_subdir, id_map_fname, split='train',
                  downsampling_factor=None):
+        self.fragment_length = 3
         root_path = pathlib.Path(root)
         self.video_features_dir_path = root_path / video_features_subdir
         id_map_path = root_path / id_map_fname
 
         self.metadata_by_id = _get_id_map(id_map_path, split, downsampling_factor)
+
+        total_n_fragments = []
+        for _, metadata in self.metadata_by_id.items():
+            video = np.load(self.video_features_dir_path / metadata['video_feat_file'])
+            n_fragments = video.shape[0] - self.fragment_length + 1
+            total_n_fragments += [n_fragments]
+
+        self.len = np.cumsum(total_n_fragments)[-1]
+
         self.audio = np.memmap(root_path / feature_fname, dtype='float64',
-                               mode='r', shape=(len(self), 39))
+                               mode='r', shape=(len(self.metadata_by_id), 39))
 
         self.config = dict(split=split, downsampling_factor=downsampling_factor)
 
@@ -519,7 +529,7 @@ class HowTo100MData(torch.utils.data.Dataset):
         return dict(video=video, audio=audio, id=vid_id)
 
     def __len__(self):
-        return len(self.metadata_by_id)
+        return self.len
 
     def get_config(self):
         return self.config

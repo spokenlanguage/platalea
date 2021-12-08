@@ -33,11 +33,26 @@ class Howto100mProcessingCase(TestCase):
         assert len(_get_id_map(id_map_path, 'train')) == 3422, \
             'The other 3422 ids in the test file go to the train set'
 
+    def test_len_train(self):
+        dataset_train = self._get_dataset('train')
+        n_fragments_per_video = 9  # all test videos are 11 seconds long minus 2 seconds for padding
+        assert len(dataset_train) == 3422 * n_fragments_per_video, \
+            'The other 3422 ids in the test file go to the train set'
+
+    def test_len_test(self):
+        dataset_test = self._get_dataset('test')
+        n_fragments_per_video = 9  # all test videos are 11 seconds long minus 2 seconds for padding
+        assert len(dataset_test) == 1000 * n_fragments_per_video, \
+            'By default 1000 ids should go to the test set'
+
     def test_load_item(self):
         dataset = self._get_dataset('train')
         item = dataset[0]
         print({k: item[k].shape for k in item if item[k] is not None and hasattr(item[k], 'shape')})
         print(item['id'])
+        time_steps, feature_size = item['video'].shape
+        assert feature_size == 1024
+        assert time_steps == dataset.fragment_length
 
     def test_evaluation_has_video(self):
         dataset = self._get_dataset('train')
