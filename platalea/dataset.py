@@ -508,28 +508,34 @@ class HowTo100MData(torch.utils.data.Dataset):
 
         self.metadata_by_id = _get_id_map(id_map_path, split, downsampling_factor)
 
-        total_n_fragments = []
-        for _, metadata in self.metadata_by_id.items():
-            video = np.load(self.video_features_dir_path / metadata['video_feat_file'])
-            n_fragments = video.shape[0] - self.fragment_length + 1
-            total_n_fragments += [n_fragments]
-
-        self.len = np.cumsum(total_n_fragments)[-1]
+        self.fragment_file_lookup_index = HowTo100MData._fragment_file_lookup_index(self.metadata_by_id,
+                                                                                    self.video_features_dir_path,
+                                                                                    self.fragment_length)
 
         self.audio = np.memmap(root_path / feature_fname, dtype='float64',
                                mode='r', shape=(len(self.metadata_by_id), 39))
 
         self.config = dict(split=split, downsampling_factor=downsampling_factor)
 
+    @staticmethod
+    def _fragment_file_lookup_index(metadata_by_id, video_features_dir_path, fragment_length):
+        paths = [video_features_dir_path / metadata['video_feat_file'] for _, metadata in metadata_by_id.items()]
+        video_file_lengths = [np.load(path).shape[0] for path in paths]
+        return _fragment_file_lookup_index_from_video_lengths(video_file_lengths, fragment_length)
+
     def __getitem__(self, index):
-        vid_id = list(self.metadata_by_id.keys())[index]
+        video_index, fragment_index_in_video = _get_video_indices_from_fragment_index(self.fragment_file_lookup_index,
+                                                                                      index,
+                                                                                      self.fragment_length)
+        vid_id = list(self.metadata_by_id.keys())[video_index]
         metadata = self.metadata_by_id[vid_id]
         audio = torch.from_numpy(self.audio[metadata['audio_start']:metadata['audio_end']])
         video = np.load(self.video_features_dir_path / metadata['video_feat_file'])
-        return dict(video=video, audio=audio, id=vid_id)
+        video_fragment = video[fragment_index_in_video:(fragment_index_in_video + self.fragment_length)]
+        return dict(video=video_fragment, audio=audio, id=vid_id)
 
     def __len__(self):
-        return self.len
+        return self.fragment_file_lookup_index[-1]
 
     def get_config(self):
         return self.config
@@ -539,6 +545,35 @@ class HowTo100MData(torch.utils.data.Dataset):
         video = [item['video'] for item in items]
         audio = [item['audio'] for item in items]
         return dict(video=video, audio=audio)
+
+
+def _fragment_file_lookup_index_from_video_lengths(video_file_lengths, fragment_length):
+    """
+    Generate a lookup index used by _get_video_indices_from_fragment_index
+    inside HowTo100MData. Given a list of lenghts of the feature vectors of
+    the video files (number of time steps in the video feature files) and a
+    fragment length (also in terms of these time steps), this function
+    returns a list that can be used to look up the index of the file
+    corresponding to the fragment index.
+    """
+    total_n_fragments = []
+    for video_file_length in video_file_lengths:
+        n_fragments = video_file_length - fragment_length + 1
+        total_n_fragments += [n_fragments]
+
+    return np.cumsum([0] + total_n_fragments)
+
+
+def _get_video_indices_from_fragment_index(fragment_file_lookup_index, fragment_index, fragment_length):
+    """
+    The fragment index of the HowTo100MData dataset runs over all fragments
+    in all video files. This function converts the single fragment index
+    to 1. an index of the video file and 2. an index of the fragment in that
+    video file.
+    """
+    video_index = np.searchsorted(fragment_file_lookup_index - 0.5, fragment_index) - 1
+    fragment_index_in_video = fragment_index - fragment_file_lookup_index[video_index]
+    return video_index, fragment_index_in_video
 
 
 def _get_id_map(id_map_path, split, downsampling_factor=None):

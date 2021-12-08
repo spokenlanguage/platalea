@@ -4,7 +4,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from platalea.dataset import _get_id_map, HowTo100MData
+import platalea.dataset
 
 
 class Howto100mProcessingCase(TestCase):
@@ -18,19 +18,19 @@ class Howto100mProcessingCase(TestCase):
     audio_features_file_name = 'dummy_mfcc_features.memmap'
 
     def _get_dataset(self, split):
-        dataset = HowTo100MData(self.test_dataset_path,
-                                self.audio_features_file_name,
-                                self.video_features_subdir,
-                                self.id_map_file_name,
-                                split=split)
+        dataset = platalea.dataset.HowTo100MData(self.test_dataset_path,
+                                                 self.audio_features_file_name,
+                                                 self.video_features_subdir,
+                                                 self.id_map_file_name,
+                                                 split=split)
         return dataset
 
     def test_get_id_map_number_of_results(self):
         id_map_path = self.test_dataset_path / self.id_map_file_name
-        assert len(_get_id_map(id_map_path, 'test')) == 1000, \
+        assert len(platalea.dataset._get_id_map(id_map_path, 'test')) == 1000, \
             'By default 1000 ids should go to the test set'
 
-        assert len(_get_id_map(id_map_path, 'train')) == 3422, \
+        assert len(platalea.dataset._get_id_map(id_map_path, 'train')) == 3422, \
             'The other 3422 ids in the test file go to the train set'
 
     def test_len_train(self):
@@ -53,6 +53,36 @@ class Howto100mProcessingCase(TestCase):
         time_steps, feature_size = item['video'].shape
         assert feature_size == 1024
         assert time_steps == dataset.fragment_length
+
+    def test_build_fragment_file_lookup_index(self):
+        fragment_length = 3
+        video_lengths = np.array([10, 15, 5])
+        index = platalea.dataset._fragment_file_lookup_index_from_video_lengths(video_lengths, fragment_length)
+        assert np.all(index == np.array([0, 8, 21, 24]))
+
+    def test_get_video_indices_from_fragment_index(self):
+        fragment_length = 3
+        # index describing a set of 3 files with lengths 10 sec, 15 sec and 5 sec:
+        video_lengths = np.array([10, 15, 5])
+        fragment_file_lookup_index = platalea.dataset._fragment_file_lookup_index_from_video_lengths(video_lengths,
+                                                                                                     fragment_length)
+
+        # first query for the first fragment of file 1:
+        fragment_index = 0
+        assert (0, 0) == platalea.dataset._get_video_indices_from_fragment_index(fragment_file_lookup_index,
+                                                                                 fragment_index, fragment_length)
+        # then let's try the last fragment of file 1:
+        fragment_index = 7
+        assert (0, 7) == platalea.dataset._get_video_indices_from_fragment_index(fragment_file_lookup_index,
+                                                                                 fragment_index, fragment_length)
+        # first fragment of file 2:
+        fragment_index = 8
+        assert (1, 0) == platalea.dataset._get_video_indices_from_fragment_index(fragment_file_lookup_index,
+                                                                                 fragment_index, fragment_length)
+        # last fragment (so, file 3):
+        fragment_index = 23
+        assert (2, 2) == platalea.dataset._get_video_indices_from_fragment_index(fragment_file_lookup_index,
+                                                                                 fragment_index, fragment_length)
 
     def test_evaluation_has_video(self):
         dataset = self._get_dataset('train')
