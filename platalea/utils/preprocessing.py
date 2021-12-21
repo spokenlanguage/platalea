@@ -70,7 +70,7 @@ def find_howto100m_video_feature_files(ids, video_features_path):
     missing_s3d_features = [id for id in ids if id not in id_to_file_map]
     if missing_s3d_features:
         raise FileNotFoundError(
-            'Failed to find s3d features for the following ids: ' + missing_s3d_features)
+            'Failed to find s3d features for the following ids: ' + str(missing_s3d_features))
 
     return [id_to_file_map[id] for id in ids]
 
