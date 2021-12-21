@@ -36,8 +36,9 @@ The `basic` experiment needs the following:
 pip install sklearn python-Levenshtein
 ```
 
-## Dataset
+## Datasets
 
+### Flickr8K
 The repository has been developed to work with Flickr8K dataset. The code can
 be made to work with other datasets but this will require some adaptations.
 
@@ -54,7 +55,7 @@ Create a folder to store the dataset (we will assume here that the folder is
 extract the content of the archives.  You can now setup the environment and
 start preprocessing the data.
 
-### Configuration
+#### Configuration
 
 We use ConfigArgParse for setting necessary input variables, including the
 location of the dataset.  This means you can use either a configuration file
@@ -78,13 +79,36 @@ export FLICKR8K_ROOT=/home/<user>/corpora/flickr8k
 You could also specify this option directly on the command line when running
 an experiment (the respective options would be `--flickr8k_root=...`).
 
-### Preprocessing
+#### Preprocessing
 
 Run the preprocessing script to extract input features:
 
 ```bash
 python platalea/utils/preprocessing.py flickr8k
 ```
+
+### Howto100Men-cc
+
+This repository has support for a subset of the [howto100M dataset](https://github.com/antoine77340/howto100m). The subset contains all videos with creative commons license that claim to be in english language according to their metadata.
+
+- Sampling rate of the audio features is 100Hz
+- Sampling rate of the video features is 1Hz.
+- A dataset item is defined as the combination of video and audio for a fragment of 3 seconds.
+
+#### Preprocessing
+
+This code contains functionality for extracting audio features from the videos. These files need to be in the datafolder before preprocessing the dataset. Preprocessing will create an index file with references to the video feature files. The video features (S3D) need to be acquired elsewhere. Videos from howto100m need to be downloaded from youtube using the metadata from the howto100m dataset provided above.
+
+To start preprocessing, run the following:
+
+```sh
+python -m platalea.utils.preprocessing howto100m-encc --howto100m_root /corpora/howto100m/
+```
+
+#### Running/Training
+
+Running any experiment using the howto100M dataset has not yet been implemented. 
+
 
 ## Training
 
