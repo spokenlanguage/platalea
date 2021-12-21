@@ -53,6 +53,10 @@ class Howto100mProcessingCase(TestCase):
         time_steps, feature_size = item['video'].shape
         assert feature_size == 1024
         assert time_steps == dataset.fragment_length
+        time_steps, feature_size = item['audio'].shape
+        assert feature_size == 39
+        samples_per_second = 100  # determined in platalea.utils.preprocessing and dataset.HowTo100MData itself
+        assert time_steps == dataset.fragment_length * samples_per_second
 
     def test_build_fragment_file_lookup_index(self):
         fragment_length = 3

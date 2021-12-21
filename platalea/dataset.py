@@ -529,7 +529,12 @@ class HowTo100MData(torch.utils.data.Dataset):
                                                                                       self.fragment_length)
         vid_id = list(self.metadata_by_id.keys())[video_index]
         metadata = self.metadata_by_id[vid_id]
-        audio = torch.from_numpy(self.audio[metadata['audio_start']:metadata['audio_end']])
+        # extract audio fragment
+        samples_per_second = 100  # determined in platalea.utils.preprocessing
+        audio_start = metadata['audio_start'] + fragment_index_in_video * samples_per_second
+        audio_end = audio_start + self.fragment_length * samples_per_second
+        audio = torch.from_numpy(self.audio[audio_start:audio_end])
+        # extract video fragment
         video = np.load(self.video_features_dir_path / metadata['video_feat_file'])
         video_fragment = video[fragment_index_in_video:(fragment_index_in_video + self.fragment_length)]
         return dict(video=video_fragment, audio=audio, id=vid_id)
