@@ -1,0 +1,38 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Platalea
+message: >-
+  Please cite this software when using it for your
+  research.
+type: software
+authors:
+  - given-names: Grzegorz
+    family-names: Chrupała
+    email: g.a.chrupala@tilburguniversity.edu
+    affiliation: Tilburg University
+    orcid: 'https://orcid.org/0000-0001-9498-6912'
+  - given-names: ' Bertrand'
+    family-names: Higy
+    email: b.j.r.higy@tilburguniversity.edu
+    affiliation: Tilburg University
+    orcid: 'https://orcid.org/0000-0002-8198-8676'
+  - given-names: E. G. Patrick
+    family-names: Bos
+    email: p.bos@esciencecenter.nl
+    affiliation: Netherlands eScience Center
+    orcid: 'https://orcid.org/0000-0002-6033-960X'
+  - given-names: Christiaan
+    family-names: Meijer
+    email: c.meijer@esciencecenter.nl
+    affiliation: Netherlands eScience Center
+    orcid: 'https://orcid.org/0000-0002-5529-5761'
+  - given-names: Marvin
+    family-names: Lavechin
+  - given-names: Lieke
+    family-names: Gelderloos
+    email: l.j.gelderloos@tilburguniversity.edu
+    affiliation: Tilburg University
+doi: 10.5281/zenodo.4311601
+
